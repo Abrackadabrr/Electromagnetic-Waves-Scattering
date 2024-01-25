@@ -5,6 +5,7 @@
 #include "Types.hpp"
 
 int main() {
-    Scattering::Types::scalar a = 0;
+    EMW::Types::scalar a = 0;
+    EMW::Types::Vector3d point{0, 0, 0};
     return (int)a;
 }
