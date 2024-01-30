@@ -22,9 +22,9 @@ namespace EMW::Mesh {
 
         SurfaceMesh(Containers::vector<Point> nodes, Containers::vector<Containers::array<Types::index, 4>> cells);
 
-//        SurfaceMesh(Containers::vector<Point> nodes,
-//                    Containers::vector<Containers::array<Types::index, 4>> cells,
-//                    Containers::vector<Types::Vector3d> E_field, Containers::vector<Types::Vector3d> H_field);
+        SurfaceMesh(Containers::vector<Point> nodes,
+                    Containers::vector<Containers::array<Types::index, 4>> cells,
+                    Containers::vector<Types::Vector3d> E_field, Containers::vector<Types::Vector3d> H_field);
 
         constexpr const Containers::vector<IndexedCell> &getCells() const { return cells_; }
 
