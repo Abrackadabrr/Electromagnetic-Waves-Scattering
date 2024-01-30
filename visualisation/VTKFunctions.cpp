@@ -21,15 +21,27 @@ namespace VTK {
         // VTK points
         vtkSmartPointer<vtkPoints> dumpPoints = vtkSmartPointer<vtkPoints>::New();
 
+        // Электромагнитное поле
         auto E = vtkSmartPointer<vtkDoubleArray>::New();
         E->SetName("E");
         E->SetNumberOfComponents(3);
         auto H = vtkSmartPointer<vtkDoubleArray>::New();
         H->SetNumberOfComponents(3);
         H->SetName("H");
+        // Токи
         auto J = vtkSmartPointer<vtkDoubleArray>::New();
         J->SetNumberOfComponents(3);
         J->SetName("J");
+        // Локальные базисы
+        auto tau1 = vtkSmartPointer<vtkDoubleArray>::New();
+        tau1->SetNumberOfComponents(3);
+        tau1->SetName("tau1");
+        auto tau2 = vtkSmartPointer<vtkDoubleArray>::New();
+        tau2->SetNumberOfComponents(3);
+        tau2->SetName("tau2");
+        auto n = vtkSmartPointer<vtkDoubleArray>::New();
+        n->SetNumberOfComponents(3);
+        n->SetName("n");
 
         const EMW::Containers::vector<EMW::Mesh::Point> &nodes = mesh.getNodes();
         const EMW::Containers::vector<EMW::Mesh::IndexedCell> &cells = mesh.getCells();
@@ -38,22 +50,28 @@ namespace VTK {
         for (auto &cell: cells) {
             dumpPoints->InsertNextPoint(cell.collPoint_.point_.x(), cell.collPoint_.point_.y(),
                                         cell.collPoint_.point_.z());
-            double e[3] = {cell.collPoint_.E_.x(), cell.collPoint_.E_.y(), cell.collPoint_.E_.z()};
-            double h[3] = {cell.collPoint_.H_.x(), cell.collPoint_.H_.y(), cell.collPoint_.H_.z()};
-            double j[3] = {cell.collPoint_.J_.x(), cell.collPoint_.J_.y(), cell.collPoint_.J_.z()};
-            E->InsertNextTuple(e);
-            H->InsertNextTuple(h);
-            J->InsertNextTuple(j);
+            E->InsertNextTuple(cell.collPoint_.E_.data());
+            H->InsertNextTuple(cell.collPoint_.H_.data());
+            J->InsertNextTuple(cell.collPoint_.J_.data());
+            tau1->InsertNextTuple(cell.tau1.data());
+            tau2->InsertNextTuple(cell.tau2.data());
+            n->InsertNextTuple(cell.normal.data());
+            assert(std::abs(cell.normal.norm() - 1) < 1e-10);
+            assert(std::abs(cell.tau1.norm() - 1) < 1e-10);
+            assert(std::abs(cell.tau2.norm() - 1) < 1e-10);
         }
 
         // Обходим все точки нашей расчётной сетки
         for (auto &node: nodes) {
             // Вставляем новую точку в сетку VTK-снапшота
             dumpPoints->InsertNextPoint(node.x(), node.y(), node.z());
-            double zero_field[3] = {0, 0, 0};
-            E->InsertNextTuple(zero_field);
-            H->InsertNextTuple(zero_field);
-            J->InsertNextTuple(zero_field);
+            double zero[3] = {0, 0, 0};
+            E->InsertNextTuple(zero);
+            H->InsertNextTuple(zero);
+            J->InsertNextTuple(zero);
+            tau1->InsertNextTuple(zero);
+            tau2->InsertNextTuple(zero);
+            n->InsertNextTuple(zero);
         }
 
         // Грузим точки в сетку
@@ -73,6 +91,9 @@ namespace VTK {
         unstructuredGrid->GetPointData()->AddArray(E);
         unstructuredGrid->GetPointData()->AddArray(H);
         unstructuredGrid->GetPointData()->AddArray(J);
+        unstructuredGrid->GetPointData()->AddArray(tau1);
+        unstructuredGrid->GetPointData()->AddArray(tau2);
+        unstructuredGrid->GetPointData()->AddArray(n);
 
         // Создаём снапшот в файле с заданным именем
         std::string fileName = mesh.getName() + "-step-" + std::to_string(snap_number) + ".vtu";
