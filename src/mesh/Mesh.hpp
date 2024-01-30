@@ -28,6 +28,9 @@ namespace EMW::Mesh {
         SurfaceMesh() = default;
 
         SurfaceMesh(Containers::vector<Point> nodes, Containers::vector<Containers::array<Types::index, 4>> cells);
+        constexpr const Containers::vector<IndexedCell>& getCells() const { return cells_;}
+        constexpr const Containers::vector<Point>& getNodes() const { return nodes_;}
+        stt::string getName() const {return "mesh1";}
     };
 }
 #endif //ELECTROMAGNETIC_WAVES_SCATTERING_MESH_HPP
