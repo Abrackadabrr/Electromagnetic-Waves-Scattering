@@ -3,10 +3,16 @@
 //
 
 #include "Mesh.hpp"
+#include <ranges>
 
 namespace EMW::Mesh {
-    SurfaceMesh::SurfaceMesh(Containers::vector<Point> nodes, Containers::vector<IndexedCell> cells,
-                             Containers::vector<Node> collocationPoints) : nodes_(nodes), cells_(cells) {
-
+    SurfaceMesh::SurfaceMesh(Containers::vector<Point> nodes,
+                             Containers::vector<Containers::array<Types::index, 4>> cells) : nodes_(nodes) {
+        const auto cellsConstructed = cells | std::views::transform(
+        [const &nodes] (const Containers::array<Types::index, 4> &indexes) -> IndexedCell{
+                return IndexedCell(indexes, nodes);
+        }
+        );
+        cells_ = Containers::vector{std::ranges::begin(cellsConstructed), std::ranges::end(cellsConstructed)};
     };
 }

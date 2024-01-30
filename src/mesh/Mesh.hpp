@@ -27,8 +27,7 @@ namespace EMW::Mesh {
     public:
         SurfaceMesh() = default;
 
-        SurfaceMesh(Containers::vector<Point> nodes,
-                    Containers::vector<IndexedCell> cells);
+        SurfaceMesh(Containers::vector<Point> nodes, Containers::vector<Containers::array<Types::index, 4>> cells);
     };
 }
 #endif //ELECTROMAGNETIC_WAVES_SCATTERING_MESH_HPP

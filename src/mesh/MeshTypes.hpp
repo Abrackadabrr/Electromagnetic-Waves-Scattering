@@ -47,7 +47,9 @@ namespace EMW::Mesh {
 
         IndexedCell(Containers::array<Types::index, 4> points,
                     Types::scalar area,
-                    Node collPoint) : points_(std::move(points)), area_(area), collPoint_(std::move(collPoint)) {};
+                    Node collPoint) : points_(points), area_(area), collPoint_(std::move(collPoint)) {};
+
+        IndexedCell(Containers::array<Types::index, 4> points, const Containers::vector<Point> &fullPoints);
     };
 
     /**
