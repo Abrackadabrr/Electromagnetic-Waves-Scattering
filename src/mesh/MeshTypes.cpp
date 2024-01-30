@@ -1,0 +1,23 @@
+//
+// Created by evgen on 30.01.24.
+//
+
+#include "MeshTypes.hpp"
+
+namespace EMW::Mesh {
+    Cell::Cell(Containers::array<Point, 4> points) : points_(
+            std::move(points)), collPoint_() {
+        collPoint_.point_ = (static_cast<Types::scalar>(1) / static_cast<Types::scalar>(4)) *
+                     (points_[0] + points_[1] + points_[2] + points_[3]);
+        const Types::Vector3d ac = (points_[2] - points_[0]);
+        const Types::Vector3d bd = (points_[3] - points_[1]);
+        const Types::Vector3d normalVector = ac.cross(bd);
+        const Types::scalar n = normalVector.norm();
+        area_ = (static_cast<Types::scalar>(1) / static_cast<Types::scalar>(2)) * n;
+
+        // Задаем локальный базис на ПГП
+        normal = normalVector / n;
+        tau1 = ac / ac.norm();
+        tau2 = normal.cross(tau1);
+    };
+}

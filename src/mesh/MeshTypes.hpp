@@ -33,25 +33,39 @@ namespace EMW::Mesh {
     /**
      * Тип аппроксимированной ячейки сетки по четырём индексам
      * Содержит в себе вершины четырехугольника, точку коллокации, площадь
+     * Хранение точек происходит в соотвествии с локальным полем нормалей поверхности ("правило буравчика")
      */
     struct IndexedCell {
         Containers::array<Types::index, 4> points_;
         Types::scalar area_;
         Node collPoint_;
+        Types::Vector3d normal;
+        Types::Vector3d tau1;
+        Types::Vector3d tau2;
 
         IndexedCell() = default;
+
+        IndexedCell(Containers::array<Types::index, 4> points,
+                    Types::scalar area,
+                    Node collPoint) : points_(std::move(points)), area_(area), collPoint_(std::move(collPoint)) {};
     };
 
     /**
      * Тип аппроксимированной ячейки сетки по четырём точкам
      * Содержит в себе вершины четырехугольника, точку коллокации, площадь
+     * Хранение точек происходит в соотвествии с локальным полем нормалей поверхности ("правило буравчика")
      */
     struct Cell {
         Containers::array<Point, 4> points_;
         Types::scalar area_;
         Node collPoint_;
+        Types::Vector3d normal;
+        Types::Vector3d tau1;
+        Types::Vector3d tau2;
 
         Cell() = default;
+
+        explicit Cell(Containers::array<Point, 4> points);
     };
 
 }

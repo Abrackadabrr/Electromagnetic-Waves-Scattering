@@ -24,13 +24,11 @@ namespace EMW::Mesh {
     class SurfaceMesh {
         Containers::vector<Point> nodes_;
         Containers::vector<IndexedCell> cells_;
-        Containers::vector<Node> collocationPoints_;
     public:
         SurfaceMesh() = default;
 
         SurfaceMesh(Containers::vector<Point> nodes,
-                    Containers::vector<IndexedCell> cells,
-                    Containers::vector<Node> collocationPoints);
+                    Containers::vector<IndexedCell> cells);
     };
 }
 #endif //ELECTROMAGNETIC_WAVES_SCATTERING_MESH_HPP
