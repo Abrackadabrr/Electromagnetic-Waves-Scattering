@@ -18,16 +18,19 @@ namespace EMW::Mesh {
         Point point_;
         F_t E_;
         F_t H_;
+        F_t J_;
 
     public:
-        Node() : point_(0, 0, 0), E_(0.0, 0.0, 0.0), H_(0.0, 0.0, 0.0) {}
+        Node() : point_(0, 0, 0), E_(0.0, 0.0, 0.0), H_(0.0, 0.0, 0.0), J_(0.0, 0.0, 0.0) {}
 
-        Node(Types::scalar x, Types::scalar y, Types::scalar z, F_t E, F_t H)
-                : point_(x, y, z), E_(std::move(E)), H_(std::move(H)) {}
+        Node(Types::scalar x, Types::scalar y, Types::scalar z, F_t E, F_t H, F_t J)
+                : point_(x, y, z), E_(std::move(E)), H_(std::move(H)), J_(std::move(J)) {}
 
         void SetE(const F_t &E) { E_ = E; }
 
         void SetH(const F_t &H) { H_ = H; }
+
+        void SetJ(const F_t &J) { H_ = J; }
     };
 
     /**
@@ -36,7 +39,8 @@ namespace EMW::Mesh {
      * Хранение точек происходит в соотвествии с локальным полем нормалей поверхности ("правило буравчика")
      */
     struct IndexedCell {
-        Containers::array<Types::index, 4> points_;
+        using nodes_t = Containers::array<Types::index, 4>;
+        nodes_t points_;
         Types::scalar area_;
         Node collPoint_;
         Types::Vector3d normal;

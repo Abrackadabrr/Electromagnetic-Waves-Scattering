@@ -8,8 +8,8 @@
 #include "mesh/Mesh.hpp"
 #include "Types.hpp"
 
-namespace EMW::Mesh {
-    void test_snapshot(Types::index snap_number, const Mesh::SurfaceMesh &mesh);
+namespace VTK {
+    void test_snapshot(EMW::Types::index snap_number, const EMW::Mesh::SurfaceMesh &mesh, const std::string &part_to_file);
 }
 
 #endif //ELECTROMAGNETIC_WAVES_SCATTERING_VTKFUNCTIONS_HPP
