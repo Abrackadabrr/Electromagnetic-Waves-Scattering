@@ -5,7 +5,7 @@
 #ifndef ELECTROMAGNETIC_WAVES_SCATTERING_MESHTYPES_HPP
 #define ELECTROMAGNETIC_WAVES_SCATTERING_MESHTYPES_HPP
 
-#include "Types.hpp"
+#include "types/Types.hpp"
 
 namespace EMW::Mesh {
     using Point = Types::Vector3d;

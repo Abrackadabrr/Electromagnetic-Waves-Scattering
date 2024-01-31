@@ -6,7 +6,7 @@
 #define ELECTROMAGNETIC_WAVES_SCATTERING_VTKFUNCTIONS_HPP
 
 #include "mesh/Mesh.hpp"
-#include "Types.hpp"
+#include "types/Types.hpp"
 
 namespace VTK {
     void test_snapshot(EMW::Types::index snap_number, const EMW::Mesh::SurfaceMesh &mesh, const std::string &part_to_file);

@@ -5,7 +5,7 @@
 #ifndef ELECTROMAGNETIC_WAVES_SCATTERING_GAUSSLEGENDERPOINTS_HPP
 #define ELECTROMAGNETIC_WAVES_SCATTERING_GAUSSLEGENDERPOINTS_HPP
 
-#include "Types.hpp"
+#include "types/Types.hpp"
 
 namespace EMW::DefiniteIntegrals {
 
