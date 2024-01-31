@@ -8,7 +8,7 @@
 #include <ranges>
 
 #include "gtest/gtest.h"
-#include "Types.hpp"
+#include "types/Types.hpp"
 #include "mesh/Mesh.hpp"
 #include "mesh/MeshTypes.hpp"
 #include "visualisation/VTKFunctions.hpp"

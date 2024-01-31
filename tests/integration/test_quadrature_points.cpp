@@ -4,7 +4,7 @@
 
 #include "gtest/gtest.h"
 
-#include "Types.hpp"
+#include "types/Types.hpp"
 #include "integration/gauss_quadrature/GaussLegenderPoints.hpp"
 
 using namespace EMW;

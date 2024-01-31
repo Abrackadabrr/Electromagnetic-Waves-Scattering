@@ -8,7 +8,7 @@
 #include <utility>
 #include <tuple>
 #include <ranges>
-#include "Types.hpp"
+#include "types/Types.hpp"
 #include "mesh/Mesh.hpp"
 
 namespace EMW::Examples {
