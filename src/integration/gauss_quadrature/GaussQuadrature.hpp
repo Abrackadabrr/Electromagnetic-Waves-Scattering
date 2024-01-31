@@ -19,11 +19,11 @@ namespace EMW::DefiniteIntegrals::aux {
 
     // Произвольный объект с оператором ()
     template<typename Callable>
-    struct IntegralTypes;
+    struct IntegralTypesUnwrap;
 
     // Специализация под функции
     template<typename FReturnType, typename... Args>
-    struct IntegralTypes<FReturnType (Args...)> {
+    struct IntegralTypesUnwrap<FReturnType (Args...)> {
         using ArgsTuple = std::tuple<Args...>;
         using DeltasTuple = std::tuple<DeltaType<Args>...>;
         using MeasureType = decltype((std::declval<DeltaType<Args>>() * ...));
@@ -32,11 +32,24 @@ namespace EMW::DefiniteIntegrals::aux {
 
     // Специализация под методы классов
     template <typename CTy, typename RTy, typename... ATy>
-    struct IntegralTypes<RTy (CTy::*)(ATy...)> : IntegralTypes<RTy(ATy...)> {};
+    struct IntegralTypesUnwrap<RTy (CTy::*)(ATy...)> {
+        using ArgsTuple = std::tuple<ATy...>;
+        using DeltasTuple = std::tuple<DeltaType<ATy>...>;
+        using MeasureType = decltype((std::declval<DeltaType<ATy>>() * ...));
+        using ResultType = decltype(std::declval<MeasureType>() * std::declval<RTy>());
+    };
 
-    // Специализация под лямбды
-    template <template <typename> typename LTy, typename RTy, typename... ATy>
-    struct IntegralTypes<LTy<RTy(ATy...)>> : IntegralTypes<RTy(ATy...)> {};
+    template<typename Callable>
+    struct IntegralTypes;
+
+    template<typename FReturnType, typename... Args>
+    struct IntegralTypes<FReturnType (Args...)>: IntegralTypesUnwrap<FReturnType (Args...)> {};
+
+    template <typename CTy, typename RTy, typename... ATy>
+    struct IntegralTypes<RTy (CTy::*)(ATy...) const> : IntegralTypesUnwrap<RTy(ATy...)> {};
+
+    template<typename Callable>
+    struct IntegralTypes: IntegralTypesUnwrap<decltype(&Callable::operator())> {};
 
     template<typename ArgsTuple, typename DeltaTuple, typename Points, Types::index... indexes>
     ArgsTuple createPoint(const ArgsTuple &start, const DeltaTuple &deltas, const Points &points,

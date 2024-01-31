@@ -2,9 +2,7 @@
 // Created by evgen on 24.01.24.
 //
 
-#include "types/Types.hpp"
 #include "PlateGrid.hpp"
-#include "mesh/Mesh.hpp"
 #include "visualisation/VTKFunctions.hpp"
 
 int main() {
