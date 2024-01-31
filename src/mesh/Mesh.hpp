@@ -7,7 +7,7 @@
 
 #include <cmath>
 #include <utility>
-#include "Types.hpp"
+#include "types/Types.hpp"
 #include "MeshTypes.hpp"
 
 namespace EMW::Mesh {
