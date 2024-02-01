@@ -14,9 +14,12 @@ namespace EMW::Types {
     using scalar = double;
     using index = std::size_t;
     using integer = std::int_fast32_t;
+    using complex_d = std::complex<scalar>;
+
     using Vector3d = Eigen::Matrix<scalar, 3, 1>;
     using Vector2d = Eigen::Matrix<scalar, 2, 1>;
-    using complex_d = std::complex<scalar>;
+    using Vector3c = Eigen::Matrix<complex_d, 3, 1>;
+
 }
 
 namespace EMW::Containers {
