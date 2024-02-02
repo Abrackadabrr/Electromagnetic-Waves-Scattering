@@ -21,11 +21,24 @@ namespace EMW::Mesh {
         tau2 = normal.cross(tau1);
     };
 
-    IndexedCell::IndexedCell(Containers::array<Types::index, 4> points, const Containers::vector<Point> &fullPoints) : points_(
-            std::move(points)), collPoint_() {
+    IndexedCell::IndexedCell(Containers::array<Types::index, 4> points, const Containers::vector<Point> &fullPoints)
+            : points_(points), collPoint_() {
         collPoint_.point_ = (static_cast<Types::scalar>(1) / static_cast<Types::scalar>(4)) *
                             (fullPoints[points_[0]] + fullPoints[points_[1]] + fullPoints[points_[2]] +
                              fullPoints[points_[3]]);
+
+        cellStructure.A = fullPoints[points_[0]];
+        cellStructure.ort1 = fullPoints[points_[1]] - fullPoints[points_[0]];
+        cellStructure.ort1 = fullPoints[points_[3]] - fullPoints[points_[0]];
+        cellStructure.diff =
+                fullPoints[points_[0]] + fullPoints[points_[2]] - fullPoints[points_[1]] - fullPoints[points_[3]];
+
+        integrationParameters.a = cellStructure.ort1.cross(cellStructure.ort2);
+        integrationParameters.b = cellStructure.ort1.cross(cellStructure.diff);
+        integrationParameters.c = cellStructure.diff.cross(cellStructure.ort2);
+
+
+
         const Types::Vector3d ac = (fullPoints[points_[2]] - fullPoints[points_[0]]);
         const Types::Vector3d bd = (fullPoints[points_[3]] - fullPoints[points_[1]]);
         const Types::Vector3d normalVector = ac.cross(bd);
