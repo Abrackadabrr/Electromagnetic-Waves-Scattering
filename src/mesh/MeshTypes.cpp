@@ -47,7 +47,7 @@ namespace EMW::Mesh {
 
         // Задаем локальный базис на ПГП
         normal = normalVector / n;
-        tau1 = ac / ac.norm();
-        tau2 = normal.cross(tau1);
+        tau[0] = ac / ac.norm();
+        tau[1] = normal.cross(tau[0]);
     };
 }

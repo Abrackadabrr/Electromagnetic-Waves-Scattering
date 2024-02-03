@@ -59,8 +59,7 @@ namespace EMW::Mesh {
         Types::scalar area_;
         Node collPoint_;
         Types::Vector3d normal;
-        Types::Vector3d tau1;
-        Types::Vector3d tau2;
+        Containers::array<Types::Vector3d, 2> tau;
         CellStructure cellStructure;
         IntegrationParameters integrationParameters;
 
