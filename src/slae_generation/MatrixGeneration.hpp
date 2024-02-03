@@ -26,13 +26,13 @@ namespace EMW::Matrix {
     };
 
     /***
-     * Returning the first part of matrix coefficient (aka dot product of K_1{ tau[m]_j, \sigma_j} and tau[m]_i)
+     * Returning the first part of matrix coefficient divided by k^2
+     * (aka dot product of K_1{ tau[m]_j, \sigma_j} and tau[m]_i)
      * @param i - index of an equation
      * @param j - index inside the equation
-     * @param m - index of normal (should be 0 or 1)
      * @param k - wave number
      * @param cells - cells in the mesh (with collocation nodes)
-     * @return complex scalar -- a_{ij}^m / k^2
+     * @return K1_coefs -- a_{ij}^{(1, 1), (1, 2) (2, 1) (2, 2)} / k^2 -- four coeffitients in matrix
      */
     K1_coefs
     getFirstPart(Types::index i, Types::index j, Types::complex_d k,
@@ -50,6 +50,22 @@ namespace EMW::Matrix {
                                                                                                             {-1, -1},
                                                                                                             {2, 2});
         return {c11 * integral, c12 * integral, c21 * integral, c22 * integral};
+    }
+
+    /**
+     *
+     * @param i
+     * @param j
+     * @param p
+     * @param m
+     * @param k
+     * @param cells
+     * @return
+     */
+    Types::complex_d
+    getZeroPart(Types::index i, Types::index j, Types::index p, Types::index m, Types::complex_d k,
+                const Containers::vector<Mesh::IndexedCell> &cells) {
+        return {0, 0}
     }
 }
 
