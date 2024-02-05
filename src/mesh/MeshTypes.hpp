@@ -41,9 +41,13 @@ namespace EMW::Mesh {
     };
 
     struct IntegrationParameters {
+        // Parameters for surface integral
         Types::Vector3d a;  // ort1 x ort2
         Types::Vector3d b;  // ort1 x diff
         Types::Vector3d c;  // diff x ort2
+
+        // Parameters for curve integral
+        Containers::array<Types::Vector3d, 4> mul;
     };
 
     /**

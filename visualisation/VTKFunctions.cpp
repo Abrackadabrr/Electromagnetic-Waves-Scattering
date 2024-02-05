@@ -53,12 +53,12 @@ namespace VTK {
             E->InsertNextTuple(cell.collPoint_.E_.data());
             H->InsertNextTuple(cell.collPoint_.H_.data());
             J->InsertNextTuple(cell.collPoint_.J_.data());
-            tau1->InsertNextTuple(cell.tau1.data());
-            tau2->InsertNextTuple(cell.tau2.data());
+            tau1->InsertNextTuple(cell.tau[0].data());
+            tau2->InsertNextTuple(cell.tau[1].data());
             n->InsertNextTuple(cell.normal.data());
             assert(std::abs(cell.normal.norm() - 1) < 1e-10);
-            assert(std::abs(cell.tau1.norm() - 1) < 1e-10);
-            assert(std::abs(cell.tau2.norm() - 1) < 1e-10);
+            assert(std::abs(cell.tau[0].norm() - 1) < 1e-10);
+            assert(std::abs(cell.tau[1].norm() - 1) < 1e-10);
         }
 
         // Обходим все точки нашей расчётной сетки
