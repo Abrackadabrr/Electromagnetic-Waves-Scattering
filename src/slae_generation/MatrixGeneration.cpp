@@ -16,7 +16,10 @@ namespace EMW::Matrix {
             const Types::scalar mul = cells[j].multiplier(p, q);
             return Helmholtz::F(k, cells[i].collPoint_.point_, y) * mul;
         };
-        return DefiniteIntegrals::integrate<DefiniteIntegrals::Quadrature<8, 8>>(phi, {0, 0}, {1, 1});
+        return DefiniteIntegrals::integrateImproper<DefiniteIntegrals::Quadrature<20, 20>>(phi, {0, 0}, {1./2, 1./2}) +
+                DefiniteIntegrals::integrateImproper<DefiniteIntegrals::Quadrature<20, 20>>(phi, {0, 1./2}, {1./2, 1./2}) +
+                DefiniteIntegrals::integrateImproper<DefiniteIntegrals::Quadrature<20, 20>>(phi, {1./2, 0}, {1./2, 1./2}) +
+                DefiniteIntegrals::integrateImproper<DefiniteIntegrals::Quadrature<20, 20>>(phi, {1./2, 1./2}, {1./2, 1./2});
     }
 
     Types::Matrix3c
@@ -39,7 +42,10 @@ namespace EMW::Matrix {
             return Helmholtz::V(k, cells[i].collPoint_.point_, y) * cells[j].integrationParameters.mul[3].transpose();
         };
 
-        return DefiniteIntegrals::integrate<DefiniteIntegrals::Quadrature<8>>(AB, {0}, {1});
+        return DefiniteIntegrals::integrate<DefiniteIntegrals::Quadrature<8>>(AB, {0}, {1}) +
+               DefiniteIntegrals::integrate<DefiniteIntegrals::Quadrature<8>>(BC, {0}, {1}) +
+               DefiniteIntegrals::integrate<DefiniteIntegrals::Quadrature<8>>(CD, {0}, {1}) +
+               DefiniteIntegrals::integrate<DefiniteIntegrals::Quadrature<8>>(DA, {0}, {1});
     }
 
     MatrixCoefs

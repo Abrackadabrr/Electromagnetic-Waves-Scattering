@@ -11,7 +11,7 @@
 namespace EMW::Helmholtz {
     Types::complex_d F(const Types::complex_d k, const Types::Vector3d &x, const Types::Vector3d &y) {
         const Types::scalar r = (x - y).norm();
-        return Math::Constants::inverse_4PI<Types::scalar> * std::exp(Math::Constants::i * k * r) / r;
+        return Math::Constants::inverse_4PI<Types::scalar> * (std::exp(Math::Constants::i * k * r) / r);
     }
 
     Types::Vector3c V(const Types::complex_d k, const Types::Vector3d &x, const Types::Vector3d &y) {

@@ -67,29 +67,40 @@ namespace EMW::DefiniteIntegrals {
                    (calcArea(deltas, pointSequence) / std::pow(2, dimSize));
         }
 
+        template<typename Quadrature, typename Callable, Types::index... indexes>
+        typename ExtructedIntegralTypes<Callable>::ResultType calcQuadratureSumImproper(
+                const Callable &f, const typename ExtructedIntegralTypes<Callable>::ArgsTuple &startArgs,
+                const typename ExtructedIntegralTypes<Callable>::DeltasTuple &deltas,
+                const std::index_sequence<indexes...> & /*sumSequence*/) {
+            constexpr auto dimSize = std::tuple_size_v<typename ExtructedIntegralTypes<Callable>::ArgsTuple>;
+            static_assert(Quadrature::dim == dimSize);
+            constexpr auto pointSequence = std::make_index_sequence<dimSize>();
+
+            typename ExtructedIntegralTypes<Callable>::ResultType result{};
+            for (int i = 0; i < sizeof...(indexes); i++) {
+                result += (Quadrature::nodes[i].weight *
+                           unroll(f, createPoint(startArgs, deltas, Quadrature::nodes[i].point, pointSequence),
+                                  std::make_index_sequence<Quadrature::dim>{}));
+            }
+            return result *
+                   (calcArea(deltas, pointSequence) / std::pow(2, dimSize));
+        }
+
     }  // namespace detail
 
-/** Выполняет интегрирование в многомерной прямоугольной области
- *
- * @tparam Quadrature       структура квадратуры. Содержит поля :
- *                              dim - размерность квадратуры,
- *                              size - количесто точек в квадратуре
- *                              points - точки квадратуры
- *                              weights - веса квадратуры
- *
- * @tparam Callable         Тип функция для интегрирования. Количество аргументов должно совпадать с dim в квадратуре
- *
- * @param f                 Объект функции для интегрирования
- * @param startArgs         начальные точки для интегрирования (координаты нижней левой точки)
- * @param deltas            длины ребер многомерного прямоугольника, в которой происходит интегрирование
- *
- * @return                  Значение интеграла
- */
     template<typename Quadrature, typename Callable>
     typename detail::ExtructedIntegralTypes<Callable>::ResultType integrate(
             const Callable &f, const typename detail::ExtructedIntegralTypes<Callable>::ArgsTuple &startArgs,
             const typename detail::ExtructedIntegralTypes<Callable>::DeltasTuple &deltas) {
         return detail::calcQuadratureSum<Quadrature>(f, startArgs, deltas,
+                                                     std::make_index_sequence<Quadrature::size>());
+    }
+
+    template<typename Quadrature, typename Callable>
+    typename detail::ExtructedIntegralTypes<Callable>::ResultType integrateImproper(
+            const Callable &f, const typename detail::ExtructedIntegralTypes<Callable>::ArgsTuple &startArgs,
+            const typename detail::ExtructedIntegralTypes<Callable>::DeltasTuple &deltas) {
+        return detail::calcQuadratureSumImproper<Quadrature>(f, startArgs, deltas,
                                                      std::make_index_sequence<Quadrature::size>());
     }
 }

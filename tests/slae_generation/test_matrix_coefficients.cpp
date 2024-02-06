@@ -15,6 +15,7 @@
 #include "slae_generation/MatrixGeneration.hpp"
 
 using namespace EMW;
+using namespace EMW::Types;
 
 const Types::scalar h = 2;
 
@@ -25,7 +26,8 @@ void cartesian_product(Range1 const &r1, Range2 const &r2, OutputIterator out) {
 
     for (auto i = begin(r1); i != end(r1); ++i) {
         for (auto j = begin(r2); j != end(r2); ++j) {
-            *out++ = Types::Vector3d{static_cast<Types::scalar>(*j) - 1./2, static_cast<Types::scalar>(*i) - 1./2, 0} * h;
+            *out++ = Types::Vector3d{static_cast<Types::scalar>(*j) - 1. / 2, static_cast<Types::scalar>(*i) - 1. / 2,
+                                     0} * h;
         }
     }
 }
@@ -48,9 +50,21 @@ TEST(MARTIX, MATRIX_COEFFICIENTS) {
                                                                       std::ranges::end(cellsView)};
 
     const Mesh::SurfaceMesh mesh{meshgrid, cells};
-//    const Types::MatrixXc A = Matrix::getMatrix(1, mesh.getCells());
-//    std::cout << A.real().inverse().norm() * A.real().norm() << std::endl;
-    const auto k = Matrix::getFirstPartIntegral(0, 0, Types::complex_d{1, 0}, mesh.getCells());
-    std::cout << k << std::endl;
+
+    // Тест на расчет K0
+    const auto k0_value = Matrix::getZeroPartIntegral(0, 0, Types::complex_d{1, 0}, mesh.getCells());
+
+    const scalar inner_error = norm(k0_value(1, 1) - k0_value(0, 0));
+    ASSERT_NEAR(inner_error, 0, 1e-15);
+
+    const scalar analytical_error = norm(
+            k0_value(1, 1) - complex_d{-2 * 0.1615145224880715150268185498864132, -2 * 0.04632231448567410781500901437237300});
+    ASSERT_NEAR(analytical_error, 0, 1e-12);
+
+    // Teст на расчет К1
+    const auto k1_value = Matrix::getFirstPartIntegral(0, 0, Types::complex_d{1, 0}, mesh.getCells());
+
+    const scalar error = norm(k1_value - complex_d{1, 1});
+//    ASSERT_NEAR(error, 0, 1e-12);
+    std::cout << k1_value << std::endl;
 }
-// (-0.323029,-0.0926446)
