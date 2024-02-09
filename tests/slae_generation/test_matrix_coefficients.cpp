@@ -17,10 +17,8 @@
 using namespace EMW;
 using namespace EMW::Types;
 
-const Types::scalar h = 2;
-
 template<typename Range1, typename Range2, typename OutputIterator>
-void cartesian_product(Range1 const &r1, Range2 const &r2, OutputIterator out) {
+void cartesian_product(Range1 const &r1, Range2 const &r2, OutputIterator out, scalar h) {
     using std::begin;
     using std::end;
 
@@ -36,7 +34,7 @@ TEST(MARTIX, MATRIX_COEFFICIENTS) {
     int N = 2;
     std::vector<Mesh::Point> meshgrid;
     meshgrid.reserve(N * N);
-    cartesian_product(std::ranges::views::iota(0, N), std::ranges::views::iota(0, N), std::back_inserter(meshgrid));
+    cartesian_product(std::ranges::views::iota(0, N), std::ranges::views::iota(0, N), std::back_inserter(meshgrid), 2);
 
     const auto cellsView = std::views::iota(0, (N - 1) * (N - 1)) | std::views::transform(
             [N](int index) {
@@ -62,9 +60,35 @@ TEST(MARTIX, MATRIX_COEFFICIENTS) {
     ASSERT_NEAR(analytical_error, 0, 1e-12);
 
     // Teст на расчет К1
-    const auto k1_value = Matrix::getFirstPartIntegral(0, 0, Types::complex_d{1, 0}, mesh.getCells());
+    const auto k1_value = Matrix::getMatrix(Types::complex_d{1, 0}, mesh.getCells());
 
-    const scalar error = norm(k1_value - complex_d{1, 1});
+//    const scalar error = norm(k1_value - complex_d{1, 1});
 //    ASSERT_NEAR(error, 0, 1e-12);
     std::cout << k1_value << std::endl;
+}
+
+TEST(MARTIX, MATRIX) {
+    int N = 100;
+    std::vector<Mesh::Point> meshgrid;
+    meshgrid.reserve(N * N);
+    cartesian_product(std::ranges::views::iota(0, N), std::ranges::views::iota(0, N), std::back_inserter(meshgrid), 0.05);
+
+    const auto cellsView = std::views::iota(0, (N - 1) * (N - 1)) | std::views::transform(
+            [N](int index) {
+                Types::index i = index + index / (N - 1);
+                const auto point = Mesh::IndexedCell::nodes_t{i, i + 1, i + 1 + N, i + N};
+                return point;
+            }
+    );
+
+    const auto cells = Containers::vector<Mesh::IndexedCell::nodes_t>{std::ranges::begin(cellsView),
+                                                                      std::ranges::end(cellsView)};
+
+    const Mesh::SurfaceMesh mesh{meshgrid, cells};
+
+    const auto k1_value = Matrix::getMatrix(Types::complex_d{1, 0}, mesh.getCells());
+
+//    const scalar error = norm(k1_value - complex_d{1, 1});
+//    ASSERT_NEAR(error, 0, 1e-12);
+//    std::cout << k1_value.norm() * k1_value.inverse().norm() << std::endl;
 }

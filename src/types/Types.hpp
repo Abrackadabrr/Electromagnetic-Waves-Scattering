@@ -20,7 +20,10 @@ namespace EMW::Types {
     using Vector2d = Eigen::Matrix<scalar, 2, 1>;
     using Vector3c = Eigen::Matrix<complex_d, 3, 1>;
     using VectorXc = Eigen::VectorXcd;
+    using VectorXd = Eigen::VectorXd;
+
     using MatrixXc = Eigen::MatrixXcd;
+    using MatrixXd = Eigen::MatrixXd;
     using Matrix3d = Eigen::Matrix3<scalar>;
     using Matrix3c = Eigen::Matrix3<complex_d>;
 

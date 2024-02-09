@@ -22,7 +22,7 @@ namespace EMW::Matrix {
         Types::complex_d a22;
     };
 
-    struct ContourIntegralParts{
+    struct ContourIntegralParts {
         Types::Vector3c ab;
         Types::Vector3c bc;
         Types::Vector3c cd;
@@ -61,6 +61,9 @@ namespace EMW::Matrix {
                    const Containers::vector<Mesh::IndexedCell> &cells);
 
     Types::MatrixXc getMatrix(Types::complex_d k, const Containers::vector<Mesh::IndexedCell> &cells);
+
+    Types::VectorXc getRHS(const Types::Vector3d &pol, const Types::Vector3d &k_vec,
+                           const Containers::vector<Mesh::IndexedCell> &cells);
 }
 
 #endif //ELECTROMAGNETIC_WAVES_SCATTERING_MATRIXGENERATIONFUNCTION_HPP

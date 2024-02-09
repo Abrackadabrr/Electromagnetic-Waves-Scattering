@@ -11,7 +11,7 @@ namespace EMW::Mesh {
     using Point = Types::Vector3d;
 
     /**
-     * Тип точки коллокации
+     * Тип расчетного узла
      */
     struct Node {
         using F_t = Types::Vector3d;
@@ -25,6 +25,8 @@ namespace EMW::Mesh {
 
         Node(Types::scalar x, Types::scalar y, Types::scalar z, F_t E, F_t H, F_t J)
                 : point_(x, y, z), E_(std::move(E)), H_(std::move(H)), J_(std::move(J)) {}
+
+        explicit Node(const Point &point): Node(point.x(), point.y(), point.z(), {0, 0, 0}, {0, 0, 0}, {0, 0, 0}) {};
 
         void SetE(const F_t &E) { E_ = E; }
 
