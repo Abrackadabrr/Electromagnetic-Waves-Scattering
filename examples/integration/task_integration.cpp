@@ -4,7 +4,7 @@
 
 #include "types/Types.hpp"
 #include "integration/gauss_quadrature/GaussLegenderPoints.hpp"
-#include "integration/gauss_quadrature/GaussQuadrature.hpp"
+#include "integration/gauss_quadrature/Quadrature.hpp"
 
 using EMW::Types::scalar;
 using namespace EMW;

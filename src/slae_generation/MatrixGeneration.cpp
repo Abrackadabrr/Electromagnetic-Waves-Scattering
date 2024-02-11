@@ -4,7 +4,7 @@
 
 #include "MatrixGeneration.hpp"
 #include "slae_generation/Functions.hpp"
-#include "integration/gauss_quadrature/GaussQuadrature.hpp"
+#include "integration/gauss_quadrature/Quadrature.hpp"
 #include "integration/gauss_quadrature/GaussLegenderPoints.hpp"
 #include "math/MathConstants.hpp"
 
@@ -17,15 +17,15 @@ namespace EMW::Matrix {
             const Types::scalar mul = cells[j].multiplier(p, q);
             return Helmholtz::F(k, cells[i].collPoint_.point_, y) * mul;
         };
-        return i == j ? (DefiniteIntegrals::integrateImproper<DefiniteIntegrals::Quadrature<20, 20>>(phi, {0, 0},
-                                                                                                     {1. / 2, 1. / 2}) +
-                         DefiniteIntegrals::integrateImproper<DefiniteIntegrals::Quadrature<20, 20>>(phi, {0, 1. / 2},
-                                                                                                     {1. / 2, 1. / 2}) +
-                         DefiniteIntegrals::integrateImproper<DefiniteIntegrals::Quadrature<20, 20>>(phi, {1. / 2, 0},
-                                                                                                     {1. / 2, 1. / 2}) +
-                         DefiniteIntegrals::integrateImproper<DefiniteIntegrals::Quadrature<20, 20>>(phi,
-                                                                                                     {1. / 2, 1. / 2},
-                                                                                                     {1. / 2, 1. / 2}))
+        return i == j ? (DefiniteIntegrals::integrate<DefiniteIntegrals::Quadrature<1, 1>>(phi, {0, 0},
+                                                                                           {1. / 2, 1. / 2}) +
+                         DefiniteIntegrals::integrate<DefiniteIntegrals::Quadrature<1, 1>>(phi, {1. / 2, 0},
+                                                                                           {1. / 2, 1. / 2}) +
+                         DefiniteIntegrals::integrate<DefiniteIntegrals::Quadrature<1, 1>>(phi, {0, 1. / 2},
+                                                                                           {1. / 2, 1. / 2}) +
+                         DefiniteIntegrals::integrate<DefiniteIntegrals::Quadrature<1, 1>>(phi,
+                                                                                           {1. / 2, 1. / 2},
+                                                                                           {1. / 2, 1. / 2}))
                       :
                DefiniteIntegrals::integrate<DefiniteIntegrals::Quadrature<8, 8>>(phi, {0, 0}, {1., 1.});
     }
@@ -33,27 +33,31 @@ namespace EMW::Matrix {
     Types::Matrix3c
     getZeroPartIntegral(Types::index i, Types::index j, Types::complex_d k,
                         const Containers::vector<Mesh::IndexedCell> &cells) {
-        const auto AB = [&](Types::scalar t) -> Types::Matrix3c {
+        const auto AB = [&](Types::scalar t) -> Types::Vector3c {
             const Types::Vector3d y = cells[j].parametrization(t, 0);
-            return Helmholtz::V(k, cells[i].collPoint_.point_, y) * cells[j].integrationParameters.mul[0].transpose();
+            return Helmholtz::V(k, cells[i].collPoint_.point_, y);
         };
-        const auto BC = [&](Types::scalar t) -> Types::Matrix3c {
+        const auto BC = [&](Types::scalar t) -> Types::Vector3c {
             const Types::Vector3d y = cells[j].parametrization(1, t);
-            return Helmholtz::V(k, cells[i].collPoint_.point_, y) * cells[j].integrationParameters.mul[1].transpose();
+            return Helmholtz::V(k, cells[i].collPoint_.point_, y);
         };
-        const auto CD = [&](Types::scalar t) -> Types::Matrix3c {
+        const auto CD = [&](Types::scalar t) -> Types::Vector3c {
             const Types::Vector3d y = cells[j].parametrization(1 - t, 1);
-            return Helmholtz::V(k, cells[i].collPoint_.point_, y) * cells[j].integrationParameters.mul[2].transpose();
+            return Helmholtz::V(k, cells[i].collPoint_.point_, y);
         };
-        const auto DA = [&](Types::scalar t) -> Types::Matrix3c {
+        const auto DA = [&](Types::scalar t) -> Types::Vector3c {
             const Types::Vector3d y = cells[j].parametrization(0, 1 - t);
-            return Helmholtz::V(k, cells[i].collPoint_.point_, y) * cells[j].integrationParameters.mul[3].transpose();
+            return Helmholtz::V(k, cells[i].collPoint_.point_, y);
         };
 
-        return DefiniteIntegrals::integrate<DefiniteIntegrals::Quadrature<4>>(AB, {0}, {1}) +
-               DefiniteIntegrals::integrate<DefiniteIntegrals::Quadrature<4>>(BC, {0}, {1}) +
-               DefiniteIntegrals::integrate<DefiniteIntegrals::Quadrature<4>>(CD, {0}, {1}) +
-               DefiniteIntegrals::integrate<DefiniteIntegrals::Quadrature<4>>(DA, {0}, {1});
+        return DefiniteIntegrals::integrate<DefiniteIntegrals::Quadrature<4>>(AB, {0}, {1}) *
+               cells[j].integrationParameters.mul[0].transpose() +
+               DefiniteIntegrals::integrate<DefiniteIntegrals::Quadrature<4>>(BC, {0}, {1}) *
+               cells[j].integrationParameters.mul[1].transpose() +
+               DefiniteIntegrals::integrate<DefiniteIntegrals::Quadrature<4>>(CD, {0}, {1}) *
+               cells[j].integrationParameters.mul[2].transpose() +
+               DefiniteIntegrals::integrate<DefiniteIntegrals::Quadrature<4>>(DA, {0}, {1}) *
+               cells[j].integrationParameters.mul[3].transpose();
     }
 
     MatrixCoefs
@@ -83,8 +87,8 @@ namespace EMW::Matrix {
             for (long j = 0; j < N; ++j) {
                 const auto coefs = getMatrixCoefs(i, j, k, cells);
                 result(i, j) = coefs.a11;
-                result(i + N, j) = coefs.a21;
-                result(i, j + N) = coefs.a12;
+                result(i + N, j) = coefs.a12;
+                result(i, j + N) = coefs.a21;
                 result(i + N, j + N) = coefs.a22;
             }
         }

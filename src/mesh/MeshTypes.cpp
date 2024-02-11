@@ -45,8 +45,8 @@ namespace EMW::Mesh {
 
         // Задаем локальный базис на ПГП
         normal = normalVector / n;
-        tau[0] = ac / ac.norm();
-        tau[1] = normal.cross(tau[0]);
+        tau[0] = (fullPoints[points_[1]] - fullPoints[points_[0]]).normalized();
+        tau[1] = (fullPoints[points_[3]] - fullPoints[points_[0]]).normalized();
 
         // parameters for integral over A->B
         integrationParameters.mul[0] = cellStructure.ort1.norm() * (cellStructure.ort1.cross(

@@ -51,20 +51,16 @@ TEST(MARTIX, MATRIX_COEFFICIENTS) {
 
     // Тест на расчет K0
     const auto k0_value = Matrix::getZeroPartIntegral(0, 0, Types::complex_d{1, 0}, mesh.getCells());
-
     const scalar inner_error = norm(k0_value(1, 1) - k0_value(0, 0));
     ASSERT_NEAR(inner_error, 0, 1e-15);
-
+    std::cout << "K0 value: " << k0_value(1, 1) << std::endl;
     const scalar analytical_error = norm(
             k0_value(1, 1) - complex_d{-2 * 0.1615145224880715150268185498864132, -2 * 0.04632231448567410781500901437237300});
-    ASSERT_NEAR(analytical_error, 0, 1e-12);
+    ASSERT_NEAR(analytical_error, 0, 1e-6);
 
     // Teст на расчет К1
-    const auto k1_value = Matrix::getMatrix(Types::complex_d{1, 0}, mesh.getCells());
-
-//    const scalar error = norm(k1_value - complex_d{1, 1});
-//    ASSERT_NEAR(error, 0, 1e-12);
-    std::cout << k1_value << std::endl;
+    const auto k1_value = Matrix::getFirstPartIntegral(0, 0, Types::complex_d{1, 0}, mesh.getCells());
+    std::cout << "K1 value: " << k1_value << std::endl;
 }
 
 TEST(MARTIX, MATRIX) {

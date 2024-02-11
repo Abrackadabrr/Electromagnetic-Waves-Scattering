@@ -33,6 +33,9 @@ namespace EMW::Mesh {
         void calculateAll(const Types::Vector3d &polarization, const Types::Vector3d &k_vec,
                           Types::complex_d k);
 
+        void calculateESS(const Types::Vector3d &polarization, const Types::Vector3d &k_vec,
+                          Types::complex_d k);
+
         [[nodiscard]] const Containers::vector<Node> &getNodes() const noexcept {
             return nodes_;
         }
@@ -44,6 +47,8 @@ namespace EMW::Mesh {
         [[nodiscard]] std::string getName() const noexcept {
             return name_;
         }
+
+
     };
 }
 

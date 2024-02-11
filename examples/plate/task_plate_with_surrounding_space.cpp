@@ -39,12 +39,29 @@ void cartesian_product3D(Range1 const &r1, Range2 const &r2, Range3 const &r3, O
     }
 }
 
-int main() {
-    int N_volume = 21;
-    scalar h_volume = 0.07;
+template<typename Range1, typename Range2, typename OutputIterator>
+void cartesian_productXY(Range1 const &r1, Range2 const &r2, OutputIterator out, Types::index N,
+                         Types::scalar h) {
+    using std::begin;
+    using std::end;
 
-    int N = 51;
-    scalar h = 0.02;
+    for (auto i = begin(r1); i != end(r1); ++i) {
+        for (auto j = begin(r2); j != end(r2); ++j) {
+
+            *out++ = Types::Vector3d{static_cast<Types::scalar>(*i) - static_cast<Types::scalar>(N / 2.),
+                                     static_cast<Types::scalar>(*j) - static_cast<Types::scalar>(N / 2.),
+                                     0} * h;
+
+        }
+    }
+}
+
+int main() {
+    int N_volume = 41;
+    scalar h_volume = 0.05;
+
+    int N = 21;
+    scalar h = 0.05;
     // сетка
     auto *surfaceMesh = new Mesh::SurfaceMesh{EMW::Examples::Plate::generatePlatePrimaryMesh(N, h)};
 
@@ -52,15 +69,17 @@ int main() {
 
     // поляризация
     physicalConditions physics{
-            .E0 = Vector3d{0, 0, 1},
+            .E0 = Vector3d{0, 1, 0},
             .k = complex_d{1, 0},
             .k_vec = Vector3d{-1, 0, 0}
     };
 
-    const MatrixXd *A3 = new MatrixXd{Matrix::getMatrix(physics.k, surfaceMesh->getCells()).real()};
-    const VectorXc *b3 = new VectorXc{Matrix::getRHS(physics.E0, physics.k_vec, surfaceMesh->getCells())};
-    const auto cg3 = new Eigen::ConjugateGradient<MatrixXd, Eigen::Lower | Eigen::Upper>{*A3};
-    const auto *j = new VectorXd{cg3->solve(b3->real())};
+    // на мелкой
+    const VectorXc b3 = VectorXc{Matrix::getRHS(physics.E0, physics.k.real() * physics.k_vec, surfaceMesh->getCells())};
+    const MatrixXc A3 = Matrix::getMatrix(physics.k, surfaceMesh->getCells());
+    const auto cg3 = new Eigen::ConjugateGradient<MatrixXc, Eigen::Lower | Eigen::Upper>{A3};
+    const auto *j = new VectorXc{cg3->solve(b3)};
+
 
     surfaceMesh->fillJ(*j);
 
@@ -68,7 +87,8 @@ int main() {
 
     Containers::vector<Mesh::Point> nodes;
     nodes.reserve(N_volume * N_volume * N_volume);
-    cartesian_product3D(std::ranges::views::iota(0, N_volume), std::ranges::views::iota(0, N_volume), std::ranges::views::iota(0, N_volume),
+    cartesian_productXY(std::ranges::views::iota(0, N_volume),
+                        std::ranges::views::iota(0, N_volume),
                         std::back_inserter(nodes), N_volume, h_volume);
 
     const auto cellView = nodes | std::views::transform([](const Mesh::Point &p) { return Mesh::Node{p}; });

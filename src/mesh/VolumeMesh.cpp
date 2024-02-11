@@ -4,7 +4,7 @@
 
 #include "VolumeMesh.hpp"
 #include "slae_generation/Functions.hpp"
-#include "integration/gauss_quadrature/GaussQuadrature.hpp"
+#include "integration/gauss_quadrature/Quadrature.hpp"
 #include "integration/gauss_quadrature/GaussLegenderPoints.hpp"
 #include "math/MathConstants.hpp"
 
@@ -15,6 +15,11 @@ namespace EMW::Mesh {
             node.E_ = (getZeroPartIntegral(node.point_, k) + getFirstPartIntegral(node.point_, k) +
                        polarization * std::exp(Math::Constants::i * k_vec.dot(node.point_))).real();
         }
+    }
+
+    void calculateESS(const Types::Vector3d &polarization, const Types::Vector3d &k_vec,
+                      Types::complex_d k) {
+
     }
 
     Types::Vector3c VolumeMesh::getFirstPartIntegral(const Point &point, Types::complex_d k) {

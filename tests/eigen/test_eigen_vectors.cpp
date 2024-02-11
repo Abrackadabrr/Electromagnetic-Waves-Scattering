@@ -5,7 +5,7 @@
 #include "gtest/gtest.h"
 #include "types/Types.hpp"
 #include "integration/gauss_quadrature/GaussLegenderPoints.hpp"
-#include "integration/gauss_quadrature/GaussQuadrature.hpp"
+#include "integration/gauss_quadrature/Quadrature.hpp"
 
 using namespace EMW::Types;
 
@@ -49,4 +49,13 @@ TEST(EigenVectors, StingTranspose) {
     const auto bT = b.transpose();
     const complex_d bTa =  bT * a;
     const Eigen::Matrix3<complex_d> abT = a * bT;
+}
+
+TEST(EigenVectors, DotProduction) {
+    const Vector3c a = {complex_d{0, 1}, complex_d{0, 1}, complex_d{0, 1}};
+    std::cout << a << std::endl;
+    std::cout << a.sum() << std::endl;
+    const Vector3d b = {1, 1, 1};
+    std::cout << a.dot(b) << std::endl;
+    std::cout << b.dot(a) << std::endl;
 }

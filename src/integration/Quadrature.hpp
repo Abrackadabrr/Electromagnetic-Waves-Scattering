@@ -2,8 +2,8 @@
 // Created by evgen on 01.02.24.
 //
 
-#ifndef ELECTROMAGNETIC_WAVES_SCATTERING_GAUSSQUADRATURE_HPP
-#define ELECTROMAGNETIC_WAVES_SCATTERING_GAUSSQUADRATURE_HPP
+#ifndef ELECTROMAGNETIC_WAVES_SCATTERING_QUADRATURE_HPP
+#define ELECTROMAGNETIC_WAVES_SCATTERING_QUADRATURE_HPP
 
 #include "types/Types.hpp"
 #include "types/TypeTraits.hpp"
@@ -95,14 +95,6 @@ namespace EMW::DefiniteIntegrals {
         return detail::calcQuadratureSum<Quadrature>(f, startArgs, deltas,
                                                      std::make_index_sequence<Quadrature::size>());
     }
-
-    template<typename Quadrature, typename Callable>
-    typename detail::ExtructedIntegralTypes<Callable>::ResultType integrateImproper(
-            const Callable &f, const typename detail::ExtructedIntegralTypes<Callable>::ArgsTuple &startArgs,
-            const typename detail::ExtructedIntegralTypes<Callable>::DeltasTuple &deltas) {
-        return detail::calcQuadratureSumImproper<Quadrature>(f, startArgs, deltas,
-                                                     std::make_index_sequence<Quadrature::size>());
-    }
 }
 
-#endif //ELECTROMAGNETIC_WAVES_SCATTERING_GAUSSQUADRATURE_HPP
+#endif //ELECTROMAGNETIC_WAVES_SCATTERING_QUADRATURE_HPP

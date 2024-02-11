@@ -27,7 +27,7 @@ namespace EMW::Mesh {
                     Containers::vector<Containers::array<Types::index, 4>> cells,
                     Containers::vector<Types::Vector3d> E_field, Containers::vector<Types::Vector3d> H_field);
 
-        void fillJ(const Types::VectorXd &j);
+        void fillJ(const Types::VectorXc &j);
 
         constexpr const Containers::vector<IndexedCell> &getCells() const { return cells_; }
 

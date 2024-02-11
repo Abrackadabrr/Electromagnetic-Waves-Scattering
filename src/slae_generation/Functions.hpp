@@ -11,6 +11,12 @@ namespace EMW::Helmholtz {
     Types::complex_d F(Types::complex_d k, const Types::Vector3d &x, const Types::Vector3d &y);
 
     Types::Vector3c V(Types::complex_d k, const Types::Vector3d &x, const Types::Vector3d &y);
+
+    Types::Vector3c sigma(Types::complex_d k, const Types::Vector3d &x, const Types::Vector3d &y);
+
+    Types::scalar smoother(Types::complex_d k, const Types::Vector3d &x, const Types::Vector3d &y);
+
+    Types::Vector3c reducedK(Types::complex_d k, const Types::Vector3d &x, const Types::Vector3d &y);
 }
 
 #endif //ELECTROMAGNETIC_WAVES_SCATTERING_FUNCTIONS_HPP

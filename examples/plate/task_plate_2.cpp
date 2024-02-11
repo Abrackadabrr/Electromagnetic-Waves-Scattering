@@ -6,6 +6,7 @@
 #include "slae_generation/MatrixGeneration.hpp"
 #include "visualisation/VTKFunctions.hpp"
 #include "Eigen/IterativeLinearSolvers"
+#include <cmath>
 #include <iostream>
 
 using namespace EMW;
@@ -21,8 +22,8 @@ struct physicalConditions {
 };
 
 int main() {
-    int N = 81;
-    scalar h = 0.0125;
+    int N = 21;
+    scalar h = 0.05;
     // сетка
     auto *mesh3 = new Mesh::SurfaceMesh{EMW::Examples::Plate::generatePlatePrimaryMesh(N, h)};
 
@@ -31,15 +32,15 @@ int main() {
     // поляризация
     physicalConditions physics{
             .E0 = Vector3d{0, 1, 0},
-            .k = complex_d{1, 0},
+            .k = complex_d{20, 0},
             .k_vec = Vector3d{-1, 0, 0}
     };
 
     // на мелкой
+    const VectorXc b3 = VectorXc{Matrix::getRHS(physics.E0, physics.k.real() * physics.k_vec, mesh3->getCells())};
     const MatrixXd *A3 = new MatrixXd{Matrix::getMatrix(physics.k, mesh3->getCells()).real()};
-    const VectorXc *b3 = new VectorXc{Matrix::getRHS(physics.E0, physics.k_vec, mesh3->getCells())};
     const auto cg3 = new Eigen::ConjugateGradient<MatrixXd, Eigen::Lower | Eigen::Upper>{*A3};
-    const auto *j = new VectorXd{cg3->solve(b3->real())};
+    const auto *j = new VectorXd{cg3->solve(b3.real())};
 
     mesh3->fillJ(*j);
 

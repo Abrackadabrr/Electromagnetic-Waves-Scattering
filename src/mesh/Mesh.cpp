@@ -35,10 +35,10 @@ namespace EMW::Mesh {
                                                  std::ranges::end(cellsConstructed)};
     }
 
-    void SurfaceMesh::fillJ(const Types::VectorXd &j) {
+    void SurfaceMesh::fillJ(const Types::VectorXc &j) {
         const long N = cells_.size();
         for (auto [i, cell] : cells_ | std::views::enumerate) {
-            cell.collPoint_.J_ = j(i) * cell.tau[0] + j(i + N) * cell.tau[1];
+            cell.collPoint_.J_ = j(i).real() * cell.tau[0] + j(i + N).real() * cell.tau[1];
         }
     };
 }
