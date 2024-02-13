@@ -10,6 +10,12 @@
 
 namespace EMW::DefiniteIntegrals::GaussLegendre {
 
+    template<Types::index... N>
+    struct Quadrature {
+        static constexpr Types::index dim = sizeof...(N);
+        static constexpr Types::index size = (... * N);
+        static constexpr Containers::array<Node<dim>, size> nodes = cartesian_product<Quadrature<N>...>();
+    };
 
 
     template<>

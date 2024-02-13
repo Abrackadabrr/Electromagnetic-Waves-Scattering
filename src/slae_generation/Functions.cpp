@@ -18,6 +18,12 @@ namespace EMW::Helmholtz {
                (1 / r - Math::Constants::i * k) * r_vec;
     }
 
+    Types::scalar smoother(Types::scalar e, const Types::Vector3d &x, const Types::Vector3d &y) {
+        const Types::scalar r2 = (x - y).squaredNorm();
+        const Types::scalar r = std::sqrt(r2);
+        return r < e ? (3 - 2 * (r / e)) * (r2 / (e * e)) : 1;
+    }
+
     Types::Vector3c
     reducedK(Types::complex_d k, const Types::Vector3d &x, const Types::Vector3d &y, const Types::Vector3c &j) {
         const Types::Vector3d rVec = x - y;

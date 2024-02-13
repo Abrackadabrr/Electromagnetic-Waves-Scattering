@@ -4,7 +4,7 @@
 
 #include "VolumeMesh.hpp"
 #include "slae_generation/Functions.hpp"
-#include "integration/gauss_quadrature/Quadrature.hpp"
+#include "integration/Quadrature.hpp"
 #include "integration/gauss_quadrature/GaussLegenderPoints.hpp"
 #include "math/MathConstants.hpp"
 
@@ -33,7 +33,7 @@ namespace EMW::Mesh {
                 return Helmholtz::F(k, point, y) * mul;
             };
             result += cell.collPoint_.J_ *
-                      DefiniteIntegrals::integrate<DefiniteIntegrals::Quadrature<12, 12>>(phi, {0, 0}, {1., 1.});
+                      DefiniteIntegrals::integrate<DefiniteIntegrals::GaussLegendre::Quadrature<12, 12>>(phi, {0, 0}, {1., 1.});
         }
         return k * k * result;
     }
@@ -60,13 +60,13 @@ namespace EMW::Mesh {
             };
             const Types::Vector3c current_step =
                     (cell.collPoint_.J_.dot(cell.integrationParameters.mul[0])) *
-                    DefiniteIntegrals::integrate<DefiniteIntegrals::Quadrature<4>>(AB, {0}, {1}) +
+                    DefiniteIntegrals::integrate<DefiniteIntegrals::GaussLegendre::Quadrature<4>>(AB, {0}, {1}) +
                     (cell.collPoint_.J_.dot(cell.integrationParameters.mul[1])) *
-                    DefiniteIntegrals::integrate<DefiniteIntegrals::Quadrature<4>>(BC, {0}, {1}) +
+                    DefiniteIntegrals::integrate<DefiniteIntegrals::GaussLegendre::Quadrature<4>>(BC, {0}, {1}) +
                     (cell.collPoint_.J_.dot(cell.integrationParameters.mul[2])) *
-                    DefiniteIntegrals::integrate<DefiniteIntegrals::Quadrature<4>>(CD, {0}, {1}) +
+                    DefiniteIntegrals::integrate<DefiniteIntegrals::GaussLegendre::Quadrature<4>>(CD, {0}, {1}) +
                     (cell.collPoint_.J_.dot(cell.integrationParameters.mul[3])) *
-                    DefiniteIntegrals::integrate<DefiniteIntegrals::Quadrature<4>>(DA, {0}, {1});
+                    DefiniteIntegrals::integrate<DefiniteIntegrals::GaussLegendre::Quadrature<4>>(DA, {0}, {1});
 
             result += current_step;
         }
@@ -84,7 +84,7 @@ namespace EMW::Mesh {
                 return (-1) * Helmholtz::V(k, point, y) * mul;
             };
             result += cell.collPoint_.J_.cross(
-                    DefiniteIntegrals::integrate<DefiniteIntegrals::Quadrature<8, 8 >>(phi, {0, 0}, {1., 1.}));
+                    DefiniteIntegrals::integrate<DefiniteIntegrals::GaussLegendre::Quadrature<8, 8 >>(phi, {0, 0}, {1., 1.}));
         }
         return result;
     };

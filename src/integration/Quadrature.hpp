@@ -66,26 +66,6 @@ namespace EMW::DefiniteIntegrals {
                             std::make_index_sequence<Quadrature::dim>{})) + ...) *
                    (calcArea(deltas, pointSequence) / std::pow(2, dimSize));
         }
-
-        template<typename Quadrature, typename Callable, Types::index... indexes>
-        typename ExtructedIntegralTypes<Callable>::ResultType calcQuadratureSumImproper(
-                const Callable &f, const typename ExtructedIntegralTypes<Callable>::ArgsTuple &startArgs,
-                const typename ExtructedIntegralTypes<Callable>::DeltasTuple &deltas,
-                const std::index_sequence<indexes...> & /*sumSequence*/) {
-            constexpr auto dimSize = std::tuple_size_v<typename ExtructedIntegralTypes<Callable>::ArgsTuple>;
-            static_assert(Quadrature::dim == dimSize);
-            constexpr auto pointSequence = std::make_index_sequence<dimSize>();
-
-            typename ExtructedIntegralTypes<Callable>::ResultType result{};
-            for (int i = 0; i < sizeof...(indexes); i++) {
-                result += (Quadrature::nodes[i].weight *
-                           unroll(f, createPoint(startArgs, deltas, Quadrature::nodes[i].point, pointSequence),
-                                  std::make_index_sequence<Quadrature::dim>{}));
-            }
-            return result *
-                   (calcArea(deltas, pointSequence) / std::pow(2, dimSize));
-        }
-
     }  // namespace detail
 
     template<typename Quadrature, typename Callable>

@@ -48,7 +48,9 @@ namespace EMW::Mesh {
             return name_;
         }
 
-
+        void setName(const std::string &n) noexcept {
+            name_ = n;
+        }
     };
 }
 
