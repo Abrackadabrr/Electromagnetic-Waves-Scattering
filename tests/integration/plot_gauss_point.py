@@ -2,8 +2,8 @@ import matplotlib.pyplot as plt
 import numpy as np
 from numpy.polynomial import legendre as leg
 
-nx = 7
-ny = 8
+nx = 20
+ny = 20
 x = leg.legroots([0] * nx + [1])
 y = leg.legroots([0] * ny + [1])
 x_grid, y_grid = np.meshgrid(x, y)

@@ -11,7 +11,7 @@ namespace EMW::Mesh {
     using Point = Types::Vector3d;
 
     /**
-     * Тип точки коллокации
+     * Тип расчетного узла
      */
     struct Node {
         using F_t = Types::Vector3d;
@@ -21,10 +21,12 @@ namespace EMW::Mesh {
         F_t J_;
 
     public:
-        Node() : point_(0, 0, 0), E_(0.0, 0.0, 0.0), H_(0.0, 0.0, 0.0), J_(0.0, 0.0, 0.0) {}
+        Node() = default;
 
         Node(Types::scalar x, Types::scalar y, Types::scalar z, F_t E, F_t H, F_t J)
                 : point_(x, y, z), E_(std::move(E)), H_(std::move(H)), J_(std::move(J)) {}
+
+        explicit Node(const Point &point): Node(point.x(), point.y(), point.z(), {0, 0, 0}, {0, 0, 0}, {0, 0, 0}) {};
 
         void SetE(const F_t &E) { E_ = E; }
 
@@ -33,10 +35,29 @@ namespace EMW::Mesh {
         void SetJ(const F_t &J) { H_ = J; }
     };
 
+    struct CellStructure {
+        Point A;  // тут перерасход памяти на хранение лишней точки, будет хорошо это исправить
+        Types::Vector3d ort1;  // B - A
+        Types::Vector3d ort2;  // D - A
+        Types::Vector3d diff;  // A + C - B - D
+    };
+
+    struct IntegrationParameters {
+        // Parameters for surface integral
+        Types::Vector3d a;  // ort1 x ort2
+        Types::Vector3d b;  // ort1 x diff
+        Types::Vector3d c;  // diff x ort2
+
+        // Parameters for curve integral
+        Containers::array<Types::Vector3d, 4> mul;
+    };
+
     /**
      * Тип аппроксимированной ячейки сетки по четырём индексам
      * Содержит в себе вершины четырехугольника, точку коллокации, площадь
      * Хранение точек происходит в соотвествии с локальным полем нормалей поверхности ("правило буравчика")
+     *
+     * В функцию для интегрирования заходит по константной ссылке (оспариваемое решение)
      */
     struct IndexedCell {
         using nodes_t = Containers::array<Types::index, 4>;
@@ -44,16 +65,21 @@ namespace EMW::Mesh {
         Types::scalar area_;
         Node collPoint_;
         Types::Vector3d normal;
-        Types::Vector3d tau1;
-        Types::Vector3d tau2;
+        Containers::array<Types::Vector3d, 2> tau;
+        CellStructure cellStructure;
+        IntegrationParameters integrationParameters;
 
         IndexedCell() = default;
 
-        IndexedCell(Containers::array<Types::index, 4> points,
-                    Types::scalar area,
-                    Node collPoint) : points_(points), area_(area), collPoint_(std::move(collPoint)) {};
-
         IndexedCell(Containers::array<Types::index, 4> points, const Containers::vector<Point> &fullPoints);
+
+        [[nodiscard]] Point parametrization(Types::scalar p, Types::scalar q) const noexcept{
+            return cellStructure.A + p * cellStructure.ort1 + q * cellStructure.ort2 + p * q * cellStructure.diff;
+        }
+
+        [[nodiscard]] Types::scalar multiplier(Types::scalar p, Types::scalar q) const noexcept{
+            return (integrationParameters.a + p * integrationParameters.b + q * integrationParameters.c).norm();
+        }
     };
 
     /**

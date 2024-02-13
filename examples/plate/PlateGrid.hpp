@@ -13,13 +13,14 @@
 
 namespace EMW::Examples {
     template<typename Range1, typename Range2, typename OutputIterator>
-    void cartesian_product(Range1 const &r1, Range2 const &r2, OutputIterator out, Types::scalar h) {
+    void cartesian_product(Range1 const &r1, Range2 const &r2, OutputIterator out, Types::index N, Types::scalar h) {
         using std::begin;
         using std::end;
 
         for (auto i = begin(r1); i != end(r1); ++i) {
             for (auto j = begin(r2); j != end(r2); ++j) {
-                *out++ = Types::Vector3d{static_cast<Types::scalar>(*j), static_cast<Types::scalar>(*i), 0} * h;
+                *out++ = Types::Vector3d{0, static_cast<Types::scalar>(*j) - static_cast<Types::scalar>(N/2),
+                                         static_cast<Types::scalar>(*i) - static_cast<Types::scalar>(N/2)} * h;
             }
         }
     }
@@ -29,7 +30,7 @@ namespace EMW::Examples {
             std::vector<Mesh::Point> meshgrid;
             meshgrid.reserve(N * N);
             cartesian_product(std::ranges::views::iota(0, N), std::ranges::views::iota(0, N),
-                              std::back_inserter(meshgrid), h);
+                              std::back_inserter(meshgrid), N, h);
 
             const auto cellsView = std::views::iota(0, (N - 1) * (N - 1)) | std::views::transform(
                     [N](int index) {
