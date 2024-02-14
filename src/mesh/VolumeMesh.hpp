@@ -30,10 +30,10 @@ namespace EMW::Mesh {
         VolumeMesh(const Mesh::SurfaceMesh &surfaceMesh, const Containers::vector<Node> &nodes) :
                 surfaceMesh_(surfaceMesh), nodes_(nodes) {};
 
-        void calculateAll(const Types::Vector3d &polarization, const Types::Vector3d &k_vec,
+        void calculateAll(const Types::Vector3d &polarization, const Types::Vector3c &k_vec,
                           Types::complex_d k);
 
-        void calculateESS(const Types::Vector3d &polarization, const Types::Vector3d &k_vec,
+        void calculateESS(const Types::Vector3d &polarization, const Types::Vector3c &k_vec,
                           Types::complex_d k);
 
         [[nodiscard]] const Containers::vector<Node> &getNodes() const noexcept {

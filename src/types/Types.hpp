@@ -16,9 +16,12 @@ namespace EMW::Types {
     using integer = std::int_fast32_t;
     using complex_d = std::complex<scalar>;
 
-    using Vector3d = Eigen::Matrix<scalar, 3, 1>;
+    template<typename t>
+    using Vector3 = Eigen::Matrix<t, 3, 1>;
+
+    using Vector3d = Vector3<scalar>;
     using Vector2d = Eigen::Matrix<scalar, 2, 1>;
-    using Vector3c = Eigen::Matrix<complex_d, 3, 1>;
+    using Vector3c = Vector3<complex_d>;
     using VectorXc = Eigen::VectorXcd;
     using VectorXd = Eigen::VectorXd;
 

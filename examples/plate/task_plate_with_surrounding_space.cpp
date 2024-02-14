@@ -62,8 +62,8 @@ int main() {
     int N_volume = 61;
     scalar h_volume = 0.05;
 
-    int N = 6;
-    scalar h = 0.2;
+    int N = 81;
+    scalar h = 0.0125;
     // сетка
     auto *surfaceMesh = new Mesh::SurfaceMesh{EMW::Examples::Plate::generatePlatePrimaryMesh(N, h)};
 
@@ -79,6 +79,7 @@ int main() {
     // на мелкой
     const VectorXc b3 = VectorXc{Matrix::getRHS(physics.E0, physics.k.real() * physics.k_vec, surfaceMesh->getCells())};
     const MatrixXc A3 = Matrix::getMatrix(physics.k, surfaceMesh->getCells());
+
     for (long i = 0; i < A3.rows(); i++)
         for (long j = 0; j < A3.cols(); j++) {
             if (std::isnan(A3(i,j).real()))
@@ -90,15 +91,14 @@ int main() {
             if (std::isinf(A3(i,j).imag()))
                 std::cout << "inf imag " << i << ' ' << j << std::endl;
         }
-    std::cout << A3.adjoint() << std::endl;
-    std::cout << "Determinant: " << A3(0, 23) << std::endl;
+//    std::cout << "Determinant: " << A3.determinant() << std::endl;
     std::cout << "Has nan: " << A3.hasNaN() << std::endl;
-    std::cout << "condition number: " << A3.inverse().norm() * A3.norm() << std::endl;
+//    std::cout << "condition number: " << A3.inverse().norm() * A3.norm() << std::endl;
     auto method = Eigen::GMRES<MatrixXc>{};
     method.setMaxIterations(10000);
     std::cout << method.maxIterations() << std::endl;
     method.setTolerance(1e-10);
-    method.set_restart(300);
+    method.set_restart(600);
     method.compute(A3);
     const auto j = VectorXc{method.solve(b3)};
     std::cout << "total iterations: " << method.iterations() << std::endl;
