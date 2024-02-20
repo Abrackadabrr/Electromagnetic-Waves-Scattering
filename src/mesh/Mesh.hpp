@@ -18,6 +18,7 @@ namespace EMW::Mesh {
         Containers::vector<Point> nodes_;
         Containers::vector<IndexedCell> cells_;
         std::string name = "mesh1";
+        bool jFilled_;
     public:
         SurfaceMesh() = default;
 
@@ -29,13 +30,15 @@ namespace EMW::Mesh {
 
         void fillJ(const Types::VectorXc &j);
 
-        constexpr const Containers::vector<IndexedCell> &getCells() const { return cells_; }
+        [[nodiscard]] constexpr const Containers::vector<IndexedCell> &getCells() const { return cells_; }
 
-        constexpr const Containers::vector<Point> &getNodes() const { return nodes_; }
+        [[nodiscard]] constexpr const Containers::vector<Point> &getNodes() const { return nodes_; }
 
         std::string getName() const { return name; }
 
         void setName(const std::string &n) {name = n;}
+
+        bool jFilled() const {return jFilled_;}
     };
 }
 #endif //ELECTROMAGNETIC_WAVES_SCATTERING_MESH_HPP

@@ -67,8 +67,8 @@ namespace EMW::Mesh {
      */
     struct IndexedCell {
         using nodes_t = Containers::array<Types::index, 4>;
-        nodes_t points_;
-        Types::scalar area_;
+        nodes_t points_{};
+        Types::scalar area_{};
         Node collPoint_;
         Types::Vector3d normal;
         Containers::array<Types::Vector3d, 2> tau;

@@ -30,11 +30,13 @@ namespace EMW::Mesh {
         VolumeMesh(const Mesh::SurfaceMesh &surfaceMesh, const Containers::vector<Node> &nodes) :
                 surfaceMesh_(surfaceMesh), nodes_(nodes) {};
 
+        [[nodiscard]] Types::Vector3c
+        sigmaOverCell(Types::complex_d k, const Types::Vector3d &tau, const Mesh::IndexedCell &cell) const;
+
         void calculateAll(const Types::Vector3d &polarization, const Types::Vector3c &k_vec,
                           Types::complex_d k);
 
-        void calculateESS(const Types::Vector3d &polarization, const Types::Vector3c &k_vec,
-                          Types::complex_d k);
+        [[nodiscard]] Types::scalar calculateESS(const Types::Vector3d &tau, Types::complex_d k) const;
 
         [[nodiscard]] const Containers::vector<Node> &getNodes() const noexcept {
             return nodes_;

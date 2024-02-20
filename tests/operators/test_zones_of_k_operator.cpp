@@ -43,12 +43,12 @@ TEST_F(K1_TESTS, TEST_MIDDLE_ZONE) {
     Mesh::IndexedCell cell{{0, 1, 2, 3}, points};
     cell.collPoint_.J_ = Types::Vector3c{Types::complex_d{0, 0}, Types::complex_d{1, 0}, Types::complex_d{0, 0}};
     // объявляем точку, в которой интегрируем
-    const Mesh::Point point{0, 100, 0};
+    const Mesh::Point point{100, 0, 0};
 
     // точный расчет интеграла по ячейке
     const Types::Vector3c preciseResult = Operators::K0OverSingularCell<GL<8>>(point, cell.collPoint_.J_, cell, k) +
                                           k * k *
-                                          Operators::K1OverSingularCellDivided<GL2<6, 6>>(point, cell.collPoint_.J_,
+                                          Operators::K1OverSingularCellDivided<GL2<8, 8>>(point, cell.collPoint_.J_,
                                                                                           cell, k);
 
     std::cout << preciseResult << std::endl;

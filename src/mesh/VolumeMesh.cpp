@@ -12,18 +12,41 @@
 namespace EMW::Mesh {
     void EMW::Mesh::VolumeMesh::calculateAll(const Types::Vector3d &polarization, const Types::Vector3c &k_vec,
                                              Types::complex_d k) {
-        for (auto &node: nodes_) {
-            node.E_ =
-                    Operators::K0<DefiniteIntegrals::GaussLegendre::Quadrature<8>>(node.point_, surfaceMesh_.getCells(),
-                                                                                   k) +
-                    Operators::K1<DefiniteIntegrals::GaussLegendre::Quadrature<8, 8>>(node.point_,
-                                                                                      surfaceMesh_.getCells(),
-                                                                                      k) +
-                    polarization * std::exp(Math::Constants::i * node.point_.dot(k_vec) * k);
+        if (surfaceMesh_.jFilled()) {
+            for (auto &node: nodes_) {
+                node.E_ =
+                        Operators::K0<DefiniteIntegrals::GaussLegendre::Quadrature<8>>(node.point_,
+                                                                                       surfaceMesh_.getCells(),
+                                                                                       k) +
+                        Operators::K1<DefiniteIntegrals::GaussLegendre::Quadrature<8, 8>>(node.point_,
+                                                                                          surfaceMesh_.getCells(),
+                                                                                          k) -
+                        polarization * std::exp(Math::Constants::i * node.point_.dot(k_vec) * k);
+            }
+        } else {
+            throw std::exception{};
         }
     }
 
-    void calculateESS(const Types::Vector3d &polarization, const Types::Vector3d &k_vec,
-                      Types::complex_d k) {}
-}
+    Types::Vector3c EMW::Mesh::VolumeMesh::sigmaOverCell(Types::complex_d k, const Types::Vector3d &tau,
+                                                         const Mesh::IndexedCell &cell) const {
+        const auto phi = [&](Types::scalar p, Types::scalar q) -> Types::Vector3c {
+            const Mesh::Point y = cell.parametrization(p, q);
+            const Types::scalar mul = cell.multiplier(p, q);
+            return Helmholtz::sigmaKernel(k, tau, y, cell.collPoint_.J_) * mul;
+        };
+        return DefiniteIntegrals::integrate<DefiniteIntegrals::GaussLegendre::Quadrature<8, 8>>(phi, {0, 0}, {1, 1});
+    }
 
+    Types::scalar EMW::Mesh::VolumeMesh::calculateESS(const Types::Vector3d &tau, Types::complex_d k) const {
+        if (surfaceMesh_.jFilled()) {
+            Types::Vector3c result = Types::Vector3c::Zero();
+            for (auto &cell: surfaceMesh_.getCells()) {
+                result += sigmaOverCell(k, tau, cell);
+            }
+            return Math::Constants::inverse_4PI<Types::scalar>() * result.squaredNorm();
+        } else {
+            throw std::exception();
+        }
+    }
+};
