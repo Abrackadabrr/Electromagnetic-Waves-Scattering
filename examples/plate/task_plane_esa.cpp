@@ -63,26 +63,36 @@ int main() {
     physicalConditions physics{
             .E0 = Vector3d{0, 0, 1}.normalized(),
             .k = complex_d{8 * Math::Constants::PI<scalar>(), 0},
-            .k_vec = Vector3d{-1, 1, 0}.normalized()
+            .k_vec = Vector3d{-1, 0, 0}.normalized()
     };
 
     // на мелкой
     const VectorXc b3 = VectorXc{Matrix::getRHS(physics.E0, physics.k.real() * physics.k_vec, surfaceMesh->getCells())};
     const MatrixXc A3 = Matrix::getMatrix(physics.k, surfaceMesh->getCells());
-    
+    // preconditioning
+    const VectorXc JacobiAux = A3.diagonal().cwiseInverse();
+    const VectorXc newRHS = A3.diagonal().cwiseInverse().cwiseProduct(b3);
+    const MatrixXc newMatrix = JacobiAux.asDiagonal() * A3;
+//    std::cout << A3.operatorNorm() << std::endl << std::endl;
+//    std::cout << newMatrix << std::endl << std::endl;
+//    std::cout << newMatrix.inverse().norm() << std::endl;
+    std::cout << "Matrix has been built" << std::endl;
+//    std::cout << "Matrix conditional value: " << (A3.operatorNorm()) * (A3.inverse().operatorNorm()) << std::endl;
+//    std::cout << "Matrix result value: " << newMatrix.operatorNorm() * (newMatrix.inverse().operatorNorm()) << std::endl;
+
     auto method = Eigen::GMRES<MatrixXc>{};
     method.setMaxIterations(20000);
     std::cout << method.maxIterations() << std::endl;
-    method.setTolerance(1e-10);
-    method.set_restart(1000);
-    method.compute(A3);
-    const auto j = VectorXc{method.solve(b3)};
+    method.setTolerance(1e-3);
+    method.set_restart(500);
+    method.compute(newMatrix);
+    const auto j = VectorXc{method.solveWithGuess(newRHS, newRHS)};
     std::cout << "total iterations: " << method.iterations() << std::endl;
     std::cout << "total error: " << method.error() << std::endl;
     std::cout << "Info: " << static_cast<int>(method.info()) << std::endl;
     surfaceMesh->fillJ(j);
 
-    int samples = 3600;
+    int samples = 360;
     Containers::vector_d esas;
     esas.reserve(samples);
     Containers::vector_d angles;

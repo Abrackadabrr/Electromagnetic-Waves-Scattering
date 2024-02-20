@@ -3,7 +3,7 @@ import numpy as np
 import csv
 
 filename = ("/media/evgen/SecondLinuxDisk/4_level/"
-            "Electromagnetic-Waves-Scattering/vtk_files/examples/plane/sigmas/sigma_41.csv")
+            "Electromagnetic-Waves-Scattering/vtk_files/examples/plane/sigmas/sigma_31.csv")
 
 sigma = []
 angle = []
@@ -15,7 +15,7 @@ with open(filename) as csvfile:
         sigma.append(float(line[0]))
         angle.append(float(line[1]))
 
-polar = True
+polar = False
 
 if polar:
     fig, ax = plt.subplots(subplot_kw={'projection': 'polar'})

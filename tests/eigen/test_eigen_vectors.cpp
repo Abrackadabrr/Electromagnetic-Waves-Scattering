@@ -60,3 +60,11 @@ TEST(EigenVectors, DotProduction) {
     std::cout << a.dot(b) << std::endl;
     std::cout << b.dot(a) << std::endl;
 }
+
+
+TEST(EigenVectors, INverseEigenVector) {
+    const Vector3c a = {complex_d{10, 0}, complex_d{10, 0}, complex_d{10, 0}};
+    const Vector3c a_inv = a.cwiseInverse();
+    std::cout << a_inv << std::endl;
+    std::cout << a_inv.cwiseProduct(a) << std::endl;
+}
