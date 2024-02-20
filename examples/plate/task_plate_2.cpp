@@ -44,6 +44,8 @@ int main() {
 
     mesh3->fillJ(*j);
 
+
+
     VTK::test_snapshot(0, *mesh3,
                        "/media/evgen/SecondLinuxDisk/4_level/Electromagnetic-Waves-Scattering/vtk_files/examples/plate/OXY/");
 

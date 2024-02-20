@@ -14,7 +14,7 @@ namespace EMW::Mesh {
      * Тип расчетного узла
      */
     struct Node {
-        using F_t = Types::Vector3d;
+        using F_t = Types::Vector3c;
         Point point_;
         F_t E_;
         F_t H_;
@@ -23,10 +23,16 @@ namespace EMW::Mesh {
     public:
         Node() = default;
 
+        explicit Node(const Point &point) : point_(point),
+                                            E_(Types::Vector3c{Types::complex_d{0, 0}, Types::complex_d{0, 0},
+                                                               Types::complex_d{0, 0}}),
+                                            H_(Types::Vector3c{Types::complex_d{0, 0}, Types::complex_d{0, 0},
+                                                               Types::complex_d{0, 0}}),
+                                            J_(Types::Vector3c{Types::complex_d{0, 0}, Types::complex_d{0, 0},
+                                                               Types::complex_d{0, 0}}) {};
+
         Node(Types::scalar x, Types::scalar y, Types::scalar z, F_t E, F_t H, F_t J)
                 : point_(x, y, z), E_(std::move(E)), H_(std::move(H)), J_(std::move(J)) {}
-
-        explicit Node(const Point &point): Node(point.x(), point.y(), point.z(), {0, 0, 0}, {0, 0, 0}, {0, 0, 0}) {};
 
         void SetE(const F_t &E) { E_ = E; }
 
@@ -61,8 +67,8 @@ namespace EMW::Mesh {
      */
     struct IndexedCell {
         using nodes_t = Containers::array<Types::index, 4>;
-        nodes_t points_;
-        Types::scalar area_;
+        nodes_t points_{};
+        Types::scalar area_{};
         Node collPoint_;
         Types::Vector3d normal;
         Containers::array<Types::Vector3d, 2> tau;
@@ -73,11 +79,11 @@ namespace EMW::Mesh {
 
         IndexedCell(Containers::array<Types::index, 4> points, const Containers::vector<Point> &fullPoints);
 
-        [[nodiscard]] Point parametrization(Types::scalar p, Types::scalar q) const noexcept{
+        [[nodiscard]] Point parametrization(Types::scalar p, Types::scalar q) const noexcept {
             return cellStructure.A + p * cellStructure.ort1 + q * cellStructure.ort2 + p * q * cellStructure.diff;
         }
 
-        [[nodiscard]] Types::scalar multiplier(Types::scalar p, Types::scalar q) const noexcept{
+        [[nodiscard]] Types::scalar multiplier(Types::scalar p, Types::scalar q) const noexcept {
             return (integrationParameters.a + p * integrationParameters.b + q * integrationParameters.c).norm();
         }
     };
@@ -92,12 +98,21 @@ namespace EMW::Mesh {
         Types::scalar area_;
         Node collPoint_;
         Types::Vector3d normal;
-        Types::Vector3d tau1;
-        Types::Vector3d tau2;
+        Containers::array<Types::Vector3d, 2> tau;
+        CellStructure cellStructure;
+        IntegrationParameters integrationParameters;
 
         Cell() = default;
 
         explicit Cell(Containers::array<Point, 4> points);
+
+        [[nodiscard]] Point parametrization(Types::scalar p, Types::scalar q) const noexcept {
+            return cellStructure.A + p * cellStructure.ort1 + q * cellStructure.ort2 + p * q * cellStructure.diff;
+        }
+
+        [[nodiscard]] Types::scalar multiplier(Types::scalar p, Types::scalar q) const noexcept {
+            return (integrationParameters.a + p * integrationParameters.b + q * integrationParameters.c).norm();
+        }
     };
 
 }

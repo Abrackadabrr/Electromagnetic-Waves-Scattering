@@ -5,7 +5,7 @@
 #include "gtest/gtest.h"
 #include "types/Types.hpp"
 #include "integration/gauss_quadrature/GaussLegenderPoints.hpp"
-#include "integration/gauss_quadrature/Quadrature.hpp"
+#include "integration/Quadrature.hpp"
 
 using namespace EMW::Types;
 
@@ -40,14 +40,15 @@ TEST(EigenVectors, FoldTest) {
 TEST(EigenVectors, IntegrateTest) {
     const auto lc = [](scalar x) -> Vector3c { return Vector3c{complex_d{0., 1}, complex_d{0., 1}, complex_d{0., 1}}; };
     const auto l = [](scalar x) -> Vector3d { return Vector3d{1, 1, 1}; };
-    const Vector3d res = EMW::DefiniteIntegrals::integrate<EMW::DefiniteIntegrals::Quadrature<8>>(l, {0}, {1});
+    const Vector3d res = EMW::DefiniteIntegrals::integrate<EMW::DefiniteIntegrals::GaussLegendre::Quadrature<8>>(l, {0},
+                                                                                                                 {1});
 }
 
 TEST(EigenVectors, StingTranspose) {
     const Vector3c a = {complex_d{1, 0}, complex_d{1, 0}, complex_d{1, 0}};
     const Vector3d b = {1, 1, 1};
     const auto bT = b.transpose();
-    const complex_d bTa =  bT * a;
+    const complex_d bTa = bT * a;
     const Eigen::Matrix3<complex_d> abT = a * bT;
 }
 

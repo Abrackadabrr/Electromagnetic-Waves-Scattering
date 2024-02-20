@@ -7,7 +7,8 @@
 
 namespace EMW::Mesh {
     SurfaceMesh::SurfaceMesh(Containers::vector<Point> nodes,
-                             Containers::vector<Containers::array<Types::index, 4>> cells) : nodes_(nodes) {
+                             Containers::vector<Containers::array<Types::index, 4>> cells) : nodes_(nodes),
+                                                                                             jFilled_(false) {
         const auto cellsConstructed = cells | std::views::transform(
                 [&nodes](const Containers::array<Types::index, 4> &indexes) -> IndexedCell {
                     auto cell = IndexedCell(indexes, nodes);
@@ -21,9 +22,9 @@ namespace EMW::Mesh {
     SurfaceMesh::SurfaceMesh(Containers::vector<Point> nodes,
                              Containers::vector<Containers::array<Types::index, 4>> cells,
                              Containers::vector<Types::Vector3d> E_field, Containers::vector<Types::Vector3d> H_field)
-            : nodes_(nodes) {
+            : nodes_(nodes), jFilled_(false) {
         const auto cellsConstructed = cells | std::views::enumerate | std::views::transform(
-                [&nodes, &E_field, &H_field](const auto& zip) -> IndexedCell {
+                [&nodes, &E_field, &H_field](const auto &zip) -> IndexedCell {
                     const auto [i, indexes] = zip;
                     auto cell = IndexedCell(indexes, nodes);
                     cell.collPoint_.E_ = E_field[i];
@@ -36,9 +37,10 @@ namespace EMW::Mesh {
     }
 
     void SurfaceMesh::fillJ(const Types::VectorXc &j) {
-        const long N = cells_.size();
-        for (auto [i, cell] : cells_ | std::views::enumerate) {
-            cell.collPoint_.J_ = j(i).real() * cell.tau[0] + j(i + N).real() * cell.tau[1];
+        const long N = static_cast<long>(cells_.size());
+        for (auto [i, cell]: cells_ | std::views::enumerate) {
+            cell.collPoint_.J_ = j(i) * cell.tau[0] + j(i + N) * cell.tau[1];
         }
-    };
+        jFilled_ = true;
+    }
 }

@@ -20,7 +20,7 @@ namespace VTK {
         unstructuredGrid->Allocate(100);
         // VTK points
         vtkSmartPointer<vtkPoints> dumpPoints = vtkSmartPointer<vtkPoints>::New();
-
+        double zero[3] = {0, 0, 0};
         // Электромагнитное поле
         auto E = vtkSmartPointer<vtkDoubleArray>::New();
         E->SetName("E");
@@ -50,9 +50,11 @@ namespace VTK {
         for (auto &cell: cells) {
             dumpPoints->InsertNextPoint(cell.collPoint_.point_.x(), cell.collPoint_.point_.y(),
                                         cell.collPoint_.point_.z());
-            E->InsertNextTuple(cell.collPoint_.E_.data());
-            H->InsertNextTuple(cell.collPoint_.H_.data());
-            J->InsertNextTuple(cell.collPoint_.J_.data());
+            double j_real[3] = {cell.collPoint_.J_(0).real(), cell.collPoint_.J_(1).real(),
+                                cell.collPoint_.J_(2).real()};
+            E->InsertNextTuple(zero);
+            H->InsertNextTuple(zero);
+            J->InsertNextTuple(j_real);
             tau1->InsertNextTuple(cell.tau[0].data());
             tau2->InsertNextTuple(cell.tau[1].data());
             n->InsertNextTuple(cell.normal.data());
@@ -65,7 +67,6 @@ namespace VTK {
         for (auto &node: nodes) {
             // Вставляем новую точку в сетку VTK-снапшота
             dumpPoints->InsertNextPoint(node.x(), node.y(), node.z());
-            double zero[3] = {0, 0, 0};
             E->InsertNextTuple(zero);
             H->InsertNextTuple(zero);
             J->InsertNextTuple(zero);
@@ -103,7 +104,8 @@ namespace VTK {
         writer->Write();
     }
 
-    void volume_snapshot(EMW::Types::index snap_number, const EMW::Mesh::VolumeMesh &mesh, const std::string &path_to_file) {
+    void
+    volume_snapshot(EMW::Types::index snap_number, const EMW::Mesh::VolumeMesh &mesh, const std::string &path_to_file) {
         // VTK grid
         vtkSmartPointer<vtkUnstructuredGrid> unstructuredGrid = vtkSmartPointer<vtkUnstructuredGrid>::New();
         unstructuredGrid->Allocate(100);
@@ -123,8 +125,12 @@ namespace VTK {
         for (auto &node: volume_nodes) {
             // Вставляем новую точку в сетку VTK-снапшота
             dumpPoints->InsertNextPoint(node.point_.x(), node.point_.y(), node.point_.z());
-            E_volume->InsertNextTuple(node.E_.data());
-            H_volume->InsertNextTuple(node.H_.data());
+            double e_real[3] = {node.E_(0).real(), node.E_(1).real(),
+                                node.E_(2).real()};
+            double h_real[3] = {node.H_(0).real(), node.H_(1).real(),
+                                node.H_(2).real()};
+            E_volume->InsertNextTuple(e_real);
+            H_volume->InsertNextTuple(h_real);
         }
 
         // Грузим точки в сетку
@@ -134,7 +140,8 @@ namespace VTK {
         unstructuredGrid->GetPointData()->AddArray(H_volume);
 
         // Создаём снапшот в файле с заданным именем
-        std::string fileName = mesh.getName() + "_" + mesh.getSurface().getName() + "-step-" + std::to_string(snap_number) + ".vtu";
+        std::string fileName =
+                mesh.getName() + "_" + mesh.getSurface().getName() + "-step-" + std::to_string(snap_number) + ".vtu";
         vtkSmartPointer<vtkXMLUnstructuredGridWriter> writer = vtkSmartPointer<vtkXMLUnstructuredGridWriter>::New();
         writer->SetFileName((path_to_file + fileName).c_str());
         writer->SetInputData(unstructuredGrid);
