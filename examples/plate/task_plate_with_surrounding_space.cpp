@@ -86,8 +86,8 @@ int main() {
     auto method = Eigen::GMRES<MatrixXc>{};
     method.setMaxIterations(20000);
     std::cout << method.maxIterations() << std::endl;
-    method.setTolerance(1e-10);
-    method.set_restart(1000);
+    method.setTolerance(1e-7);
+    method.set_restart(500);
     method.compute(A3);
     const auto j = VectorXc{method.solve(b3)};
     std::cout << "total iterations: " << method.iterations() << std::endl;
@@ -98,7 +98,7 @@ int main() {
     // создаем окружающую сетку
 
     Containers::vector<Mesh::Point> nodes;
-    nodes.reserve(N_volume * N_volume * N_volume);
+    nodes.reserve(N_volume * N_volume);
     cartesian_productXY(std::ranges::views::iota(0, N_volume),
                         std::ranges::views::iota(0, N_volume),
                         std::back_inserter(nodes), N_volume, h_volume);
