@@ -1,5 +1,5 @@
 //
-// Created by evgen on 20.02.24.
+// Created by evgen on 22.02.24.
 //
 
 #include "mesh/Parser.hpp"
@@ -18,6 +18,7 @@
 #include <unsupported/Eigen/IterativeSolvers>
 #include <iostream>
 #include <fstream>
+#include <omp.h>
 
 using namespace EMW;
 using namespace EMW::Types;
@@ -42,6 +43,7 @@ void to_csv(const Container<T> &cont1, const Container<T> &cont2, std::ofstream 
 }
 
 int main() {
+    std::atomic<int> tasks_done = 0;
     const std::string nodes = "/media/evgen/SecondLinuxDisk/4_level/Electromagnetic-Waves-Scattering/examples/2002_nodes.csv";
     const std::string cells = "/media/evgen/SecondLinuxDisk/4_level/Electromagnetic-Waves-Scattering/examples/2050_cells.csv";
     const EMW::Types::index nNodes = 2002;
@@ -54,7 +56,6 @@ int main() {
     const scalar frec_div_c = 2 / 0.299792458;
     const scalar omega_div_c = frec_div_c * (2 * Math::Constants::PI<scalar>());
     const scalar k = omega_div_c;
-    const Vector3d E0 = Vector3d{0, 0, 1}.normalized();
     std::cout << "Wavelenght = " << (2 * Math::Constants::PI<scalar>()) / k << std::endl;
 
 
@@ -65,42 +66,47 @@ int main() {
     const MatrixXc newMatrix = JacobiAux.asDiagonal() * A3;
 
     // цикл по векторам правой части
-    int samples = 180;
+    int samples = 10;
     Containers::vector_d esas;
-    esas.reserve(samples);
+    esas.resize(samples);
     Containers::vector_d angles;
-    angles.reserve(samples);
-
+    angles.resize(samples);
+#pragma omp parallel for num_threads(7)
     for (int i = 0; i < samples; i++) {
-    	// surfaceMesh copy
+        // surfaceMesh copy
+        Mesh::SurfaceMesh meshCopy = *surfaceMesh;
         // угол в радианах
-        Types::scalar angle = i * Math::Constants::PI<scalar>() * 2 / samples;
+        Types::scalar angle = i * Math::Constants::PI<scalar>() / samples;
         // вектор k
         Types::Vector3d k_vec = {-std::cos(angle), -std::sin(angle), 0};
+        // вектор E
+        const Vector3d E0 = Vector3d{std::sin(angle), -std::cos(angle), 0}.normalized();
         // расчет обратного эпр
-        const VectorXc b3 = VectorXc{Matrix::getRHS(E0, k * k_vec, surfaceMesh->getCells())};
+        const VectorXc b3 = VectorXc{Matrix::getRHS(E0, k * k_vec, meshCopy.getCells())};
         const VectorXc newRHS = JacobiAux.cwiseProduct(b3);
 
-        std::cout << "Matrix " << i << " has been built" << std::endl;
+        int rank = omp_get_thread_num();
+        std::cout << "Matrix " << i << " has been built by thread #" << rank << std::endl;
 
         auto method = Eigen::GMRES<MatrixXc>{};
-        method.setMaxIterations(20000);
-        std::cout << method.maxIterations() << std::endl;
-        method.setTolerance(5e-5);
-        method.set_restart(150);
+        method.setMaxIterations(10000);
+        // std::cout << method.maxIterations() << std::endl;
+        method.setTolerance(1e-7);
+        method.set_restart(5000);
         method.compute(A3);
         const auto j = VectorXc{method.solveWithGuess(b3, newRHS)};
-        std::cout << "total iterations: " << method.iterations() << std::endl;
         std::cout << "total error: " << method.error() << std::endl;
         std::cout << "Info: " << static_cast<int>(method.info()) << std::endl << std::endl;
-        surfaceMesh->fillJ(j);
-        esas.push_back(ESA::calculateESA(-k_vec, k, *surfaceMesh));
-        angles.push_back(angle);
+        meshCopy.fillJ(j);
+        esas[i] = (ESA::calculateESA(-k_vec, k, meshCopy));
+        angles[i] = (angle);
+        tasks_done++;
+        std::cout << "Tasks done: " << tasks_done << std::endl;
     }
 
     std::ofstream sigmaFile(
             "/media/evgen/SecondLinuxDisk/4_level/Electromagnetic-Waves-Scattering/vtk_files/examples/cylinder/sigma_back_" +
-            std::to_string(2002) + ".csv");
+            std::to_string(2002) + "_2GG_small_mesh_29_may_18_28.csv");
 
     to_csv(esas, angles, sigmaFile);
 }

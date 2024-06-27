@@ -21,7 +21,7 @@ namespace EMW::Mesh {
 
     SurfaceMesh::SurfaceMesh(Containers::vector<Point> nodes,
                              Containers::vector<Containers::array<Types::index, 4>> cells,
-                             Containers::vector<Types::Vector3d> E_field, Containers::vector<Types::Vector3d> H_field)
+                             Containers::vector<Types::Vector3c> E_field, Containers::vector<Types::Vector3c> H_field)
             : nodes_(nodes), jFilled_(false) {
         const auto cellsConstructed = cells | std::views::enumerate | std::views::transform(
                 [&nodes, &E_field, &H_field](const auto &zip) -> IndexedCell {

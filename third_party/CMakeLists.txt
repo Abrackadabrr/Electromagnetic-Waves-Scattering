@@ -1,2 +1,4 @@
 add_subdirectory(eigen)
-add_subdirectory(gtest)
+if (WITH_TESTS)
+	add_subdirectory(gtest)
+endif()

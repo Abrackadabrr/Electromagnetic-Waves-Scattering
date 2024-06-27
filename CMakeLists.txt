@@ -11,8 +11,5 @@ if (WITH_TESTS)
     add_subdirectory(tests)
 endif ()
 
-if (WITH_EXAMPLES)
-    add_subdirectory(examples)
-endif ()
-
+add_subdirectory(examples)
 

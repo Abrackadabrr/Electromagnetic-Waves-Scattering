@@ -52,7 +52,9 @@ namespace VTK {
                                         cell.collPoint_.point_.z());
             double j_real[3] = {cell.collPoint_.J_(0).real(), cell.collPoint_.J_(1).real(),
                                 cell.collPoint_.J_(2).real()};
-            E->InsertNextTuple(zero);
+            double e_real[3] = {cell.collPoint_.E_(0).real(), cell.collPoint_.E_(1).real(),
+                                cell.collPoint_.E_(2).real()};
+            E->InsertNextTuple(e_real);
             H->InsertNextTuple(zero);
             J->InsertNextTuple(j_real);
             tau1->InsertNextTuple(cell.tau[0].data());
@@ -97,7 +99,7 @@ namespace VTK {
         unstructuredGrid->GetPointData()->AddArray(n);
 
         // Создаём снапшот в файле с заданным именем
-        std::string fileName = mesh.getName() + "-step-" + std::to_string(snap_number) + ".vtu";
+        std::string fileName = mesh.getName() + ".vtu";
         vtkSmartPointer<vtkXMLUnstructuredGridWriter> writer = vtkSmartPointer<vtkXMLUnstructuredGridWriter>::New();
         writer->SetFileName((path_to_file + fileName).c_str());
         writer->SetInputData(unstructuredGrid);
@@ -141,7 +143,7 @@ namespace VTK {
 
         // Создаём снапшот в файле с заданным именем
         std::string fileName =
-                mesh.getName() + "_" + mesh.getSurface().getName() + "-step-" + std::to_string(snap_number) + ".vtu";
+                mesh.getName() + "_" + mesh.getSurface().getName() + ".vtu";
         vtkSmartPointer<vtkXMLUnstructuredGridWriter> writer = vtkSmartPointer<vtkXMLUnstructuredGridWriter>::New();
         writer->SetFileName((path_to_file + fileName).c_str());
         writer->SetInputData(unstructuredGrid);

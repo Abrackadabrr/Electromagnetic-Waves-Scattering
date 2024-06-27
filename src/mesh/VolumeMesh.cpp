@@ -20,8 +20,7 @@ namespace EMW::Mesh {
                                                                                        k) +
                         Operators::K1<DefiniteIntegrals::GaussLegendre::Quadrature<8, 8>>(node.point_,
                                                                                           surfaceMesh_.getCells(),
-                                                                                          k) -
-                        polarization * std::exp(Math::Constants::i * node.point_.dot(k_vec) * k);
+                                                                                          k);
             }
         } else {
             throw std::exception{};

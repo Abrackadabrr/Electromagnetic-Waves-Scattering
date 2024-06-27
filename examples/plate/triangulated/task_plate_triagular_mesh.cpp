@@ -1,13 +1,13 @@
 //
-// Created by evgen on 08.02.24.
+// Created by evgen on 27.06.24.
 //
 
-#include "PlateGrid.hpp"
+#include "examples/plate/PlateGrid.hpp"
 #include "slae_generation/MatrixGeneration.hpp"
 #include "visualisation/VTKFunctions.hpp"
 #include "mesh/VolumeMesh.hpp"
 #include "math/MathConstants.hpp"
-
+#include "mesh/Parser.hpp"
 
 #include <Eigen/Core>
 #include <Eigen/IterativeLinearSolvers>
@@ -27,23 +27,6 @@ struct physicalConditions {
     Vector3d k_vec;
 };
 
-template<typename Range1, typename Range2, typename Range3, typename OutputIterator>
-void cartesian_product3D(Range1 const &r1, Range2 const &r2, Range3 const &r3, OutputIterator out, Types::index N,
-                         Types::scalar h) {
-    using std::begin;
-    using std::end;
-
-    for (auto i = begin(r1); i != end(r1); ++i) {
-        for (auto j = begin(r2); j != end(r2); ++j) {
-            for (auto k = begin(r3); k != end(r3); ++k) {
-                *out++ = Types::Vector3d{static_cast<Types::scalar>(*i) - static_cast<Types::scalar>(N / 2.),
-                                         static_cast<Types::scalar>(*j) - static_cast<Types::scalar>(N / 2.),
-                                         static_cast<Types::scalar>(*k) - static_cast<Types::scalar>(N / 2.)} * h;
-            }
-        }
-    }
-}
-
 template<typename Range1, typename Range2, typename OutputIterator>
 void cartesian_productXY(Range1 const &r1, Range2 const &r2, OutputIterator out, Types::index N,
                          Types::scalar h) {
@@ -53,33 +36,34 @@ void cartesian_productXY(Range1 const &r1, Range2 const &r2, OutputIterator out,
     for (auto i = begin(r1); i != end(r1); ++i) {
         for (auto j = begin(r2); j != end(r2); ++j) {
 
-            *out++ = Types::Vector3d{static_cast<Types::scalar>(*i) - static_cast<Types::scalar>(N / 2.),
-                                     static_cast<Types::scalar>(*j) - static_cast<Types::scalar>(N / 2.),
-                                     0} * h;
-
+            *out++ = Types::Vector3d{0,
+                                     static_cast<Types::scalar>(*i) - static_cast<Types::scalar>(N / 2.),
+                                     static_cast<Types::scalar>(*j) - static_cast<Types::scalar>(N / 2.)} * h;
         }
     }
 }
+
 
 int main() {
     int N_volume = 81;
     scalar h_volume = 0.075;
 
-    int N = 31;
-    scalar h = 1. / (N-1);
-    // сетка
-    auto *surfaceMesh = new Mesh::SurfaceMesh{EMW::Examples::Plate::generatePlatePrimaryMesh(N, h)};
+    // сетка на пластинке
+    const std::string nodesFile = "/media/evgen/SecondLinuxDisk/4_level/Electromagnetic-Waves-Scattering/examples/plate/triangulated/144_nodes.csv";
+    const std::string cellsFile = "/media/evgen/SecondLinuxDisk/4_level/Electromagnetic-Waves-Scattering/examples/plate/triangulated/246_cells.csv";
+    const EMW::Types::index nNodes = 144;
+    const EMW::Types::index nCells = 246;
+    auto *surfaceMesh = new Mesh::SurfaceMesh{EMW::Parser::parseMesh(nodesFile, cellsFile, nNodes, nCells)};
 
-    surfaceMesh->setName("surface_mesh_" + std::to_string(N));
+    surfaceMesh->setName("surface_mesh_triangular" + std::to_string(nNodes));
 
     // физика
     physicalConditions physics{
             .E0 = Vector3d{0, 1, 0}.normalized(),
             .k = complex_d{4 * Math::Constants::PI<scalar>(), 0},
-            .k_vec = Vector3d{1, 0, 0}.normalized()
+            .k_vec = Vector3d{0, 0, 1}.normalized()
     };
 
-    // на мелкой
     const VectorXc b3 = VectorXc{Matrix::getRHS(physics.E0, physics.k.real() * physics.k_vec, surfaceMesh->getCells())};
     const MatrixXc A3 = Matrix::getMatrix(physics.k, surfaceMesh->getCells());
 
@@ -106,7 +90,7 @@ int main() {
     const auto cellView = nodes | std::views::transform([](const Mesh::Point &p) { return Mesh::Node{p}; });
 
     Mesh::VolumeMesh volumeMesh{*surfaceMesh, {cellView.begin(), cellView.end()}};
-    volumeMesh.setName("volume_mesh_" + std::to_string(N_volume));
+    volumeMesh.setName("volume_mesh_triangular" + std::to_string(N_volume));
     volumeMesh.calculateAll(physics.E0, physics.k_vec, physics.k);
 
     VTK::test_snapshot(1, *surfaceMesh,
