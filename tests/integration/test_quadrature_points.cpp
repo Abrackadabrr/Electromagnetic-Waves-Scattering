@@ -10,7 +10,7 @@
 using namespace EMW;
 
 TEST(Quadrature, CompilationTest) {
-    constexpr auto product = DefiniteIntegrals::Quadrature<6, 8>::nodes;
+    constexpr auto product = DefiniteIntegrals::GaussLegendre::Quadrature<6, 8>::nodes;
     for (const auto item : product) {
         const Types::scalar weight = item.weight;
 //        std::cout << item.point[1] << ", ";
