@@ -53,5 +53,6 @@ TEST(SLAE, RHS) {
    const Vector3d E0{1, 0, 0};
 
    const auto b = EMW::Matrix::getRHS(E0, Vector3d{1, 0, 0}, mesh.getCells());
+
    std::cout << b << std::endl;
 }

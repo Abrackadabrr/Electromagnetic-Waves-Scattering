@@ -7,7 +7,6 @@ ny = 20
 x = leg.legroots([0] * nx + [1])
 y = leg.legroots([0] * ny + [1])
 x_grid, y_grid = np.meshgrid(x, y)
-print(x_grid)
 fig, ax = plt.subplots()
 ax.scatter(x_grid, y_grid, color="red")
 ax.grid()
