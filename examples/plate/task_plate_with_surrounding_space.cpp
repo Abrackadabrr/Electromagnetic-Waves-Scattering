@@ -7,6 +7,7 @@
 #include "visualisation/VTKFunctions.hpp"
 #include "mesh/VolumeMesh.hpp"
 #include "math/MathConstants.hpp"
+#include "examples/pathes.hpp"
 #include <Eigen/Core>
 #include <Eigen/IterativeLinearSolvers>
 #include <unsupported/Eigen/IterativeSolvers>
@@ -61,9 +62,9 @@ void cartesian_productXY(Range1 const &r1, Range2 const &r2, OutputIterator out,
 
 int main() {
     int N_volume = 81;
-    scalar h_volume = 0.075;
+    scalar h_volume = 0.075 / 2;
 
-    int N = 31;
+    int N = 41;
     scalar h = 1. / (N-1);
     // сетка
     auto *surfaceMesh = new Mesh::SurfaceMesh{EMW::Examples::Plate::generatePlatePrimaryMesh(N, h)};
@@ -72,9 +73,9 @@ int main() {
 
     // физика
     physicalConditions physics{
-            .E0 = Vector3d{0, 0, 1}.normalized(),
+            .E0 = Vector3d{0, 1, 0}.normalized(),
             .k = complex_d{4 * Math::Constants::PI<scalar>(), 0},
-            .k_vec = Vector3d{-1, -1, 0}.normalized()
+            .k_vec = Vector3d{-1, 0, 0}.normalized()
     };
 
     // на мелкой
@@ -107,9 +108,7 @@ int main() {
     volumeMesh.setName("volume_mesh_" + std::to_string(N_volume));
     volumeMesh.calculateAll(physics.E0, physics.k_vec, physics.k);
 
-    VTK::test_snapshot(1, *surfaceMesh,
-                       "/media/evgen/SecondLinuxDisk/4_level/Electromagnetic-Waves-Scattering/vtk_files/examples/plane/volume/");
+    VTK::test_snapshot(1, *surfaceMesh, Pathes::examples + "plane_2_07/");
 
-    VTK::volume_snapshot(1, volumeMesh,
-                         "/media/evgen/SecondLinuxDisk/4_level/Electromagnetic-Waves-Scattering/vtk_files/examples/plane/volume/");
+    VTK::volume_snapshot(1, volumeMesh, Pathes::examples + "plane_2_07/");
 }

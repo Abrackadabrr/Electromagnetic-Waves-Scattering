@@ -4,7 +4,8 @@
 
 #include "types/Types.hpp"
 #include "integration/gauss_quadrature/GaussLegenderPoints.hpp"
-#include "integration/gauss_quadrature/Quadrature.hpp"
+#include "integration/Quadrature.hpp"
+#include "assert.h"
 
 using EMW::Types::scalar;
 using namespace EMW;
@@ -33,8 +34,8 @@ int main() {
     const scalar y = 1;
     const functor func{1};
     auto f_l = [y] (scalar x) -> scalar {return (x + y) * x * x * x * x;};
-    auto result = DefiniteIntegrals::integrate<DefiniteIntegrals::Quadrature<3>>(f_l, {0}, {2});
+    auto result = DefiniteIntegrals::integrate<DefiniteIntegrals::GaussLegendre::Quadrature<3>>(f_l, {0}, {2});
     assert(std::abs(2 * 2 * 2 * 2 * 2 * 2. / 6 + 2 * 2 * 2 * 2 * 2. / 5 - result) < 1e-14);
-    result = DefiniteIntegrals::integrate<DefiniteIntegrals::Quadrature<3>>(func, {0}, {2});
+    result = DefiniteIntegrals::integrate<DefiniteIntegrals::GaussLegendre::Quadrature<3>>(func, {0}, {2});
     assert(std::abs(2 * 2 * 2 * 2 * 2 * 2. / 6 + 2 * 2 * 2 * 2 * 2. / 5 - result) < 1e-14);
 }
