@@ -17,16 +17,10 @@ namespace EMW::Mesh {
     class SurfaceMesh {
         Containers::vector<Point> nodes_;
         Containers::vector<IndexedCell> cells_;
-        std::string name = "mesh1";
+        std::string name = "default_mesh_name";
         bool jFilled_;
     public:
-        SurfaceMesh() = default;
-
         SurfaceMesh(Containers::vector<Point> nodes, Containers::vector<Containers::array<Types::index, 4>> cells);
-
-        SurfaceMesh(Containers::vector<Point> nodes,
-                    Containers::vector<Containers::array<Types::index, 4>> cells,
-                    Containers::vector<Types::Vector3c> E_field, Containers::vector<Types::Vector3c> H_field);
 
         void fillJ(const Types::VectorXc &j);
 
@@ -34,11 +28,16 @@ namespace EMW::Mesh {
 
         [[nodiscard]] constexpr const Containers::vector<Point> &getNodes() const { return nodes_; }
 
-        std::string getName() const { return name; }
+        [[nodiscard]] std::string getName() const { return name; }
 
         void setName(const std::string &n) {name = n;}
 
-        bool jFilled() const {return jFilled_;}
+        [[nodiscard]] bool jFilled() const {return jFilled_;}
+
+        // deprecated
+        //        SurfaceMesh(Containers::vector<Point> nodes,
+        //                    Containers::vector<Containers::array<Types::index, 4>> cells,
+        //                    Containers::vector<Types::Vector3c> E_field, Containers::vector<Types::Vector3c> H_field);
     };
 }
 #endif //ELECTROMAGNETIC_WAVES_SCATTERING_MESH_HPP
