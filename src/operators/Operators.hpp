@@ -34,7 +34,7 @@ namespace EMW::Operators {
         }
 
         /**
-         * Расчет множеителя - интергала по одной ячейке в операторе К1 в виде тензора
+         * Расчет множеителя - интергала по одной ячейке в операторе К0 в виде тензора
          * @tparam Quadrature тип квадратуры
          * @tparam cell_t тип ячейки
          * @param point точка для расчета
@@ -89,13 +89,6 @@ namespace EMW::Operators {
         return j * detail::K1OverSingularReducedAndDivided<Quadrature>(point, cell, k);
     }
 
-    /** То же, но вектор j действительный */
-    template<typename Quadrature, typename cell_t>
-    Types::Vector3c K1OverSingularCellDivided(const Mesh::Point &point, const Types::Vector3d &j, const cell_t &cell,
-                                              const Types::complex_d k) {
-        return j * detail::K1OverSingularReducedAndDivided<Quadrature>(point, cell, k);
-    }
-
     /** Полный расчет оператора K1 в точке point */
     template<typename Quadrature, typename cell_t>
     Types::Vector3c K1(const Mesh::Point &point, const Containers::vector<cell_t> &cells, const Types::complex_d k) {
@@ -108,11 +101,6 @@ namespace EMW::Operators {
 
     template<typename Quadrature, typename cell_t>
     Types::Vector3c K0OverSingularCell(const Mesh::Point &point, const Types::Vector3c &j, const cell_t &cell, Types::complex_d k) {
-        return detail::K0TensorOverSingularCell<Quadrature>(point, cell, k) * j;
-    }
-
-    template<typename Quadrature, typename cell_t>
-    Types::Vector3c K0OverSingularCell(const Mesh::Point &point, const Types::Vector3d &j, const cell_t &cell, Types::complex_d k) {
         return detail::K0TensorOverSingularCell<Quadrature>(point, cell, k) * j;
     }
 

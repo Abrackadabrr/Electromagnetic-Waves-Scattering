@@ -8,7 +8,7 @@
 namespace EMW::Helmholtz {
     Types::complex_d F(Types::complex_d k, const Types::Vector3d &x, const Types::Vector3d &y) {
         const Types::Vector3d rVec = x - y;
-        const Types::scalar r = std::sqrt(dot(rVec, rVec));
+        const Types::scalar r = std::sqrt(Math::quasiDot(rVec, rVec));
         return Math::Constants::inverse_4PI<Types::scalar>() * (std::exp(Math::Constants::i * k * r) / r);
     }
 
@@ -28,8 +28,8 @@ namespace EMW::Helmholtz {
 
     Types::Vector3c
     sigmaKernel(Types::complex_d k, const Types::Vector3d &tau, const Types::Vector3d &y, const Types::Vector3c &j) {
-        const Types::complex_d exponent = std::exp(-Math::Constants::i * k * dot(tau, y));
-        const Types::Vector3c vec = j - tau * dot(tau, j);
+        const Types::complex_d exponent = std::exp(-Math::Constants::i * k * Math::quasiDot(tau, y));
+        const Types::Vector3c vec = j - tau * Math::quasiDot(tau, j);
         return exponent * k * k * vec;
     }
 
@@ -44,6 +44,6 @@ namespace EMW::Helmholtz {
         const Types::complex_d secondPart =
                 (static_cast<Types::scalar>(3) / r3 - (static_cast<Types::scalar>(3) * Math::Constants::i * k) / r2 -
                         (k * k / r)) / r2;
-        return exponent * (j * firstPart + rVec * (dot(rVec, j) * secondPart));
+        return exponent * (j * firstPart + rVec * (Math::quasiDot(rVec, j) * secondPart));
     }
 }
