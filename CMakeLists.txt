@@ -15,5 +15,3 @@ endif ()
 if (WITH_TASKS)
     add_subdirectory(examples)
 endif ()
-
-

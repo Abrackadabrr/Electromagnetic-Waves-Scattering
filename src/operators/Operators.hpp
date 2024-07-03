@@ -28,7 +28,6 @@ namespace EMW::Operators {
             const auto phi = [&](Types::scalar p, Types::scalar q) -> Types::complex_d {
                 const Types::Vector3d y = cell.parametrization(p, q);
                 const Types::scalar mul = cell.multiplier(p, q);
-//                const Types::scalar smoother = Helmholtz::smoother(std::sqrt(cell.area_) / 4, point, y);
                 return Helmholtz::F(k, point, y) * mul;
             };
             return DefiniteIntegrals::integrate<Quadrature>(phi, {0, 0}, {1., 1.});
