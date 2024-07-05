@@ -41,10 +41,10 @@ int main() {
     scalar h_volume = 0.075/2;
 
     // сетка на пластинке
-    const std::string nodesFile = "/media/evgen/SecondLinuxDisk/4_level/Electromagnetic-Waves-Scattering/examples/plate/triangulated/3021_nodes.csv";
-    const std::string cellsFile = "/media/evgen/SecondLinuxDisk/4_level/Electromagnetic-Waves-Scattering/examples/plate/triangulated/5840_cells.csv";
-    const EMW::Types::index nNodes = 3021;
-    const EMW::Types::index nCells = 5840;
+    const std::string nodesFile = "/media/evgen/SecondLinuxDisk/4_level/Electromagnetic-Waves-Scattering/examples/plate/triangulated/1191_nodes.csv";
+    const std::string cellsFile = "/media/evgen/SecondLinuxDisk/4_level/Electromagnetic-Waves-Scattering/examples/plate/triangulated/2256_cells.csv";
+    const EMW::Types::index nNodes = 1191;
+    const EMW::Types::index nCells = 2256;
     auto *surfaceMesh = new Mesh::SurfaceMesh{EMW::Parser::parseMesh(nodesFile, cellsFile, nNodes, nCells)};
 
     surfaceMesh->setName("surface_mesh_triangular" + std::to_string(nNodes));
@@ -52,11 +52,12 @@ int main() {
     // физика
     EMW::Physics::physicalConditionsCase physics{
             .E0 = Vector3d{0, 1, 0}.normalized(),
-            .k = complex_d{4 * Math::Constants::PI<scalar>(), 0},
+            .k = 4 * Math::Constants::PI<scalar>(),
             .k_vec = Vector3d{0, 0, 1}.normalized()
     };
+    physics.k_vec *= physics.k;
 
-    const VectorXc b3 = VectorXc{Matrix::getRHS(physics.E0, physics.k.real() * physics.k_vec, surfaceMesh->getCells())};
+    const VectorXc b3 = VectorXc{Matrix::getRHS(physics.E0, physics.k_vec, surfaceMesh->getCells())};
     const MatrixXc A3 = Matrix::getMatrix(physics.k, surfaceMesh->getCells());
 
     auto method = Eigen::GMRES<MatrixXc>{};

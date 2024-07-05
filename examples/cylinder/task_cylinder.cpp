@@ -28,7 +28,7 @@ struct physicalConditions {
     // wavelenght
     scalar lambda;
     // wave number
-    complex_d k;
+    scalar k;
     // wave vector
     Vector3d k_vec;
 };

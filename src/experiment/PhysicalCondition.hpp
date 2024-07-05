@@ -12,7 +12,7 @@ namespace EMW::Physics {
         // polarization
         Types::Vector3d E0;
         // wave number
-        Types::complex_d k;
+        Types::scalar k;
         // wave unit vector
         Types::Vector3d k_vec;
     };

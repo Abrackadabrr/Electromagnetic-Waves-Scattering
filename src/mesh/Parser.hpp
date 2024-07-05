@@ -18,7 +18,7 @@ namespace EMW::Parser {
         Containers::vector<Containers::array<Types::index, 4>> cells;
         cells.reserve(nCells);
 
-        Containers::vector<Mesh::Node::F_t> testField; testField.reserve(nCells);
+        Containers::vector<Mesh::Node::field_t> testField; testField.reserve(nCells);
 
         io::CSVReader<3> nodesF(csvNodes);
         io::CSVReader<4> cellsF(csvCells);
@@ -39,7 +39,7 @@ namespace EMW::Parser {
             counter++;
         }
 
-        return Mesh::SurfaceMesh{nodes, cells, testField, testField};
+        return Mesh::SurfaceMesh{nodes, cells};
     }
 }
 
