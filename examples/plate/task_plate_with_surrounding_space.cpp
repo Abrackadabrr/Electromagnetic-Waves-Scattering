@@ -20,28 +20,11 @@ using namespace EMW::Types;
 struct physicalConditions {
     // polarization
     Vector3d E0;
-    // wave number
-    complex_d k;
+    // wave figure in media without conductivity (vacuum of air)
+    scalar k;
     // wave vector
     Vector3d k_vec;
 };
-
-template<typename Range1, typename Range2, typename Range3, typename OutputIterator>
-void cartesian_product3D(Range1 const &r1, Range2 const &r2, Range3 const &r3, OutputIterator out, Types::index N,
-                         Types::scalar h) {
-    using std::begin;
-    using std::end;
-
-    for (auto i = begin(r1); i != end(r1); ++i) {
-        for (auto j = begin(r2); j != end(r2); ++j) {
-            for (auto k = begin(r3); k != end(r3); ++k) {
-                *out++ = Types::Vector3d{static_cast<Types::scalar>(*i) - static_cast<Types::scalar>(N / 2.),
-                                         static_cast<Types::scalar>(*j) - static_cast<Types::scalar>(N / 2.),
-                                         static_cast<Types::scalar>(*k) - static_cast<Types::scalar>(N / 2.)} * h;
-            }
-        }
-    }
-}
 
 template<typename Range1, typename Range2, typename OutputIterator>
 void cartesian_productXY(Range1 const &r1, Range2 const &r2, OutputIterator out, Types::index N,
@@ -69,24 +52,25 @@ int main() {
     // сетка
     auto *surfaceMesh = new Mesh::SurfaceMesh{EMW::Examples::Plate::generatePlatePrimaryMesh(N, h)};
 
-    surfaceMesh->setName("surface_mesh_" + std::to_string(N));
+    surfaceMesh->setName("quadratic_random_basises" + std::to_string(N));
 
     // физика
     physicalConditions physics{
             .E0 = Vector3d{0, 1, 0}.normalized(),
-            .k = complex_d{4 * Math::Constants::PI<scalar>(), 0},
+            .k = 4 * Math::Constants::PI<scalar>(),
             .k_vec = Vector3d{1, 0, 0}.normalized()
     };
+    physics.k_vec *= physics.k;
 
     // на мелкой
-    const VectorXc b3 = VectorXc{Matrix::getRHS(physics.E0, physics.k.real() * physics.k_vec, surfaceMesh->getCells())};
+    const VectorXc b3 = VectorXc{Matrix::getRHS(physics.E0, physics.k_vec, surfaceMesh->getCells())};
     const MatrixXc A3 = Matrix::getMatrix(physics.k, surfaceMesh->getCells());
 
     auto method = Eigen::GMRES<MatrixXc>{};
     method.setMaxIterations(20000);
     std::cout << method.maxIterations() << std::endl;
     method.setTolerance(1e-7);
-    method.set_restart(500);
+    method.set_restart(2000);
     method.compute(A3);
     const auto j = VectorXc{method.solve(b3)};
     std::cout << "total iterations: " << method.iterations() << std::endl;
@@ -108,7 +92,11 @@ int main() {
     volumeMesh.setName("volume_mesh_" + std::to_string(N_volume));
     volumeMesh.calculateAll(physics.E0, physics.k_vec, physics.k);
 
-    VTK::test_snapshot(1, *surfaceMesh, Pathes::examples + "plane_2_07/");
+    VTK::test_snapshot(1, *surfaceMesh, Pathes::examples + "plane_basis_experiment/");
 
-    VTK::volume_snapshot(1, volumeMesh, Pathes::examples + "plane_2_07/");
+    VTK::volume_snapshot(1, volumeMesh, Pathes::examples + "plane_basis_experiment/");
+
+    delete surfaceMesh;
+
+    return 0;
 }

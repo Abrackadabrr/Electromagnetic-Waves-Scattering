@@ -78,11 +78,11 @@ int main() {
     physicalConditions physics{
             .E0 = Vector3d{0, 1, 0}.normalized(),
             .k = complex_d{4 * Math::Constants::PI<scalar>(), 0},
-            .k_vec = Vector3d{1, 0, 0}.normalized()
+            .k_vec = 4 * Math::Constants::PI<scalar>() * Vector3d{1, 0, 0}.normalized()
     };
 
     // на мелкой
-    const VectorXc b3 = VectorXc{Matrix::getRHS(physics.E0, physics.k.real() * physics.k_vec, surfaceMesh->getCells())};
+    const VectorXc b3 = VectorXc{Matrix::getRHS(physics.E0, physics.k_vec, surfaceMesh->getCells())};
     const MatrixXc A3 = Matrix::getMatrix(physics.k, surfaceMesh->getCells());
 
     auto method = Eigen::GMRES<MatrixXc>{};

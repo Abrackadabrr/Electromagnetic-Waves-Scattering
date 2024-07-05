@@ -13,7 +13,7 @@
 
 namespace EMW::Matrix {
     Types::complex_d
-    getFirstPartIntegral(Types::index i, Types::index j, Types::complex_d k,
+    getFirstPartIntegral(Types::index i, Types::index j, Types::scalar k,
                          const Containers::vector<Mesh::IndexedCell> &cells) {
         return i == j ?
                EMW::Operators::detail::K1OverSingularReducedAndDivided<DefiniteIntegrals::NewtonCotess::Quadrature<8, 8>>(
@@ -24,7 +24,7 @@ namespace EMW::Matrix {
     }
 
     Types::Matrix3c
-    getZeroPartIntegral(Types::index i, Types::index j, Types::complex_d k,
+    getZeroPartIntegral(Types::index i, Types::index j, Types::scalar k,
                         const Containers::vector<Mesh::IndexedCell> &cells) {
         return
 //        i == j ? Types::Matrix3c::Zero() :
@@ -33,7 +33,7 @@ namespace EMW::Matrix {
     }
 
     MatrixCoefs
-    getMatrixCoefs(Types::index i, Types::index j, Types::complex_d k,
+    getMatrixCoefs(Types::index i, Types::index j, Types::scalar k,
                    const Containers::vector<Mesh::IndexedCell> &cells) {
         const Types::Matrix3c int0 = getZeroPartIntegral(i, j, k, cells);
         const Types::complex_d int1_k2 = k * k * getFirstPartIntegral(i, j, k, cells);
@@ -43,15 +43,15 @@ namespace EMW::Matrix {
         const Types::complex_d a21_0 = cells[i].tau[1].transpose() * int0 * cells[j].tau[0];
         const Types::complex_d a22_0 = cells[i].tau[1].transpose() * int0 * cells[j].tau[1];
 
-        const Types::complex_d a11_1 = dot(cells[i].tau[0], cells[j].tau[0]) * int1_k2;
-        const Types::complex_d a12_1 = dot(cells[i].tau[0], cells[j].tau[1]) * int1_k2;
-        const Types::complex_d a21_1 = dot(cells[i].tau[1], cells[j].tau[0]) * int1_k2;
-        const Types::complex_d a22_1 = dot(cells[i].tau[1], cells[j].tau[1]) * int1_k2;
+        const Types::complex_d a11_1 = Math::quasiDot(cells[i].tau[0], cells[j].tau[0]) * int1_k2;
+        const Types::complex_d a12_1 = Math::quasiDot(cells[i].tau[0], cells[j].tau[1]) * int1_k2;
+        const Types::complex_d a21_1 = Math::quasiDot(cells[i].tau[1], cells[j].tau[0]) * int1_k2;
+        const Types::complex_d a22_1 = Math::quasiDot(cells[i].tau[1], cells[j].tau[1]) * int1_k2;
 
         return {a11_0 + a11_1, a12_0 + a12_1, a21_0 + a21_1, a22_0 + a22_1};
     }
 
-    Types::MatrixXc getMatrix(Types::complex_d k, const Containers::vector<Mesh::IndexedCell> &cells) {
+    Types::MatrixXc getMatrix(Types::scalar k, const Containers::vector<Mesh::IndexedCell> &cells) {
         const long N = static_cast<long>(cells.size());
         Types::MatrixXc result = Types::MatrixXc::Zero(2 * N, 2 * N);
 
@@ -59,8 +59,8 @@ namespace EMW::Matrix {
             for (long j = 0; j < N; ++j) {
                 const auto coefs = getMatrixCoefs(i, j, k, cells);
                 result(i, j) = coefs.a11;
-                result(i + N, j) = coefs.a12;
-                result(i, j + N) = coefs.a21;
+                result(i + N, j) = coefs.a21;
+                result(i, j + N) = coefs.a12;
                 result(i + N, j + N) = coefs.a22;
             }
         }
@@ -72,9 +72,9 @@ namespace EMW::Matrix {
         const long N = static_cast<long>(cells.size());
         Types::VectorXc result = Types::VectorXc::Zero(2 * N);
         for (int i = 0; i < cells.size(); i++) {
-            const Types::complex_d exponent = std::exp(Math::Constants::i * dot(k_vec, cells[i].collPoint_.point_));
-            result(i) = -dot(cells[i].tau[0], pol) * exponent;
-            result(i + N) = -dot(cells[i].tau[1], pol) * exponent;
+            const Types::complex_d exponent = std::exp(Math::Constants::i * Math::quasiDot(k_vec, cells[i].collPoint_.point_));
+            result(i) = -Math::quasiDot(cells[i].tau[0], pol) * exponent;
+            result(i + N) = -Math::quasiDot(cells[i].tau[1], pol) * exponent;
         }
         return result;
     }

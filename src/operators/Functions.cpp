@@ -6,13 +6,13 @@
 #include "math/Productions.hpp"
 
 namespace EMW::Helmholtz {
-    Types::complex_d F(Types::complex_d k, const Types::Vector3d &x, const Types::Vector3d &y) {
+    Types::complex_d F(Types::scalar k, const Types::Vector3d &x, const Types::Vector3d &y) {
         const Types::Vector3d rVec = x - y;
         const Types::scalar r = std::sqrt(Math::quasiDot(rVec, rVec));
         return Math::Constants::inverse_4PI<Types::scalar>() * (std::exp(Math::Constants::i * k * r) / r);
     }
 
-    Types::Vector3c V(Types::complex_d k, const Types::Vector3d &x, const Types::Vector3d &y) {
+    Types::Vector3c V(Types::scalar k, const Types::Vector3d &x, const Types::Vector3d &y) {
         const Types::Vector3d r_vec = x - y;
         const Types::scalar r2 = (x - y).squaredNorm();
         const Types::scalar r = std::sqrt(r2);

@@ -23,7 +23,7 @@ namespace EMW::Mesh {
         sigmaOverCell(Types::complex_d k, const Types::Vector3d &tau, const Mesh::IndexedCell &cell) const;
 
         void calculateAll(const Types::Vector3d &polarization, const Types::Vector3c &k_vec,
-                          Types::complex_d k);
+                          Types::scalar k);
 
         [[nodiscard]] Types::scalar calculateESS(const Types::Vector3d &tau, Types::complex_d k) const;
 

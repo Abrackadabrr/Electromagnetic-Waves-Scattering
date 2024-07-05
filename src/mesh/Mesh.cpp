@@ -26,6 +26,22 @@ namespace EMW::Mesh {
         }
         jFilled_ = true;
     }
+
+    void SurfaceMesh::basisHack() {
+        int counter = 0;
+        for (auto& cell : cells_) {
+            // костыль для плоской геометрии в OYZ
+            if (counter % 2 == 1) {
+                cell.tau[0] = {0, 1, 0};
+                cell.tau[1] = {0, 0, 1};
+            } else {
+                cell.tau[0] = Types::Vector3d{0, 1, 1}.normalized();
+                cell.tau[1] = Types::Vector3d{0, -1, 1}.normalized();
+            }
+            counter++;
+        }
+    }
+
 #if 0
     SurfaceMesh::SurfaceMesh(Containers::vector<Point> nodes,
                              Containers::vector<Containers::array<Types::index, 4>> cells,

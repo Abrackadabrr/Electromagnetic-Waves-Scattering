@@ -34,6 +34,8 @@ namespace EMW::Mesh {
 
         [[nodiscard]] bool jFilled() const {return jFilled_;}
 
+        void basisHack();
+
         // deprecated
         //        SurfaceMesh(Containers::vector<Point> nodes,
         //                    Containers::vector<Containers::array<Types::index, 4>> cells,

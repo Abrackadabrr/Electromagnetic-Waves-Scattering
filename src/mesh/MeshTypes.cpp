@@ -46,12 +46,12 @@ namespace EMW::Mesh {
                 cellStructure.ort2)).normalized();  // == omega_i * (ort_1).normalized()
 
         // костыль для плоской геометрии в OYZ
-        if (points[0] % 1 == 0) {
+        if (points[0] % 2 != 0) {
             tau[0] = {0, 1, 0};
             tau[1] = {0, 0, 1};
         } else {
-            tau[0] = Types::Vector3d{0, 1, 1}.normalized();
-            tau[1] = Types::Vector3d{0, -1, 1}.normalized();
+            tau[0] = Types::Vector3d{0, 0, 1}.normalized();
+            tau[1] = Types::Vector3d{0, -1, 0}.normalized();
         }
     };
 }
