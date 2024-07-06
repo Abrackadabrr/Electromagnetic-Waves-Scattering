@@ -67,7 +67,7 @@ int main() {
 //    VTK::test_snapshot(0, *mesh2,
 //                       "/media/evgen/SecondLinuxDisk/4_level/Electromagnetic-Waves-Scattering/vtk_files/examples/plate/");
 
-    VTK::test_snapshot(0, *mesh3,
-                       "/media/evgen/SecondLinuxDisk/4_level/Electromagnetic-Waves-Scattering/vtk_files/examples/plate/");
+    VTK::surface_snapshot(0, *mesh3,
+                          "/media/evgen/SecondLinuxDisk/4_level/Electromagnetic-Waves-Scattering/vtk_files/examples/plate/");
 
 }

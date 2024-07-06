@@ -28,5 +28,5 @@ int main() {
 
     surfaceMesh->setName("surface_mesh_test_" + std::to_string(N1) + "_x_" + std::to_string(N2));
 
-    VTK::test_snapshot(1, *surfaceMesh, Pathes::examples + "plane/rectangular/");
+    VTK::surface_snapshot(1, *surfaceMesh, Pathes::examples + "plane/rectangular/");
 }

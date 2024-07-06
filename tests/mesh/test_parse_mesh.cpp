@@ -23,5 +23,5 @@ TEST(MESH, VTK_SNAPSHOT_TEST) {
 
     Mesh::SurfaceMesh mesh = EMW::Parser::parseMesh(nodes, cells, 2002, 2050);
     mesh.setName("mesh_test_parsing");
-    VTK::test_snapshot(0, mesh, "/media/evgen/SecondLinuxDisk/4_level/Electromagnetic-Waves-Scattering/vtk_files/");
+    VTK::surface_snapshot(0, mesh, "/media/evgen/SecondLinuxDisk/4_level/Electromagnetic-Waves-Scattering/vtk_files/");
 }

@@ -86,8 +86,8 @@ int main() {
     volumeMesh.setName("volume_mesh_triangular" + std::to_string(N_volume));
     volumeMesh.calculateAll(physics.E0, physics.k_vec, physics.k);
 
-    VTK::test_snapshot(1, *surfaceMesh,
-                       Pathes::examples + "plane/triangular/");
+    VTK::surface_snapshot(1, *surfaceMesh,
+                          Pathes::examples + "plane/triangular/");
 
     VTK::volume_snapshot(1, volumeMesh,
                          Pathes::examples + "plane/triangular/");

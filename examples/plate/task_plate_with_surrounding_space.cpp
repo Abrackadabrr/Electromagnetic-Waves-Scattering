@@ -8,6 +8,7 @@
 #include "mesh/VolumeMesh.hpp"
 #include "math/MathConstants.hpp"
 #include "examples/pathes.hpp"
+#include "experiment/PhysicalCondition.hpp"
 #include <Eigen/Core>
 #include <Eigen/IterativeLinearSolvers>
 #include <unsupported/Eigen/IterativeSolvers>
@@ -16,15 +17,6 @@
 
 using namespace EMW;
 using namespace EMW::Types;
-
-struct physicalConditions {
-    // polarization
-    Vector3d E0;
-    // wave figure in media without conductivity (vacuum of air)
-    scalar k;
-    // wave vector
-    Vector3d k_vec;
-};
 
 template<typename Range1, typename Range2, typename OutputIterator>
 void cartesian_productXY(Range1 const &r1, Range2 const &r2, OutputIterator out, Types::index N,
@@ -44,35 +36,32 @@ void cartesian_productXY(Range1 const &r1, Range2 const &r2, OutputIterator out,
 }
 
 int main() {
-    int N_volume = 81;
-    scalar h_volume = 0.075 / 2;
+    int N_volume = 41;
+    scalar h_volume = 0.075;
 
     int N = 41;
-    scalar h = 1. / (N-1);
+    scalar h = 1. / (N - 1);
     // сетка
     auto *surfaceMesh = new Mesh::SurfaceMesh{EMW::Examples::Plate::generatePlatePrimaryMesh(N, h)};
 
     surfaceMesh->setName("quadratic_random_basises" + std::to_string(N));
 
     // физика
-    physicalConditions physics{
-            .E0 = Vector3d{0, 1, 0}.normalized(),
-            .k = 4 * Math::Constants::PI<scalar>(),
-            .k_vec = Vector3d{1, 0, 0}.normalized()
-    };
-    physics.k_vec *= physics.k;
+    EMW::Physics::planeWaveCase physics{Vector3d{0, 1, 0}.normalized(),
+                                        4 * Math::Constants::PI<scalar>(),
+                                        Vector3d{0, 0, 1}.normalized()};
 
     // на мелкой
-    const VectorXc b3 = VectorXc{Matrix::getRHS(physics.E0, physics.k_vec, surfaceMesh->getCells())};
-    const MatrixXc A3 = Matrix::getMatrix(physics.k, surfaceMesh->getCells());
+    const VectorXc b = VectorXc{Matrix::getRHS(physics.E0, physics.k_vec, surfaceMesh->getCells())};
+    const MatrixXc A = Matrix::getMatrix(physics.k, surfaceMesh->getCells());
 
     auto method = Eigen::GMRES<MatrixXc>{};
     method.setMaxIterations(20000);
     std::cout << method.maxIterations() << std::endl;
     method.setTolerance(1e-7);
     method.set_restart(2000);
-    method.compute(A3);
-    const auto j = VectorXc{method.solve(b3)};
+    method.compute(A);
+    const auto j = VectorXc{method.solve(b)};
     std::cout << "total iterations: " << method.iterations() << std::endl;
     std::cout << "total error: " << method.error() << std::endl;
     std::cout << "Info: " << static_cast<int>(method.info()) << std::endl;
@@ -92,7 +81,7 @@ int main() {
     volumeMesh.setName("volume_mesh_" + std::to_string(N_volume));
     volumeMesh.calculateAll(physics.E0, physics.k_vec, physics.k);
 
-    VTK::test_snapshot(1, *surfaceMesh, Pathes::examples + "plane_basis_experiment/");
+    VTK::surface_snapshot(1, *surfaceMesh, Pathes::examples + "plane_basis_experiment/");
 
     VTK::volume_snapshot(1, volumeMesh, Pathes::examples + "plane_basis_experiment/");
 
