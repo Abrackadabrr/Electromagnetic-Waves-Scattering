@@ -50,8 +50,9 @@ TEST(SLAE, RHS) {
 
     const Mesh::SurfaceMesh mesh{meshgrid, cells};
 
-   const Vector3d E0{1, 0, 0};
+   const Vector3d E0{0, 1, 0};
 
-   const auto b = EMW::Matrix::getRHS(E0, {0, 0, 1}, mesh.getCells());
+   const auto b = EMW::Matrix::getRHS(E0, Vector3d{1, 0, 0}, mesh.getCells());
+
    std::cout << b << std::endl;
 }

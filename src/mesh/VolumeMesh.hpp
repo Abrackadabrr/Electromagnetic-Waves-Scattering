@@ -13,20 +13,9 @@ namespace EMW::Mesh {
     class VolumeMesh {
         Containers::vector<Node> nodes_;
         const Mesh::SurfaceMesh &surfaceMesh_;
-        std::string name_ = "volume_mesh";
-
-        Types::Vector3c
-        getFirstPartIntegral(const Point &point, Types::complex_d k);
-
-        Types::Vector3c
-        getZeroPartIntegral(const Point &point, Types::complex_d k);
-
-        Types::Vector3c
-        getRIntegral(const Point &point, Types::complex_d k);
+        std::string name_ = "default_volume_mesh_name";
 
     public:
-        VolumeMesh() = delete;
-
         VolumeMesh(const Mesh::SurfaceMesh &surfaceMesh, const Containers::vector<Node> &nodes) :
                 surfaceMesh_(surfaceMesh), nodes_(nodes) {};
 
@@ -34,7 +23,7 @@ namespace EMW::Mesh {
         sigmaOverCell(Types::complex_d k, const Types::Vector3d &tau, const Mesh::IndexedCell &cell) const;
 
         void calculateAll(const Types::Vector3d &polarization, const Types::Vector3c &k_vec,
-                          Types::complex_d k);
+                          Types::scalar k);
 
         [[nodiscard]] Types::scalar calculateESS(const Types::Vector3d &tau, Types::complex_d k) const;
 

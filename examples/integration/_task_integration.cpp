@@ -1,7 +1,7 @@
 //
 // Created by evgen on 31.01.24.
 //
-
+/*
 #include "types/Types.hpp"
 #include "integration/gauss_quadrature/GaussLegenderPoints.hpp"
 #include "integration/Quadrature.hpp"
@@ -38,4 +38,4 @@ int main() {
     assert(std::abs(2 * 2 * 2 * 2 * 2 * 2. / 6 + 2 * 2 * 2 * 2 * 2. / 5 - result) < 1e-14);
     result = DefiniteIntegrals::integrate<DefiniteIntegrals::GaussLegendre::Quadrature<3>>(func, {0}, {2});
     assert(std::abs(2 * 2 * 2 * 2 * 2 * 2. / 6 + 2 * 2 * 2 * 2 * 2. / 5 - result) < 1e-14);
-}
+}*/

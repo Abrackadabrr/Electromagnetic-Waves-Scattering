@@ -5,6 +5,8 @@
 #ifndef ELECTROMAGNETIC_WAVES_SCATTERING_MESHTYPES_HPP
 #define ELECTROMAGNETIC_WAVES_SCATTERING_MESHTYPES_HPP
 
+#include <utility>
+
 #include "types/Types.hpp"
 
 namespace EMW::Mesh {
@@ -14,16 +16,16 @@ namespace EMW::Mesh {
      * Тип расчетного узла
      */
     struct Node {
-        using F_t = Types::Vector3c;
+        using field_t = Types::Vector3c;
         Point point_;
-        F_t E_;
-        F_t H_;
-        F_t J_;
+        field_t E_;
+        field_t H_;
+        field_t J_;
 
     public:
         Node() = default;
 
-        explicit Node(const Point &point) : point_(point),
+        explicit Node(Point point) : point_(std::move(point)),
                                             E_(Types::Vector3c{Types::complex_d{0, 0}, Types::complex_d{0, 0},
                                                                Types::complex_d{0, 0}}),
                                             H_(Types::Vector3c{Types::complex_d{0, 0}, Types::complex_d{0, 0},
@@ -31,14 +33,14 @@ namespace EMW::Mesh {
                                             J_(Types::Vector3c{Types::complex_d{0, 0}, Types::complex_d{0, 0},
                                                                Types::complex_d{0, 0}}) {};
 
-        Node(Types::scalar x, Types::scalar y, Types::scalar z, F_t E, F_t H, F_t J)
+        Node(Types::scalar x, Types::scalar y, Types::scalar z, field_t E, field_t H, field_t J)
                 : point_(x, y, z), E_(std::move(E)), H_(std::move(H)), J_(std::move(J)) {}
 
-        void SetE(const F_t &E) { E_ = E; }
+        void SetE(const field_t &E) { E_ = E; }
 
-        void SetH(const F_t &H) { H_ = H; }
+        void SetH(const field_t &H) { H_ = H; }
 
-        void SetJ(const F_t &J) { H_ = J; }
+        void SetJ(const field_t &J) { H_ = J; }
     };
 
     struct CellStructure {
@@ -62,8 +64,6 @@ namespace EMW::Mesh {
      * Тип аппроксимированной ячейки сетки по четырём индексам
      * Содержит в себе вершины четырехугольника, точку коллокации, площадь
      * Хранение точек происходит в соотвествии с локальным полем нормалей поверхности ("правило буравчика")
-     *
-     * В функцию для интегрирования заходит по константной ссылке (оспариваемое решение)
      */
     struct IndexedCell {
         using nodes_t = Containers::array<Types::index, 4>;
@@ -87,34 +87,6 @@ namespace EMW::Mesh {
             return (integrationParameters.a + p * integrationParameters.b + q * integrationParameters.c).norm();
         }
     };
-
-    /**
-     * Тип аппроксимированной ячейки сетки по четырём точкам
-     * Содержит в себе вершины четырехугольника, точку коллокации, площадь
-     * Хранение точек происходит в соотвествии с локальным полем нормалей поверхности ("правило буравчика")
-     */
-    struct Cell {
-        Containers::array<Point, 4> points_;
-        Types::scalar area_;
-        Node collPoint_;
-        Types::Vector3d normal;
-        Containers::array<Types::Vector3d, 2> tau;
-        CellStructure cellStructure;
-        IntegrationParameters integrationParameters;
-
-        Cell() = default;
-
-        explicit Cell(Containers::array<Point, 4> points);
-
-        [[nodiscard]] Point parametrization(Types::scalar p, Types::scalar q) const noexcept {
-            return cellStructure.A + p * cellStructure.ort1 + q * cellStructure.ort2 + p * q * cellStructure.diff;
-        }
-
-        [[nodiscard]] Types::scalar multiplier(Types::scalar p, Types::scalar q) const noexcept {
-            return (integrationParameters.a + p * integrationParameters.b + q * integrationParameters.c).norm();
-        }
-    };
-
 }
 
 #endif //ELECTROMAGNETIC_WAVES_SCATTERING_MESHTYPES_HPP

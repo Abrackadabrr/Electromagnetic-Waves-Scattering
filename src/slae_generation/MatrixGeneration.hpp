@@ -39,11 +39,10 @@ namespace EMW::Matrix {
      * @return
      */
     Types::complex_d
-    getFirstPartIntegral(Types::index i, Types::index j, Types::complex_d k,
+    getFirstPartIntegral(Types::index i, Types::index j, Types::scalar k,
                          const Containers::vector<Mesh::IndexedCell> &cells);
 
 
-// тут сделано 4 лямбда-функции и это не очень хорошо, надо как-то поумнее придумать
     /**
      * Returning the zero part of matrix coefficients (contour integral)
      * @param i - index of an equation
@@ -53,14 +52,14 @@ namespace EMW::Matrix {
      * @return
      */
     Types::Matrix3c
-    getZeroPartIntegral(Types::index i, Types::index j, Types::complex_d k,
+    getZeroPartIntegral(Types::index i, Types::index j, Types::scalar k,
                         const Containers::vector<Mesh::IndexedCell> &cells);
 
     MatrixCoefs
-    getMatrixCoefs(Types::index i, Types::index j, Types::complex_d k,
+    getMatrixCoefs(Types::index i, Types::index j, Types::scalar k,
                    const Containers::vector<Mesh::IndexedCell> &cells);
 
-    Types::MatrixXc getMatrix(Types::complex_d k, const Containers::vector<Mesh::IndexedCell> &cells);
+    Types::MatrixXc getMatrix(Types::scalar k, const Containers::vector<Mesh::IndexedCell> &cells);
 
     Types::VectorXc getRHS(const Types::Vector3d &pol, const Types::Vector3d &k_vec,
                            const Containers::vector<Mesh::IndexedCell> &cells);

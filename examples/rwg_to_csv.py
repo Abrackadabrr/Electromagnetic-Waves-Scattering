@@ -1,9 +1,8 @@
 import csv
 
 
-file1 = open('/media/evgen/SecondLinuxDisk/4_level/INM RAS/Experimental/meshes/In_DM/25_50(2050).rwg', 'r')
+file1 = open('/media/evgen/SecondLinuxDisk/4_level/INM RAS/Experimental/meshes/In_DM/50_100(8200).rwg', 'r')
 count = 0
-
 
 numNodes = int(next(file1))
 
@@ -20,7 +19,7 @@ numCells = int(next(file1))
 print("Cells = ", numCells)
 csvfile = open(str(numCells) + '_cells.csv', 'w', newline='\n')
 wCells = csv.writer(csvfile)
-wCells.writerow(['f', 's', 't', 'fo'])
+wCells.writerow(['f', 's', 't', 'fou'])
 for i in range(numCells):
     count += 1
     wCells.writerow(next(file1).split())

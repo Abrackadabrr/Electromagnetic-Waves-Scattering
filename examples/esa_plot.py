@@ -3,7 +3,7 @@ import numpy as np
 import csv
 
 filename = ("/media/evgen/SecondLinuxDisk/4_level/"
-            "Electromagnetic-Waves-Scattering/vtk_files/examples/plane/sigmas/sigma_31.csv")
+            "Electromagnetic-Waves-Scattering/vtk_files/examples/cylinder/sigma_back_2002.csv")
 
 sigma = []
 angle = []
@@ -27,7 +27,7 @@ if polar:
     ax.set_title("Effective dispersion area, plane (1m x 1m)", va='bottom')
 else:
     fig, ax = plt.subplots()
-    ax.plot(angle, sigma, label=f"sigma")
+    ax.plot(angle[::1], 10 * np.log10(sigma[::1]), label=f"sigma")
     ax.grid(True)
     ax.set_xlabel("Angle")
     ax.set_ylabel("Effective dispersion area")

@@ -24,18 +24,17 @@ namespace EMW::Operators {
          */
         template<typename Quadrature, typename cell_t>
         Types::complex_d
-        K1OverSingularReducedAndDivided(const Mesh::Point &point, const cell_t &cell, const Types::complex_d k) {
+        K1OverSingularReducedAndDivided(const Mesh::Point &point, const cell_t &cell, const Types::scalar k) {
             const auto phi = [&](Types::scalar p, Types::scalar q) -> Types::complex_d {
                 const Types::Vector3d y = cell.parametrization(p, q);
                 const Types::scalar mul = cell.multiplier(p, q);
-//                const Types::scalar smoother = Helmholtz::smoother(std::sqrt(cell.area_) / 4, point, y);
                 return Helmholtz::F(k, point, y) * mul;
             };
             return DefiniteIntegrals::integrate<Quadrature>(phi, {0, 0}, {1., 1.});
         }
 
         /**
-         * Расчет множеителя - интергала по одной ячейке в операторе К1 в виде тензора
+         * Расчет множеителя - интергала по одной ячейке в операторе К0 в виде тензора
          * @tparam Quadrature тип квадратуры
          * @tparam cell_t тип ячейки
          * @param point точка для расчета
@@ -45,7 +44,7 @@ namespace EMW::Operators {
          */
         template<typename Quadrature, typename cell_t>
         Types::Matrix3c
-        K0TensorOverSingularCell(const Mesh::Point &point, const cell_t &cell, Types::complex_d k) {
+        K0TensorOverSingularCell(const Mesh::Point &point, const cell_t &cell, Types::scalar k) {
             const auto AB = [&](Types::scalar t) -> Types::Vector3c {
                 const Types::Vector3d y = cell.parametrization(t, 0);
                 return Helmholtz::V(k, point, y);
@@ -86,20 +85,13 @@ namespace EMW::Operators {
      */
     template<typename Quadrature, typename cell_t>
     Types::Vector3c K1OverSingularCellDivided(const Mesh::Point &point, const Types::Vector3c &j, const cell_t &cell,
-                                              const Types::complex_d k) {
-        return j * detail::K1OverSingularReducedAndDivided<Quadrature>(point, cell, k);
-    }
-
-    /** То же, но вектор j действительный */
-    template<typename Quadrature, typename cell_t>
-    Types::Vector3c K1OverSingularCellDivided(const Mesh::Point &point, const Types::Vector3d &j, const cell_t &cell,
-                                              const Types::complex_d k) {
+                                              const Types::scalar k) {
         return j * detail::K1OverSingularReducedAndDivided<Quadrature>(point, cell, k);
     }
 
     /** Полный расчет оператора K1 в точке point */
     template<typename Quadrature, typename cell_t>
-    Types::Vector3c K1(const Mesh::Point &point, const Containers::vector<cell_t> &cells, const Types::complex_d k) {
+    Types::Vector3c K1(const Mesh::Point &point, const Containers::vector<cell_t> &cells, const Types::scalar k) {
         Types::Vector3c result = Types::Vector3c::Zero();
         for (const auto &cell: cells) {
             result += K1OverSingularCellDivided<Quadrature>(point, cell.collPoint_.J_, cell, k);
@@ -108,18 +100,13 @@ namespace EMW::Operators {
     }
 
     template<typename Quadrature, typename cell_t>
-    Types::Vector3c K0OverSingularCell(const Mesh::Point &point, const Types::Vector3c &j, const cell_t &cell, Types::complex_d k) {
-        return detail::K0TensorOverSingularCell<Quadrature>(point, cell, k) * j;
-    }
-
-    template<typename Quadrature, typename cell_t>
-    Types::Vector3c K0OverSingularCell(const Mesh::Point &point, const Types::Vector3d &j, const cell_t &cell, Types::complex_d k) {
+    Types::Vector3c K0OverSingularCell(const Mesh::Point &point, const Types::Vector3c &j, const cell_t &cell, Types::scalar k) {
         return detail::K0TensorOverSingularCell<Quadrature>(point, cell, k) * j;
     }
 
     /** Полный расчет оператора K0 в точке point */
     template<typename Quadrature, typename cell_t>
-    Types::Vector3c K0(const Mesh::Point &point, const Containers::vector<cell_t> &cells, const Types::complex_d k) {
+    Types::Vector3c K0(const Mesh::Point &point, const Containers::vector<cell_t> &cells, const Types::scalar k) {
         Types::Vector3c result = Types::Vector3c::Zero();
         for (const auto &cell: cells) {
             result += K0OverSingularCell<Quadrature>(point, cell.collPoint_.J_, cell, k);
