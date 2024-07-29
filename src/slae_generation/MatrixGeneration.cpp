@@ -55,6 +55,7 @@ namespace EMW::Matrix {
         const long N = static_cast<long>(cells.size());
         Types::MatrixXc result = Types::MatrixXc::Zero(2 * N, 2 * N);
 
+#pragma omp parallel for schedule(dynamic) num_threads(7)
         for (long i = 0; i < N; ++i) {
             for (long j = 0; j < N; ++j) {
                 const auto coefs = getMatrixCoefs(i, j, k, cells);

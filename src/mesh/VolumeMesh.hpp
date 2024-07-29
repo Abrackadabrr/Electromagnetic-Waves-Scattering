@@ -22,10 +22,10 @@ namespace EMW::Mesh {
         [[nodiscard]] Types::Vector3c
         sigmaOverCell(Types::complex_d k, const Types::Vector3d &tau, const Mesh::IndexedCell &cell) const;
 
-        void calculateAll(const Types::Vector3d &polarization, const Types::Vector3c &k_vec,
+        void calculateAll(const Types::Vector3d &polarization, const Types::Vector3d &k_vec,
                           Types::scalar k);
 
-        [[nodiscard]] Types::scalar calculateESS(const Types::Vector3d &tau, Types::complex_d k) const;
+        [[nodiscard]] Types::scalar calculateESS(const Types::Vector3d &tau, Types::scalar k) const;
 
         [[nodiscard]] const Containers::vector<Node> &getNodes() const noexcept {
             return nodes_;

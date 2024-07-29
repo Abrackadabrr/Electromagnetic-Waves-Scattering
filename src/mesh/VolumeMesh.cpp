@@ -11,7 +11,7 @@
 #include "math/Productions.hpp"
 
 namespace EMW::Mesh {
-    void EMW::Mesh::VolumeMesh::calculateAll(const Types::Vector3d &polarization, const Types::Vector3c &k_vec,
+    void EMW::Mesh::VolumeMesh::calculateAll(const Types::Vector3d &polarization, const Types::Vector3d &k_vec,
                                              Types::scalar k) {
         if (surfaceMesh_.jFilled()) {
             for (auto &node: nodes_) {
@@ -38,7 +38,7 @@ namespace EMW::Mesh {
         return DefiniteIntegrals::integrate<DefiniteIntegrals::GaussLegendre::Quadrature<8, 8>>(phi, {0, 0}, {1, 1});
     }
 
-    Types::scalar EMW::Mesh::VolumeMesh::calculateESS(const Types::Vector3d &tau, Types::complex_d k) const {
+    Types::scalar EMW::Mesh::VolumeMesh::calculateESS(const Types::Vector3d &tau, Types::scalar k) const {
         if (surfaceMesh_.jFilled()) {
             Types::Vector3c result = Types::Vector3c::Zero();
             for (auto &cell: surfaceMesh_.getCells()) {

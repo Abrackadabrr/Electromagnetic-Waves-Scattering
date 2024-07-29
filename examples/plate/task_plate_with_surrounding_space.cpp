@@ -36,6 +36,12 @@ void cartesian_productXY(Range1 const &r1, Range2 const &r2, OutputIterator out,
 }
 
 int main() {
+
+    // физика
+    EMW::Physics::planeWaveCase physics(Vector3d{0, 1, 0}.normalized(),
+                                        4 * Math::Constants::PI<scalar>(),
+                                        Vector3d{1, 0, 0}.normalized());
+
     int N_volume = 41;
     scalar h_volume = 0.075;
 
@@ -46,11 +52,6 @@ int main() {
 
     surfaceMesh->setName("quadratic_random_basises" + std::to_string(N));
 
-    // физика
-    EMW::Physics::planeWaveCase physics{Vector3d{0, 1, 0}.normalized(),
-                                        4 * Math::Constants::PI<scalar>(),
-                                        Vector3d{0, 0, 1}.normalized()};
-
     // на мелкой
     const VectorXc b = VectorXc{Matrix::getRHS(physics.E0, physics.k_vec, surfaceMesh->getCells())};
     const MatrixXc A = Matrix::getMatrix(physics.k, surfaceMesh->getCells());
@@ -58,7 +59,7 @@ int main() {
     auto method = Eigen::GMRES<MatrixXc>{};
     method.setMaxIterations(20000);
     std::cout << method.maxIterations() << std::endl;
-    method.setTolerance(1e-7);
+    method.setTolerance(1e-5);
     method.set_restart(2000);
     method.compute(A);
     const auto j = VectorXc{method.solve(b)};
@@ -81,9 +82,9 @@ int main() {
     volumeMesh.setName("volume_mesh_" + std::to_string(N_volume));
     volumeMesh.calculateAll(physics.E0, physics.k_vec, physics.k);
 
-    VTK::surface_snapshot(1, *surfaceMesh, Pathes::examples + "plane_basis_experiment/");
+    VTK::surface_snapshot(1, *surfaceMesh, Pathes::examples + "plane_6_07/");
 
-    VTK::volume_snapshot(1, volumeMesh, Pathes::examples + "plane_basis_experiment/");
+    VTK::volume_snapshot(1, volumeMesh, Pathes::examples + "plane_6_07/");
 
     delete surfaceMesh;
 

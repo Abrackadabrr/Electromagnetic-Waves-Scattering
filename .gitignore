@@ -41,3 +41,6 @@ vtk_files
 *.exe
 *.out
 *.app
+
+# Hand-build directories
+build

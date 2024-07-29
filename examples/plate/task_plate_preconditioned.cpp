@@ -71,7 +71,7 @@ int main() {
     auto method = Eigen::GMRES<MatrixXc>{};
     method.setMaxIterations(20000);
     std::cout << method.maxIterations() << std::endl;
-    method.setTolerance(1e-4);
+    method.setTolerance(1e-5);
     method.set_restart(2000);
     method.compute(newMatrix);
     const auto j = VectorXc{method.solveWithGuess(newRHS, newRHS)};

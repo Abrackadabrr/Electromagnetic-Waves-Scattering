@@ -42,16 +42,16 @@ void to_csv(const Container<T> &cont1, const Container<T> &cont2, std::ofstream 
 }
 
 int main() {
-    const std::string nodes = "/media/evgen/SecondLinuxDisk/4_level/Electromagnetic-Waves-Scattering/examples/2002_nodes.csv";
-    const std::string cells = "/media/evgen/SecondLinuxDisk/4_level/Electromagnetic-Waves-Scattering/examples/2050_cells.csv";
-    const EMW::Types::index nNodes = 2002;
-    const EMW::Types::index nCells = 2050;
+    const std::string nodes = "/media/evgen/SecondLinuxDisk/4_level/Electromagnetic-Waves-Scattering/examples/8102_nodes.csv";
+    const std::string cells = "/media/evgen/SecondLinuxDisk/4_level/Electromagnetic-Waves-Scattering/examples/8200_cells.csv";
+    const EMW::Types::index nNodes = 8102;
+    const EMW::Types::index nCells = 8200;
     auto * surfaceMesh = new Mesh::SurfaceMesh{EMW::Parser::parseMesh(nodes, cells, nNodes, nCells)};
 
-    surfaceMesh->setName("surface_mesh_" + std::to_string(2002));
+    surfaceMesh->setName("surface_mesh_" + std::to_string(8102));
 
     // физика
-    const scalar frec_div_c = 2 / 0.299792458;
+    const scalar frec_div_c = 8 / 0.299792458;
     const scalar omega_div_c = frec_div_c * (2 * Math::Constants::PI<scalar>());
     const scalar k = omega_div_c;
     const Vector3d E0 = Vector3d{0, 0, 1}.normalized();
