@@ -11,40 +11,22 @@
 #include "math/Productions.hpp"
 
 namespace EMW::Mesh {
-    void EMW::Mesh::VolumeMesh::calculateAll(const Types::Vector3d &polarization, const Types::Vector3d &k_vec,
-                                             Types::scalar k) {
+    void EMW::Mesh::VolumeMesh::evaluateOperator(Types::scalar k, const Math::SurfaceField &field) {
         for (auto &node: nodes_) {
-            node.E_ =
-                    Operators::K0<DefiniteIntegrals::GaussLegendre::Quadrature<8>>(node.point_,
-                                                                                   surfaceMesh_.getCells(),
-                                                                                   k) +
-                    Operators::K1<DefiniteIntegrals::GaussLegendre::Quadrature<8, 8>>(node.point_,
-                                                                                      surfaceMesh_.getCells(), k) +
-                    polarization * std::exp(Math::Constants::i * Math::quasiDot(node.point_, k_vec));
+            node.E_ = Operators::K0<DefiniteIntegrals::GaussLegendre::Quadrature<8>>(node.point_, k, field) +
+                      Operators::K1<DefiniteIntegrals::GaussLegendre::Quadrature<8, 8>>(node.point_, k, field);
         }
     }
 
-
-    Types::Vector3c EMW::Mesh::VolumeMesh::sigmaOverCell(Types::complex_d k, const Types::Vector3d &tau,
-                                                         const Mesh::IndexedCell &cell) const {
-        const auto phi = [&](Types::scalar p, Types::scalar q) -> Types::Vector3c {
-            const Mesh::point_t y = cell.parametrization(p, q);
-            const Types::scalar mul = cell.multiplier(p, q);
-            return Helmholtz::sigmaKernel(k, tau, y, cell.collPoint_.J_) * mul;
-        };
-        return DefiniteIntegrals::integrate<DefiniteIntegrals::GaussLegendre::Quadrature<8, 8>>(phi, {0, 0}, {1, 1});
-    }
-
-    Types::scalar EMW::Mesh::VolumeMesh::calculateESS(const Types::Vector3d &tau, Types::scalar k) const {
-        if (surfaceMesh_.jFilled()) {
-            Types::Vector3c result = Types::Vector3c::Zero();
-            for (auto &cell: surfaceMesh_.getCells()) {
-                result += sigmaOverCell(k, tau, cell);
-            }
-            return Math::Constants::inverse_4PI<Types::scalar>() * result.squaredNorm();
-        } else {
-            throw std::exception();
+    void EMW::Mesh::VolumeMesh::addInitialField(const std::function<Types::Vector3c(Mesh::point_t)> &initial) {
+        for (auto &node: nodes_) {
+            node.E_ += initial(node.point_);
         }
     }
 
+    void VolumeMesh::calculateFullField(Types::scalar k, const Math::SurfaceField &field,
+                                        const std::function<Types::Vector3c(Mesh::point_t)> &initial) {
+        evaluateOperator(k, field);
+        addInitialField(initial);
+    }
 };

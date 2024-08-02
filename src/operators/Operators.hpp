@@ -9,7 +9,7 @@
 #include "mesh/MeshTypes.hpp"
 #include "Functions.hpp"
 #include "integration/Quadrature.hpp"
-#include "mesh/SurfaceMesh.hpp"
+#include "math/SurfaceField.hpp"
 
 namespace EMW::Operators {
     namespace detail {
@@ -89,27 +89,32 @@ namespace EMW::Operators {
         return j * detail::K1OverSingularReducedAndDivided<Quadrature>(point, cell, k);
     }
 
-    /** Полный расчет оператора K1 в точке point */
-    template<typename Quadrature, typename cell_t>
-    Types::Vector3c K1(const Mesh::point_t &point, const Containers::vector<cell_t> &cells, const Types::scalar k) {
-        Types::Vector3c result = Types::Vector3c::Zero();
-        for (const auto &cell: cells) {
-            result += K1OverSingularCellDivided<Quadrature>(point, cell.collPoint_.J_, cell, k);
-        }
-        return result * k * k;
-    }
-
     template<typename Quadrature, typename cell_t>
     Types::Vector3c K0OverSingularCell(const Mesh::point_t &point, const Types::Vector3c &j, const cell_t &cell, Types::scalar k) {
         return detail::K0TensorOverSingularCell<Quadrature>(point, cell, k) * j;
     }
 
-    /** Полный расчет оператора K0 в точке point */
-    template<typename Quadrature, typename cell_t>
-    Types::Vector3c K0(const Mesh::point_t &point, const Containers::vector<cell_t> &cells, const Types::scalar k) {
+
+    /** Полный расчет оператора K1 в точке point */
+    template<typename Quadrature>
+    Types::Vector3c K1(const Mesh::point_t &point, const Types::scalar k, const Math::SurfaceField& field) {
+        const auto & cells = field.getManifold().getCells();
+        const auto & f = field.getField();
         Types::Vector3c result = Types::Vector3c::Zero();
-        for (const auto &cell: cells) {
-            result += K0OverSingularCell<Quadrature>(point, cell.collPoint_.J_, cell, k);
+        for (int i = 0; i != cells.size(); i++) {
+            result += K1OverSingularCellDivided<Quadrature>(point, f[i], cells[i], k);
+        }
+        return result * k * k;
+    }
+
+    /** Полный расчет оператора K0 в точке point */
+    template<typename Quadrature>
+    Types::Vector3c K0(const Mesh::point_t &point, const Types::scalar k, const Math::SurfaceField& field) {
+        const auto & cells = field.getManifold().getCells();
+        const auto & f = field.getField();
+        Types::Vector3c result = Types::Vector3c::Zero();
+        for (int i = 0; i != cells.size(); i++) {
+            result += K0OverSingularCell<Quadrature>(point, f[i], cells[i], k);
         }
         return result;
     }

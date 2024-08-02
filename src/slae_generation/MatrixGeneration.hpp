@@ -61,9 +61,6 @@ namespace EMW::Matrix {
                    const Containers::vector<Mesh::IndexedCell> &cells);
 
     Types::MatrixXc getMatrix(Types::scalar k, const Mesh::SurfaceMesh& surface_mesh);
-
-    Types::VectorXc getRHS(const Types::Vector3d &pol, const Types::Vector3d &k_vec,
-                           const Containers::vector<Mesh::IndexedCell> &cells);
 }
 
 #endif //ELECTROMAGNETIC_WAVES_SCATTERING_MATRIXGENERATIONFUNCTION_HPP

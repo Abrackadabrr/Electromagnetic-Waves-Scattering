@@ -55,7 +55,7 @@ TEST_F(K1_TESTS, TEST_MIDDLE_ZONE) {
 
     // расчет с упрощенным ядром
     Types::Vector3c reducedResult =
-            Helmholtz::reducedK(k, point, cell.collPoint_.point_, cell.collPoint_.J_) * cell.area_;
+            Helmholtz::reducedK_kernel(k, point, cell.collPoint_.point_, cell.collPoint_.J_) * cell.area_;
 
     std::cout << reducedResult << std::endl;
 

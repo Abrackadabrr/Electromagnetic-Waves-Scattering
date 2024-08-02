@@ -7,32 +7,26 @@
 
 #include "types/Types.hpp"
 #include "mesh/MeshTypes.hpp"
-#include "mesh/SurfaceMesh.hpp"
+#include "math/SurfaceField.hpp"
 
 namespace EMW::Mesh {
     class VolumeMesh {
         Containers::vector<Node> nodes_;
-        const Mesh::SurfaceMesh &surfaceMesh_;
         std::string name_ = "default_volume_mesh_name";
 
     public:
         VolumeMesh(const Mesh::SurfaceMesh &surfaceMesh, const Containers::vector<Node> &nodes) :
-                surfaceMesh_(surfaceMesh), nodes_(nodes) {};
+                nodes_(nodes) {};
 
-        [[nodiscard]] Types::Vector3c
-        sigmaOverCell(Types::complex_d k, const Types::Vector3d &tau, const Mesh::IndexedCell &cell) const;
+        void evaluateOperator(Types::scalar k, const Math::SurfaceField &field);
 
-        void calculateAll(const Types::Vector3d &polarization, const Types::Vector3d &k_vec,
-                          Types::scalar k);
+        void addInitialField(const std::function<Types::Vector3c(Mesh::point_t)> &initial);
 
-        [[nodiscard]] Types::scalar calculateESS(const Types::Vector3d &tau, Types::scalar k) const;
+        void calculateFullField(Types::scalar k, const Math::SurfaceField &field,
+                                const std::function<Types::Vector3c(Mesh::point_t)> &initial);
 
         [[nodiscard]] const Containers::vector<Node> &getNodes() const noexcept {
             return nodes_;
-        }
-
-        [[nodiscard]] const Mesh::SurfaceMesh &getSurface() const noexcept {
-            return surfaceMesh_;
         }
 
         [[nodiscard]] std::string getName() const noexcept {

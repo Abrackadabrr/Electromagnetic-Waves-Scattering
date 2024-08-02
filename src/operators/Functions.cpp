@@ -34,7 +34,7 @@ namespace EMW::Helmholtz {
     }
 
     Types::Vector3c
-    reducedK(Types::complex_d k, const Types::Vector3d &x, const Types::Vector3d &y, const Types::Vector3c &j) {
+    reducedK_kernel(Types::complex_d k, const Types::Vector3d &x, const Types::Vector3d &y, const Types::Vector3c &j) {
         const Types::Vector3d rVec = x - y;
         const Types::scalar r2 = rVec.squaredNorm();
         const Types::scalar r = std::sqrt(r2);

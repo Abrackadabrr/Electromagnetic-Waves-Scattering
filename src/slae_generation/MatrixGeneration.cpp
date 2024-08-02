@@ -5,10 +5,8 @@
 #include "MatrixGeneration.hpp"
 #include "operators/Functions.hpp"
 #include "operators/Operators.hpp"
-#include "integration/Quadrature.hpp"
 #include "integration/gauss_quadrature/GaussLegenderPoints.hpp"
 #include "integration/newton_cotess/Rectangular.hpp"
-#include "math/MathConstants.hpp"
 #include "math/Productions.hpp"
 
 namespace EMW::Matrix {
@@ -16,10 +14,10 @@ namespace EMW::Matrix {
     getFirstPartIntegral(Types::index i, Types::index j, Types::scalar k,
                          const Containers::vector<Mesh::IndexedCell> &cells) {
         return i == j ?
-               EMW::Operators::detail::K1OverSingularReducedAndDivided<DefiniteIntegrals::NewtonCotess::Quadrature<8, 8>>(
+               EMW::Operators::detail::K1OverSingularReducedAndDivided<DefiniteIntegrals::NewtonCotess::Quadrature<2, 2>>(
                        cells[i].collPoint_.point_, cells[j], k)
                       :
-               EMW::Operators::detail::K1OverSingularReducedAndDivided<DefiniteIntegrals::GaussLegendre::Quadrature<8, 8>>(
+               EMW::Operators::detail::K1OverSingularReducedAndDivided<DefiniteIntegrals::GaussLegendre::Quadrature<6, 6>>(
                        cells[i].collPoint_.point_, cells[j], k);
     }
 
