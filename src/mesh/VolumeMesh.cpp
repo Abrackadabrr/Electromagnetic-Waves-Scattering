@@ -31,7 +31,7 @@ namespace EMW::Mesh {
     Types::Vector3c EMW::Mesh::VolumeMesh::sigmaOverCell(Types::complex_d k, const Types::Vector3d &tau,
                                                          const Mesh::IndexedCell &cell) const {
         const auto phi = [&](Types::scalar p, Types::scalar q) -> Types::Vector3c {
-            const Mesh::Point y = cell.parametrization(p, q);
+            const Mesh::point_t y = cell.parametrization(p, q);
             const Types::scalar mul = cell.multiplier(p, q);
             return Helmholtz::sigmaKernel(k, tau, y, cell.collPoint_.J_) * mul;
         };

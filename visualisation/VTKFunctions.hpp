@@ -5,7 +5,7 @@
 #ifndef ELECTROMAGNETIC_WAVES_SCATTERING_VTKFUNCTIONS_HPP
 #define ELECTROMAGNETIC_WAVES_SCATTERING_VTKFUNCTIONS_HPP
 
-#include "mesh/Mesh.hpp"
+#include "mesh/SurfaceMesh.hpp"
 #include "mesh/VolumeMesh.hpp"
 #include "types/Types.hpp"
 

@@ -10,7 +10,7 @@
 #include <tuple>
 #include <ranges>
 #include "types/Types.hpp"
-#include "mesh/Mesh.hpp"
+#include "mesh/SurfaceMesh.hpp"
 
 namespace EMW::Utils {
 

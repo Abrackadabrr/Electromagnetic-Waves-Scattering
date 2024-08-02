@@ -11,7 +11,6 @@ if (WITH_TESTS)
     add_subdirectory(tests)
 endif ()
 
-
 if (WITH_TASKS)
     add_subdirectory(examples)
 endif ()

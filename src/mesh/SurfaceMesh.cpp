@@ -2,13 +2,12 @@
 // Created by evgen on 30.01.24.
 //
 
-#include "Mesh.hpp"
+#include "SurfaceMesh.hpp"
 #include <ranges>
 
 namespace EMW::Mesh {
-    SurfaceMesh::SurfaceMesh(Containers::vector<Point> nodes,
-                             Containers::vector<Containers::array<Types::index, 4>> cells) : nodes_(nodes),
-                                                                                             jFilled_(false) {
+    SurfaceMesh::SurfaceMesh(Containers::vector<point_t> nodes,
+                             Containers::vector<Containers::array<Types::index, 4>> cells) : nodes_(nodes) {
         const auto cellsConstructed = cells | std::views::transform(
                 [&nodes](const Containers::array<Types::index, 4> &indexes) -> IndexedCell {
                     auto cell = IndexedCell(indexes, nodes);
@@ -24,24 +23,7 @@ namespace EMW::Mesh {
         for (auto [i, cell]: cells_ | std::views::enumerate) {
             cell.collPoint_.J_ = j(i) * cell.tau[0] + j(i + N) * cell.tau[1];
         }
-        jFilled_ = true;
     }
-
-    void SurfaceMesh::basisHack() {
-        int counter = 0;
-        for (auto& cell : cells_) {
-            // костыль для плоской геометрии в OYZ
-            if (counter % 2 == 1) {
-                cell.tau[0] = {0, 1, 0};
-                cell.tau[1] = {0, 0, 1};
-            } else {
-                cell.tau[0] = Types::Vector3d{0, 1, 1}.normalized();
-                cell.tau[1] = Types::Vector3d{0, -1, 1}.normalized();
-            }
-            counter++;
-        }
-    }
-
 #if 0
     SurfaceMesh::SurfaceMesh(Containers::vector<Point> nodes,
                              Containers::vector<Containers::array<Types::index, 4>> cells,

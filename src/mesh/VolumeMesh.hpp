@@ -7,7 +7,7 @@
 
 #include "types/Types.hpp"
 #include "mesh/MeshTypes.hpp"
-#include "mesh/Mesh.hpp"
+#include "mesh/SurfaceMesh.hpp"
 
 namespace EMW::Mesh {
     class VolumeMesh {

@@ -17,11 +17,11 @@ class TRIANGULAR_CELL_TESTS : public testing::Test {
 
 TEST_F(TRIANGULAR_CELL_TESTS, METADATA) {
     // объявляем ячейку, по которой происходит интегрирование
-    const Containers::vector<Mesh::Point> points = {
-            Mesh::Point{0, 0, 0},
-            Mesh::Point{1, 0, 0},
-            Mesh::Point{1. / 2, std::sqrt(3) / 2, 0},
-            Mesh::Point{1. / 2, std::sqrt(3) / 2, 0}
+    const Containers::vector<Mesh::point_t> points = {
+            Mesh::point_t{0, 0, 0},
+            Mesh::point_t{1, 0, 0},
+            Mesh::point_t{1. / 2, std::sqrt(3) / 2, 0},
+            Mesh::point_t{1. / 2, std::sqrt(3) / 2, 0}
     };
     Mesh::IndexedCell cell{{0, 1, 2, 3}, points};
 
@@ -57,13 +57,13 @@ TEST_F(TRIANGULAR_CELL_TESTS, METADATA) {
 
 TEST_F(TRIANGULAR_CELL_TESTS, SURFACE_INTEGRATION_CONSTANT) {
     // объявляем ячейку, по которой происходит интегрирование
-    const Containers::vector<Mesh::Point> points = {
-            Mesh::Point{0, 0, 0},
-            Mesh::Point{1, 0, 0},
-            Mesh::Point{1, 1, 0},
-            Mesh::Point{1, 1, 1},
-            Mesh::Point{3, 1, 5},
-            Mesh::Point{3, 1.2, std::sqrt(12)}
+    const Containers::vector<Mesh::point_t> points = {
+            Mesh::point_t{0, 0, 0},
+            Mesh::point_t{1, 0, 0},
+            Mesh::point_t{1, 1, 0},
+            Mesh::point_t{1, 1, 1},
+            Mesh::point_t{3, 1, 5},
+            Mesh::point_t{3, 1.2, std::sqrt(12)}
     };
     Mesh::IndexedCell cell[4] = {{{0, 1, 2, 2}, points},
                                  {{0, 3, 5, 5}, points},
@@ -109,10 +109,10 @@ TEST_F(TRIANGULAR_CELL_TESTS, SURFACE_INTEGRATION_CONSTANT) {
 
 TEST_F(TRIANGULAR_CELL_TESTS, SURFACE_INTEGRATION) {
     // объявляем ячейку, по которой происходит интегрирование
-    const Containers::vector<Mesh::Point> points = {
-            Mesh::Point{0, 0, 0},
-            Mesh::Point{1, 0, 0},
-            Mesh::Point{1, 1, 0},
+    const Containers::vector<Mesh::point_t> points = {
+            Mesh::point_t{0, 0, 0},
+            Mesh::point_t{1, 0, 0},
+            Mesh::point_t{1, 1, 0},
     };
     Mesh::IndexedCell cell{{0, 1, 2, 2}, points};
 
@@ -132,11 +132,11 @@ TEST_F(TRIANGULAR_CELL_TESTS, SURFACE_INTEGRATION) {
 }
 
 TEST_F(TRIANGULAR_CELL_TESTS, CONTOUR_PARAMETRIZATION) {
-    const Containers::vector<Mesh::Point> points = {
-            Mesh::Point{0, 0, 0},
-            Mesh::Point{1, 0, 0},
-            Mesh::Point{1, 1, 0},
-            Mesh::Point{1, 1, 0}
+    const Containers::vector<Mesh::point_t> points = {
+            Mesh::point_t{0, 0, 0},
+            Mesh::point_t{1, 0, 0},
+            Mesh::point_t{1, 1, 0},
+            Mesh::point_t{1, 1, 0}
     };
     Mesh::IndexedCell cell{{0, 1, 2, 3}, points};
 
@@ -166,11 +166,11 @@ TEST_F(TRIANGULAR_CELL_TESTS, CONTOUR_PARAMETRIZATION) {
 
 TEST_F(TRIANGULAR_CELL_TESTS, CONTOUR_INTEGRATION) {
     // объявляем ячейку, по которой происходит интегрирование
-    const Containers::vector<Mesh::Point> points = {
-            Mesh::Point{0, 0, 0},
-            Mesh::Point{1, 0, 0},
-            Mesh::Point{1, 1, 0},
-            Mesh::Point{1, 1, 0}
+    const Containers::vector<Mesh::point_t> points = {
+            Mesh::point_t{0, 0, 0},
+            Mesh::point_t{1, 0, 0},
+            Mesh::point_t{1, 1, 0},
+            Mesh::point_t{1, 1, 0}
     };
     Mesh::IndexedCell cell{{0, 1, 2, 3}, points};
 

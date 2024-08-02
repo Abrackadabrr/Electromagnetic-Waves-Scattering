@@ -5,7 +5,7 @@
 #include "ESA.hpp"
 #include "types/Types.hpp"
 #include "mesh/MeshTypes.hpp"
-#include "mesh/Mesh.hpp"
+#include "mesh/SurfaceMesh.hpp"
 #include "integration/Quadrature.hpp"
 #include "integration/gauss_quadrature/GaussLegenderPoints.hpp"
 #include "operators/Functions.hpp"
@@ -15,7 +15,7 @@ namespace EMW::ESA {
     Types::Vector3c sigmaOverCell(Types::complex_d k, const Types::Vector3d &tau,
                                                          const Mesh::IndexedCell &cell) {
         const auto phi = [&](Types::scalar p, Types::scalar q) -> Types::Vector3c {
-            const Mesh::Point y = cell.parametrization(p, q);
+            const Mesh::point_t y = cell.parametrization(p, q);
             const Types::scalar mul = cell.multiplier(p, q);
             return Helmholtz::sigmaKernel(k, tau, y, cell.collPoint_.J_) * mul;
         };

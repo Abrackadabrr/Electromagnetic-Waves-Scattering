@@ -3,7 +3,7 @@
 //
 #include "mesh/Parser.hpp"
 #include "types/Types.hpp"
-#include "mesh/Mesh.hpp"
+#include "mesh/SurfaceMesh.hpp"
 #include "mesh/MeshTypes.hpp"
 #include "visualisation/VTKFunctions.hpp"
 #include "mesh/Parser.hpp"
@@ -41,12 +41,12 @@ int main() {
     // окружающая сетка
     int N_volume = 161;
     scalar h_volume = 0.04;
-    Containers::vector<Mesh::Point> nodes;
+    Containers::vector<Mesh::point_t> nodes;
     nodes.reserve(N_volume * N_volume);
     Utils::cartesian_product(std::ranges::views::iota(0, N_volume), std::ranges::views::iota(0, N_volume),
                       std::ranges::views::iota(0, 1), N_volume, N_volume, 1, h_volume, h_volume, 1,
                       std::back_inserter(nodes));
-    const auto cellView = nodes | std::views::transform([](const Mesh::Point &p) { return Mesh::Node{p}; });
+    const auto cellView = nodes | std::views::transform([](const Mesh::point_t &p) { return Mesh::Node{p}; });
     Mesh::VolumeMesh volumeMesh{*surfaceMesh, {cellView.begin(), cellView.end()}};
     volumeMesh.setName("volume_mesh__" + std::to_string(N_volume));
 

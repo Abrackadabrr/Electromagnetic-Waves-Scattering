@@ -7,7 +7,7 @@
 
 #include "types/Types.hpp"
 #include "mesh/MeshTypes.hpp"
-#include "mesh/Mesh.hpp"
+#include "mesh/SurfaceMesh.hpp"
 
 namespace EMW::ESA {
     Types::Vector3c sigmaOverCell(Types::complex_d k, const Types::Vector3d &tau,

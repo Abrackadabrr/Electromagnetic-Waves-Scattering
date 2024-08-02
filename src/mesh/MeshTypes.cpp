@@ -5,7 +5,7 @@
 #include "MeshTypes.hpp"
 
 namespace EMW::Mesh {
-    IndexedCell::IndexedCell(Containers::array<Types::index, 4> points, const Containers::vector<Point> &fullPoints)
+    IndexedCell::IndexedCell(Containers::array<Types::index, 4> points, const Containers::vector<point_t> &fullPoints)
             : points_(points), collPoint_() {
         collPoint_.point_ = (static_cast<Types::scalar>(1) / static_cast<Types::scalar>(4)) *
                             (fullPoints[points_[0]] + fullPoints[points_[1]] + fullPoints[points_[2]] +

@@ -4,7 +4,7 @@
 
 #include "mesh/Parser.hpp"
 #include "types/Types.hpp"
-#include "mesh/Mesh.hpp"
+#include "mesh/SurfaceMesh.hpp"
 #include "mesh/MeshTypes.hpp"
 #include "visualisation/VTKFunctions.hpp"
 #include "mesh/Parser.hpp"

@@ -11,11 +11,11 @@
 
 #include "types/Types.hpp"
 #include "examples/Utils.hpp"
-#include "mesh/Mesh.hpp"
+#include "mesh/SurfaceMesh.hpp"
 
 namespace EMW::Examples::Plate {
     EMW::Mesh::SurfaceMesh generatePlatePrimaryMesh(int N, Types::scalar h) {
-        std::vector<Mesh::Point> meshgrid;
+        std::vector<Mesh::point_t> meshgrid;
         meshgrid.reserve(N * N);
         Utils::cartesian_productYZ(std::ranges::views::iota(0, N), std::ranges::views::iota(0, N),
                           std::back_inserter(meshgrid), N, h);
@@ -36,7 +36,7 @@ namespace EMW::Examples::Plate {
 
     EMW::Mesh::SurfaceMesh
     generateRectangularMesh(int N1, int N2, Types::scalar h1, Types::scalar h2) {
-        std::vector<Mesh::Point> meshgrid;
+        std::vector<Mesh::point_t> meshgrid;
         meshgrid.reserve(N1 * N2);
         Utils::cartesian_product_unevenYZ(std::ranges::views::iota(0, N1), std::ranges::views::iota(0, N2),
                                  std::back_inserter(meshgrid), N1, N2, h1, h2);

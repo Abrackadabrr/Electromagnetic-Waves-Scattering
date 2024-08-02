@@ -43,7 +43,7 @@ namespace VTK {
         n->SetNumberOfComponents(3);
         n->SetName("n");
 
-        const EMW::Containers::vector<EMW::Mesh::Point> &nodes = mesh.getNodes();
+        const EMW::Containers::vector<EMW::Mesh::point_t> &nodes = mesh.getNodes();
         const EMW::Containers::vector<EMW::Mesh::IndexedCell> &cells = mesh.getCells();
 
         // Обходим точки коллакации нашей сетки

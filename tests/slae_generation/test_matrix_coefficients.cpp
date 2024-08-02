@@ -10,7 +10,7 @@
 
 #include "gtest/gtest.h"
 #include "types/Types.hpp"
-#include "mesh/Mesh.hpp"
+#include "mesh/SurfaceMesh.hpp"
 #include "mesh/MeshTypes.hpp"
 #include "slae_generation/MatrixGeneration.hpp"
 
@@ -32,7 +32,7 @@ void cartesian_product(Range1 const &r1, Range2 const &r2, OutputIterator out, s
 
 TEST(MARTIX, MATRIX_COEFFICIENTS) {
     int N = 2;
-    std::vector<Mesh::Point> meshgrid;
+    std::vector<Mesh::point_t> meshgrid;
     meshgrid.reserve(N * N);
     cartesian_product(std::ranges::views::iota(0, N), std::ranges::views::iota(0, N), std::back_inserter(meshgrid), 2);
 
@@ -65,7 +65,7 @@ TEST(MARTIX, MATRIX_COEFFICIENTS) {
 
 TEST(MARTIX, MATRIX) {
     int N = 100;
-    std::vector<Mesh::Point> meshgrid;
+    std::vector<Mesh::point_t> meshgrid;
     meshgrid.reserve(N * N);
     cartesian_product(std::ranges::views::iota(0, N), std::ranges::views::iota(0, N), std::back_inserter(meshgrid), 0.05);
 

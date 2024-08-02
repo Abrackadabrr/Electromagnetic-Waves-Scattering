@@ -82,13 +82,13 @@ int main() {
 
     // создаем окружающую сетку
 
-    Containers::vector<Mesh::Point> nodes;
+    Containers::vector<Mesh::point_t> nodes;
     nodes.reserve(N_volume * N_volume);
     cartesian_productXY(std::ranges::views::iota(0, N_volume),
                         std::ranges::views::iota(0, N_volume),
                         std::back_inserter(nodes), N_volume, h_volume);
 
-    const auto cellView = nodes | std::views::transform([](const Mesh::Point &p) { return Mesh::Node{p}; });
+    const auto cellView = nodes | std::views::transform([](const Mesh::point_t &p) { return Mesh::Node{p}; });
 
     Mesh::VolumeMesh volumeMesh{*surfaceMesh, {cellView.begin(), cellView.end()}};
     volumeMesh.setName("volume_mesh_" + std::to_string(N_volume));

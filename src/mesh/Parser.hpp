@@ -6,14 +6,14 @@
 #define ELECTROMAGNETIC_WAVES_SCATTERING_OBJPARSER_H
 
 #include "MeshTypes.hpp"
-#include "Mesh.hpp"
+#include "SurfaceMesh.hpp"
 #include "../types/Types.hpp"
 #include "third_party/csv/csv.h"
 #include <string>
 
 namespace EMW::Parser {
     Mesh::SurfaceMesh parseMesh(const std::string & csvNodes, const std::string & csvCells, int nNodes, int nCells) {
-        Containers::vector<Mesh::Point> nodes;
+        Containers::vector<Mesh::point_t> nodes;
         nodes.reserve(nNodes);
         Containers::vector<Containers::array<Types::index, 4>> cells;
         cells.reserve(nCells);

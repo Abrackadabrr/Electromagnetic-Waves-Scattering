@@ -10,14 +10,14 @@
 #include "types/Types.hpp"
 
 namespace EMW::Mesh {
-    using Point = Types::Vector3d;
+    using point_t = Types::Vector3d;
 
     /**
      * Тип расчетного узла
      */
     struct Node {
         using field_t = Types::Vector3c;
-        Point point_;
+        point_t point_;
         field_t E_;
         field_t H_;
         field_t J_;
@@ -25,12 +25,12 @@ namespace EMW::Mesh {
     public:
         Node() = default;
 
-        explicit Node(Point point) : point_(std::move(point)),
-                                            E_(Types::Vector3c{Types::complex_d{0, 0}, Types::complex_d{0, 0},
+        explicit Node(point_t point) : point_(std::move(point)),
+                                       E_(Types::Vector3c{Types::complex_d{0, 0}, Types::complex_d{0, 0},
                                                                Types::complex_d{0, 0}}),
-                                            H_(Types::Vector3c{Types::complex_d{0, 0}, Types::complex_d{0, 0},
+                                       H_(Types::Vector3c{Types::complex_d{0, 0}, Types::complex_d{0, 0},
                                                                Types::complex_d{0, 0}}),
-                                            J_(Types::Vector3c{Types::complex_d{0, 0}, Types::complex_d{0, 0},
+                                       J_(Types::Vector3c{Types::complex_d{0, 0}, Types::complex_d{0, 0},
                                                                Types::complex_d{0, 0}}) {};
 
         Node(Types::scalar x, Types::scalar y, Types::scalar z, field_t E, field_t H, field_t J)
@@ -44,7 +44,7 @@ namespace EMW::Mesh {
     };
 
     struct CellStructure {
-        Point A;  // тут перерасход памяти на хранение лишней точки, будет хорошо это исправить
+        point_t A;  // тут перерасход памяти на хранение лишней точки, будет хорошо это исправить
         Types::Vector3d ort1;  // B - A
         Types::Vector3d ort2;  // D - A
         Types::Vector3d diff;  // A + C - B - D
@@ -77,9 +77,9 @@ namespace EMW::Mesh {
 
         IndexedCell() = default;
 
-        IndexedCell(Containers::array<Types::index, 4> points, const Containers::vector<Point> &fullPoints);
+        IndexedCell(Containers::array<Types::index, 4> points, const Containers::vector<point_t> &fullPoints);
 
-        [[nodiscard]] Point parametrization(Types::scalar p, Types::scalar q) const noexcept {
+        [[nodiscard]] point_t parametrization(Types::scalar p, Types::scalar q) const noexcept {
             return cellStructure.A + p * cellStructure.ort1 + q * cellStructure.ort2 + p * q * cellStructure.diff;
         }
 

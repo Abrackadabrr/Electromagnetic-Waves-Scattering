@@ -34,16 +34,16 @@ protected:
 
 TEST_F(K1_TESTS, TEST_MIDDLE_ZONE) {
     // объявляем ячейку, по которой происходит интегрирование
-    const Containers::vector<Mesh::Point> points = {
-            Mesh::Point{-0.05, -0.05, 0},
-            Mesh::Point{0.05, -0.05, 0},
-            Mesh::Point{0.05, 0.05, 0},
-            Mesh::Point{-0.05, 0.05, 0}
+    const Containers::vector<Mesh::point_t> points = {
+            Mesh::point_t{-0.05, -0.05, 0},
+            Mesh::point_t{0.05, -0.05, 0},
+            Mesh::point_t{0.05, 0.05, 0},
+            Mesh::point_t{-0.05, 0.05, 0}
     };
     Mesh::IndexedCell cell{{0, 1, 2, 3}, points};
     cell.collPoint_.J_ = Types::Vector3c{Types::complex_d{0, 0}, Types::complex_d{1, 0}, Types::complex_d{0, 0}};
     // объявляем точку, в которой интегрируем
-    const Mesh::Point point{100, 0, 0};
+    const Mesh::point_t point{100, 0, 0};
 
     // точный расчет интеграла по ячейке
     const Types::Vector3c preciseResult = Operators::K0OverSingularCell<GL<8>>(point, cell.collPoint_.J_, cell, k) +
