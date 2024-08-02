@@ -46,19 +46,15 @@ namespace EMW::Math {
 
         // --- Methods --- //
         [[nodiscard]] SurfaceField surfaceProjection() const;
-
         [[nodiscard]] Types::VectorXc asSLAERHS() const;
 
         // --- Getters --- //
-        const manifold_t &getManifold() const { return manifold_; };
-
-        const Containers::vector<field_t> &getField() const { return field_data_; };
+        [[nodiscard]] const manifold_t &getManifold() const { return manifold_; };
+        [[nodiscard]] const Containers::vector<field_t> &getField() const { return field_data_; };
 
         // --- Fabric --- //
         static SurfaceField ZeroField(const manifold_t &manifold);
-
         static SurfaceField TangentField(const manifold_t &manifold, const Types::VectorXc &fieldProjections);
-
         static SurfaceField NormalField(const manifold_t &manifold);
     };
 }

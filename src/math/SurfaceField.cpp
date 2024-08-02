@@ -18,7 +18,7 @@ EMW::Math::SurfaceField::SurfaceField(const EMW::Math::SurfaceField::manifold_t 
             });
     // странно, поскольку не могу применить подряд несколько трансформов
     auto points = Containers::vector<Mesh::point_t>{coll_points_data_view.begin(),
-                                             coll_points_data_view.end()};
+                                                    coll_points_data_view.end()};
 
     const auto filed_data_view = points | std::views::transform(function);
     field_data_ = std::vector<field_t>{filed_data_view.begin(), filed_data_view.end()};
@@ -52,5 +52,23 @@ EMW::Math::SurfaceField EMW::Math::SurfaceField::ZeroField(const EMW::Math::Surf
     std::fill(result.field_data_.begin(), result.field_data_.end(), Types::Vector3c::Zero());
     result.initialized = true;
     return result;
+}
+
+EMW::Math::SurfaceField EMW::Math::SurfaceField::surfaceProjection() const {
+    const auto field_data =
+            std::views::iota(0, static_cast<int>(manifold_.getCells().size())) | std::views::transform([&](int i){
+                const auto cell = manifold_.getCells()[i];
+                const Types::complex_d c0 = Math::quasiDot(field_data_[i], cell.tau[0]);
+                const Types::complex_d c1 = Math::quasiDot(field_data_[i], cell.tau[1]);
+                return c0 * cell.tau[0] + c1 * cell.tau[1];
+            });
+    return {manifold_, {field_data.begin(), field_data.end()}};
+}
+
+EMW::Math::SurfaceField EMW::Math::SurfaceField::NormalField(const EMW::Math::SurfaceField::manifold_t &manifold) {
+    const auto normals_view = manifold.getCells() | std::views::transform([](const Mesh::IndexedCell &cell) -> field_t {
+        return cell.normal;
+    });
+    return {manifold, {normals_view.begin(), normals_view.end()}};
 };
 
