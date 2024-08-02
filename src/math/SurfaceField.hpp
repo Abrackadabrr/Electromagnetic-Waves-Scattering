@@ -17,6 +17,7 @@ namespace EMW::Math {
         const manifold_t &manifold_;
         Containers::vector<field_t> field_data_;
         bool initialized;
+        std::string name_ = "default_field_name";
 
     public:
         /**
@@ -46,15 +47,23 @@ namespace EMW::Math {
 
         // --- Methods --- //
         [[nodiscard]] SurfaceField surfaceProjection() const;
+
         [[nodiscard]] Types::VectorXc asSLAERHS() const;
 
-        // --- Getters --- //
+        // --- Getters & Setters --- //
         [[nodiscard]] const manifold_t &getManifold() const { return manifold_; };
+
         [[nodiscard]] const Containers::vector<field_t> &getField() const { return field_data_; };
+
+        [[nodiscard]] std::string getName() const {return name_;};
+
+        void setName(const std::string &name) { name_ = name; };
 
         // --- Fabric --- //
         static SurfaceField ZeroField(const manifold_t &manifold);
+
         static SurfaceField TangentField(const manifold_t &manifold, const Types::VectorXc &fieldProjections);
+
         static SurfaceField NormalField(const manifold_t &manifold);
     };
 }

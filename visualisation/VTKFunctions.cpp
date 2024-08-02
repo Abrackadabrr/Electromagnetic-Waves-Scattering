@@ -3,6 +3,7 @@
 //
 
 #include "VTKFunctions.hpp"
+#include <ranges>
 #include <vtkDoubleArray.h>
 #include <vtkPoints.h>
 #include <vtkPointData.h>
@@ -14,10 +15,10 @@
 
 namespace VTK {
     void
-    surface_snapshot(EMW::Types::index snap_number, const EMW::Mesh::SurfaceMesh &mesh, const std::string &path_to_file) {
+    surface_snapshot(const EMW::Mesh::SurfaceMesh &mesh, const std::string &path_to_file) {
         // VTK grid
         vtkSmartPointer<vtkUnstructuredGrid> unstructuredGrid = vtkSmartPointer<vtkUnstructuredGrid>::New();
-        unstructuredGrid->Allocate(100);
+        unstructuredGrid->Allocate(mesh.getCells().size());
         // VTK points
         vtkSmartPointer<vtkPoints> dumpPoints = vtkSmartPointer<vtkPoints>::New();
         double zero[3] = {0, 0, 0};
@@ -107,7 +108,7 @@ namespace VTK {
     }
 
     void
-    volume_snapshot(EMW::Types::index snap_number, const EMW::Mesh::VolumeMesh &mesh, const std::string &path_to_file) {
+    volume_snapshot(const EMW::Mesh::VolumeMesh &mesh, const std::string &path_to_file) {
         // VTK grid
         vtkSmartPointer<vtkUnstructuredGrid> unstructuredGrid = vtkSmartPointer<vtkUnstructuredGrid>::New();
         unstructuredGrid->Allocate(100);
@@ -149,6 +150,52 @@ namespace VTK {
         writer->SetInputData(unstructuredGrid);
         writer->Write();
     }
+
+
+    void field_snapshot(const EMW::Math::SurfaceField &field, const std::string &path_to_file) {
+        // VTK grid
+        vtkSmartPointer<vtkUnstructuredGrid> unstructuredGrid = vtkSmartPointer<vtkUnstructuredGrid>::New();
+        unstructuredGrid->Allocate(field.getManifold().getCells().size());
+        // VTK points
+        vtkSmartPointer<vtkPoints> dumpPoints = vtkSmartPointer<vtkPoints>::New();
+
+        auto real_field = vtkSmartPointer<vtkDoubleArray>::New();
+        real_field->SetName((field.getName() + "_real").c_str());
+        real_field->SetNumberOfComponents(3);
+        auto imag_field = vtkSmartPointer<vtkDoubleArray>::New();
+        imag_field->SetNumberOfComponents(3);
+        imag_field->SetName((field.getName() + "_imag").c_str());
+
+        // Обходим все точки пространственной окружающей расчётной сетки
+        const auto &cells = field.getManifold().getCells();
+        for (auto [i, cell]: cells | std::views::enumerate) {
+            const auto node = cell.collPoint_;
+            // Вставляем новую точку в сетку VTK-снапшота
+            dumpPoints->InsertNextPoint(node.point_.x(), node.point_.y(), node.point_.z());
+            const auto f = field.getField()[i];
+            double f_real[3] = {f(0).real(), f(1).real(),
+                                f(2).real()};
+            double f_imag[3] = {f(0).imag(), f(1).imag(),
+                                f(2).imag()};
+            real_field->InsertNextTuple(f_real);
+            imag_field->InsertNextTuple(f_imag);
+        }
+
+        // Грузим точки в сетку
+        unstructuredGrid->SetPoints(dumpPoints);
+
+        unstructuredGrid->GetPointData()->AddArray(real_field);
+        unstructuredGrid->GetPointData()->AddArray(imag_field);
+
+        // Создаём снапшот в файле с заданным именем
+        std::string fileName =
+                field.getName() + ".vtu";
+        vtkSmartPointer<vtkXMLUnstructuredGridWriter> writer = vtkSmartPointer<vtkXMLUnstructuredGridWriter>::New();
+        writer->SetFileName((path_to_file + fileName).c_str());
+        writer->SetInputData(unstructuredGrid);
+        writer->Write();
+    }
 }
+
 
 

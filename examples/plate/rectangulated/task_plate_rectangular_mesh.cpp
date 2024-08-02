@@ -87,14 +87,14 @@ int main() {
     method.set_restart(1000);
     method.compute(A3);
     const VectorXc j_vec = VectorXc{method.solve(b3)};
-    const auto j = Math::SurfaceField::TangentField(surfaceMesh, j_vec);
+    auto j = Math::SurfaceField::TangentField(surfaceMesh, j_vec);
+    j.setName("j");
     std::cout << "total iterations: " << method.iterations() << std::endl;
     std::cout << "total error: " << method.error() << std::endl;
     std::cout << "Info: " << static_cast<int>(method.info()) << std::endl;
     surfaceMesh.fillJ(j_vec);
 
     // создаем окружающую сетку
-
     Containers::vector<Mesh::point_t> nodes;
     nodes.reserve(N_volume * N_volume);
     cartesian_productXY(std::ranges::views::iota(0, N_volume),
@@ -108,7 +108,9 @@ int main() {
                        std::to_string(N_volume));
     volumeMesh.calculateAll(physics.E0, physics.k_vec, physics.k);
 
-    VTK::surface_snapshot(1, surfaceMesh, Pathes::examples + "plane/test_new_arch/");
+    VTK::surface_snapshot(surfaceMesh, Pathes::examples + "plane/test_new_arch/");
 
-    VTK::volume_snapshot(1, volumeMesh, Pathes::examples + "plane/test_new_arch/");
+    VTK::volume_snapshot(volumeMesh, Pathes::examples + "plane/test_new_arch/");
+
+    VTK::field_snapshot(j, Pathes::examples + "plane/test_new_arch/");
 }

@@ -10,29 +10,28 @@
 #include "integration/gauss_quadrature/GaussLegenderPoints.hpp"
 #include "operators/Functions.hpp"
 #include "math/MathConstants.hpp"
+#include "math/SurfaceField.hpp"
 
 namespace EMW::ESA {
     Types::Vector3c sigmaOverCell(Types::complex_d k, const Types::Vector3d &tau,
-                                                         const Mesh::IndexedCell &cell) {
+                                  const Mesh::IndexedCell &cell, const Types::Vector3c& j) {
         const auto phi = [&](Types::scalar p, Types::scalar q) -> Types::Vector3c {
             const Mesh::point_t y = cell.parametrization(p, q);
             const Types::scalar mul = cell.multiplier(p, q);
-            return Helmholtz::sigmaKernel(k, tau, y, cell.collPoint_.J_) * mul;
+            return Helmholtz::sigmaKernel(k, tau, y, j) * mul;
         };
-        return DefiniteIntegrals::integrate < DefiniteIntegrals::GaussLegendre::Quadrature < 8, 8
-                >> (phi, {0, 0}, {1, 1});
+        return DefiniteIntegrals::integrate<DefiniteIntegrals::GaussLegendre::Quadrature<8, 8
+        >>(phi, {0, 0}, {1, 1});
     }
 
     Types::scalar calculateESA(const Types::Vector3d &tau, Types::complex_d k,
-                                                      const Mesh::SurfaceMesh &mesh) {
-        if (mesh.jFilled()) {
-            Types::Vector3c result = Types::Vector3c::Zero();
-            for (auto &cell: mesh.getCells()) {
-                result += sigmaOverCell(k, tau, cell);
-            }
-            return Math::Constants::inverse_4PI<Types::scalar>() * result.squaredNorm();
-        } else {
-            throw std::exception();
+                               const Math::SurfaceField &j_field) {
+        const auto & cells = j_field.getManifold().getCells();
+        const auto & field = j_field.getField();
+        Types::Vector3c result = Types::Vector3c::Zero();
+        for (int i = 0; i != j_field.getField().size(); i++) {
+            result += sigmaOverCell(k, tau, cells[i], field[i]);
         }
+        return Math::Constants::inverse_4PI<Types::scalar>() * result.squaredNorm();
     }
 }

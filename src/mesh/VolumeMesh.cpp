@@ -13,20 +13,17 @@
 namespace EMW::Mesh {
     void EMW::Mesh::VolumeMesh::calculateAll(const Types::Vector3d &polarization, const Types::Vector3d &k_vec,
                                              Types::scalar k) {
-        if (surfaceMesh_.jFilled()) {
-            for (auto &node: nodes_) {
-                node.E_ =
-                        Operators::K0<DefiniteIntegrals::GaussLegendre::Quadrature<8>>(node.point_,
-                                                                                       surfaceMesh_.getCells(),
-                                                                                       k) +
-                        Operators::K1<DefiniteIntegrals::GaussLegendre::Quadrature<8, 8>>(node.point_,
-                                                                                          surfaceMesh_.getCells(), k) +
-                        polarization * std::exp(Math::Constants::i * Math::quasiDot(node.point_, k_vec));
-            }
-        } else {
-            throw std::exception{};
+        for (auto &node: nodes_) {
+            node.E_ =
+                    Operators::K0<DefiniteIntegrals::GaussLegendre::Quadrature<8>>(node.point_,
+                                                                                   surfaceMesh_.getCells(),
+                                                                                   k) +
+                    Operators::K1<DefiniteIntegrals::GaussLegendre::Quadrature<8, 8>>(node.point_,
+                                                                                      surfaceMesh_.getCells(), k) +
+                    polarization * std::exp(Math::Constants::i * Math::quasiDot(node.point_, k_vec));
         }
     }
+
 
     Types::Vector3c EMW::Mesh::VolumeMesh::sigmaOverCell(Types::complex_d k, const Types::Vector3d &tau,
                                                          const Mesh::IndexedCell &cell) const {
@@ -49,4 +46,5 @@ namespace EMW::Mesh {
             throw std::exception();
         }
     }
+
 };
