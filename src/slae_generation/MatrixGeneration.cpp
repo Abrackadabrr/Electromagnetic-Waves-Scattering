@@ -51,11 +51,12 @@ namespace EMW::Matrix {
         return {a11_0 + a11_1, a12_0 + a12_1, a21_0 + a21_1, a22_0 + a22_1};
     }
 
-    Types::MatrixXc getMatrix(Types::scalar k, const Containers::vector<Mesh::IndexedCell> &cells) {
+    Types::MatrixXc getMatrix(Types::scalar k, const Mesh::SurfaceMesh& surface_mesh) {
+        const auto & cells = surface_mesh.getCells();
         const long N = static_cast<long>(cells.size());
         Types::MatrixXc result = Types::MatrixXc::Zero(2 * N, 2 * N);
 
-#pragma omp parallel for schedule(dynamic) num_threads(7)
+//#pragma omp parallel for schedule(dynamic) num_threads(7)
         for (long i = 0; i < N; ++i) {
             for (long j = 0; j < N; ++j) {
                 const auto coefs = getMatrixCoefs(i, j, k, cells);
@@ -64,18 +65,6 @@ namespace EMW::Matrix {
                 result(i, j + N) = coefs.a12;
                 result(i + N, j + N) = coefs.a22;
             }
-        }
-        return result;
-    }
-
-    Types::VectorXc getRHS(const Types::Vector3d &pol, const Types::Vector3d &k_vec,
-                           const Containers::vector<Mesh::IndexedCell> &cells) {
-        const long N = static_cast<long>(cells.size());
-        Types::VectorXc result = Types::VectorXc::Zero(2 * N);
-        for (int i = 0; i < cells.size(); i++) {
-            const Types::complex_d exponent = std::exp(Math::Constants::i * Math::quasiDot(k_vec, cells[i].collPoint_.point_));
-            result(i) = -Math::quasiDot(cells[i].tau[0], pol) * exponent;
-            result(i + N) = -Math::quasiDot(cells[i].tau[1], pol) * exponent;
         }
         return result;
     }

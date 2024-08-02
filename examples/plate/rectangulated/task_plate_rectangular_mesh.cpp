@@ -5,26 +5,20 @@
 #include "examples/plate/PlateGrid.hpp"
 #include "slae_generation/MatrixGeneration.hpp"
 #include "visualisation/VTKFunctions.hpp"
+#include "math/SurfaceField.hpp"
+#include "mesh/SurfaceMesh.hpp"
 #include "mesh/VolumeMesh.hpp"
 #include "math/MathConstants.hpp"
 #include "examples/pathes.hpp"
+#include "experiment/PhysicalCondition.hpp"
+
 #include <Eigen/Core>
 #include <Eigen/IterativeLinearSolvers>
 #include <unsupported/Eigen/IterativeSolvers>
-
 #include <iostream>
 
 using namespace EMW;
 using namespace EMW::Types;
-
-struct physicalConditions {
-    // polarization
-    Vector3d E0;
-    // wave number
-    complex_d k;
-    // wave vector
-    Vector3d k_vec;
-};
 
 template<typename Range1, typename Range2, typename Range3, typename OutputIterator>
 void cartesian_product3D(Range1 const &r1, Range2 const &r2, Range3 const &r3, OutputIterator out, Types::index N,
@@ -69,21 +63,22 @@ int main() {
     int N2 = 31;
     scalar h2 = 1. / (N2 - 1);
 
-    // сетка
-    auto *surfaceMesh = new Mesh::SurfaceMesh{EMW::Examples::Plate::generateRectangularMesh(N1, N2, h1, h2)};
-
-    surfaceMesh->setName("surface_mesh_" + std::to_string(N1) + "_x_" + std::to_string(N2));
-
     // физика
-    physicalConditions physics{
-            .E0 = Vector3d{0, 1, 0}.normalized(),
-            .k = complex_d{4 * Math::Constants::PI<scalar>(), 0},
-            .k_vec = 4 * Math::Constants::PI<scalar>() * Vector3d{1, 0, 0}.normalized()
-    };
+    EMW::Physics::planeWaveCase physics(Vector3d{0, 1, 0}.normalized(),
+                                        4 * Math::Constants::PI<scalar>(),
+                                        Vector3d{1, 0, 0}.normalized());
 
-    // на мелкой
-    const VectorXc b3 = VectorXc{Matrix::getRHS(physics.E0, physics.k_vec, surfaceMesh->getCells())};
-    const MatrixXc A3 = Matrix::getMatrix(physics.k, surfaceMesh->getCells());
+    // сетка
+    auto surfaceMesh = Mesh::SurfaceMesh{EMW::Examples::Plate::generateRectangularMesh(N1, N2, h1, h2)};
+    surfaceMesh.setName("surface_mesh_" + std::to_string(N1) + "_x_" + std::to_string(N2));
+
+    // след падающего поля на расчетной поверхности
+    const Math::SurfaceField incidentField(surfaceMesh, [physics](const Mesh::point_t & point) {
+        return physics.value(point);
+    });
+
+    const VectorXc b3 = incidentField.asSLAERHS();
+    const MatrixXc A3 = Matrix::getMatrix(physics.k, surfaceMesh);
 
     auto method = Eigen::GMRES<MatrixXc>{};
     method.setMaxIterations(20000);
@@ -91,11 +86,12 @@ int main() {
     method.setTolerance(1e-5);
     method.set_restart(1000);
     method.compute(A3);
-    const auto j = VectorXc{method.solve(b3)};
+    const VectorXc j_vec = VectorXc{method.solve(b3)};
+    const auto j = Math::SurfaceField::TangentField(surfaceMesh, j_vec);
     std::cout << "total iterations: " << method.iterations() << std::endl;
     std::cout << "total error: " << method.error() << std::endl;
     std::cout << "Info: " << static_cast<int>(method.info()) << std::endl;
-    surfaceMesh->fillJ(j);
+    surfaceMesh.fillJ(j_vec);
 
     // создаем окружающую сетку
 
@@ -107,11 +103,12 @@ int main() {
 
     const auto cellView = nodes | std::views::transform([](const Mesh::point_t &p) { return Mesh::Node{p}; });
 
-    Mesh::VolumeMesh volumeMesh{*surfaceMesh, {cellView.begin(), cellView.end()}};
-    volumeMesh.setName("volume_mesh_" + std::to_string(N_volume));
+    Mesh::VolumeMesh volumeMesh{surfaceMesh, {cellView.begin(), cellView.end()}};
+    volumeMesh.setName("volume_mesh_" +
+                       std::to_string(N_volume));
     volumeMesh.calculateAll(physics.E0, physics.k_vec, physics.k);
 
-    VTK::surface_snapshot(1, *surfaceMesh, Pathes::examples + "plane/rectangular/");
+    VTK::surface_snapshot(1, surfaceMesh, Pathes::examples + "plane/test_new_arch/");
 
-    VTK::volume_snapshot(1, volumeMesh, Pathes::examples + "plane/rectangular/");
+    VTK::volume_snapshot(1, volumeMesh, Pathes::examples + "plane/test_new_arch/");
 }

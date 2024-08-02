@@ -14,42 +14,52 @@ namespace EMW::Math {
         using manifold_t = Mesh::SurfaceMesh;
         using field_t = Types::Vector3c;
 
-        const manifold_t & manifold_;
+        const manifold_t &manifold_;
         Containers::vector<field_t> field_data_;
+        bool initialized;
 
     public:
         /**
          * Консткруктор нулевого поля на поверхности
          * @param manifold_ref
          */
-        explicit SurfaceField(const manifold_t& manifold_ref): manifold_(manifold_ref), field_data_() {}
+        explicit SurfaceField(const manifold_t &manifold_ref) : manifold_(manifold_ref),
+                                                                field_data_(Containers::vector<field_t>{}),
+                                                                initialized(false) {}
 
         /**
          * Конструктор поля по форматированным данным
          * @param man_ref
          * @param field_data
          */
-        SurfaceField(const manifold_t & man_ref, const Containers::vector<field_t> & field_data): manifold_(man_ref), field_data_(field_data) {}
+        SurfaceField(const manifold_t &man_ref, const Containers::vector<field_t> &field_data) : manifold_(man_ref),
+                                                                                                 field_data_(
+                                                                                                         field_data),
+                                                                                                 initialized(true) {}
 
         /**
          * Конструктор поля по аналитическому заданию в точках поверхности
          * @param man_ref
          * @param function
          */
-        SurfaceField(const manifold_t & man_ref, std::function<field_t (const Mesh::point_t &)> function);
+        SurfaceField(const manifold_t &man_ref, const std::function<field_t(const Mesh::point_t &)> &function);
 
         // --- Methods --- //
         [[nodiscard]] SurfaceField surfaceProjection() const;
-        [[nodiscard]] Types::VectorXc formVectorForSLAE() const;
+
+        [[nodiscard]] Types::VectorXc asSLAERHS() const;
 
         // --- Getters --- //
-        const manifold_t & getManifold() const {return  manifold_;};
-        const Containers::vector<field_t> & getField() const {return field_data_;};
+        const manifold_t &getManifold() const { return manifold_; };
+
+        const Containers::vector<field_t> &getField() const { return field_data_; };
 
         // --- Fabric --- //
-        static SurfaceField ZeroField(const manifold_t & manifold);
-        static SurfaceField TangentField(const manifold_t & manifold, Types::VectorXc &&);
-        static SurfaceField NormalField(const manifold_t & manifold);
+        static SurfaceField ZeroField(const manifold_t &manifold);
+
+        static SurfaceField TangentField(const manifold_t &manifold, const Types::VectorXc &fieldProjections);
+
+        static SurfaceField NormalField(const manifold_t &manifold);
     };
 }
 

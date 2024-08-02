@@ -6,6 +6,7 @@
 #define ELECTROMAGNETIC_WAVES_SCATTERING_MATRIXGENERATIONFUNCTION_HPP
 
 #include "types/Types.hpp"
+#include "mesh/SurfaceMesh.hpp"
 #include "mesh/MeshTypes.hpp"
 
 namespace EMW::Matrix {
@@ -59,7 +60,7 @@ namespace EMW::Matrix {
     getMatrixCoefs(Types::index i, Types::index j, Types::scalar k,
                    const Containers::vector<Mesh::IndexedCell> &cells);
 
-    Types::MatrixXc getMatrix(Types::scalar k, const Containers::vector<Mesh::IndexedCell> &cells);
+    Types::MatrixXc getMatrix(Types::scalar k, const Mesh::SurfaceMesh& surface_mesh);
 
     Types::VectorXc getRHS(const Types::Vector3d &pol, const Types::Vector3d &k_vec,
                            const Containers::vector<Mesh::IndexedCell> &cells);

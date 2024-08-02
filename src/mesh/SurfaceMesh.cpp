@@ -23,6 +23,7 @@ namespace EMW::Mesh {
         for (auto [i, cell]: cells_ | std::views::enumerate) {
             cell.collPoint_.J_ = j(i) * cell.tau[0] + j(i + N) * cell.tau[1];
         }
+        jFille = true;
     }
 #if 0
     SurfaceMesh::SurfaceMesh(Containers::vector<Point> nodes,

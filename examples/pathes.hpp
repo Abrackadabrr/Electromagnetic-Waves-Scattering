@@ -8,7 +8,8 @@
 #include <string>
 
 namespace Pathes {
-    std::string examples = "/media/evgen/SecondLinuxDisk/4_level/Electromagnetic-Waves-Scattering/vtk_files/examples/";
+    std::string examples =
+            "/media/evgen/SecondLinuxDisk/MasterDegree/thesis/Electromagnetic-Waves-Scattering/vtk_files/examples/";
 }
 
 #endif //ELECTROMAGNETIC_WAVES_SCATTERING_PATHES_HPP
