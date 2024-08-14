@@ -44,3 +44,5 @@ vtk_files
 
 # Hand-build directories
 build
+research/preconditioning/cmake-build-release
+research/preconditioning/cmake-build-debug

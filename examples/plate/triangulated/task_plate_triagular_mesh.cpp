@@ -41,8 +41,8 @@ int main() {
     scalar h_volume = 0.075/2;
 
     // сетка на пластинке
-    const std::string nodesFile = "/media/evgen/SecondLinuxDisk/4_level/Electromagnetic-Waves-Scattering/examples/plate/triangulated/1191_nodes.csv";
-    const std::string cellsFile = "/media/evgen/SecondLinuxDisk/4_level/Electromagnetic-Waves-Scattering/examples/plate/triangulated/2256_cells.csv";
+    const std::string nodesFile = "/media/evgen/SecondLinuxDisk/4_level/Electromagnetic-Waves-Scattering/meshes/plate/triangulated/1191_nodes.csv";
+    const std::string cellsFile = "/media/evgen/SecondLinuxDisk/4_level/Electromagnetic-Waves-Scattering/meshes/plate/triangulated/2256_cells.csv";
     const EMW::Types::index nNodes = 1191;
     const EMW::Types::index nCells = 2256;
     auto *surfaceMesh = new Mesh::SurfaceMesh{EMW::Parser::parseMesh(nodesFile, cellsFile, nNodes, nCells)};

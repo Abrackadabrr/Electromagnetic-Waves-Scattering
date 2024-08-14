@@ -10,7 +10,7 @@
 #include <ranges>
 
 #include "types/Types.hpp"
-#include "examples/Utils.hpp"
+#include "meshes/Utils.hpp"
 #include "mesh/SurfaceMesh.hpp"
 
 namespace EMW::Examples::Plate {

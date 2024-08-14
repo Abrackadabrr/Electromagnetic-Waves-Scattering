@@ -67,15 +67,16 @@ int main() {
     EMW::Physics::planeWaveCase physics(Vector3d{0, 1, 0}.normalized(),
                                         4 * Math::Constants::PI<scalar>(),
                                         Vector3d{1, 0, 0}.normalized());
+    const auto initial_field = [physics](const Mesh::point_t & point) {
+        return physics.value(point);
+    };
 
     // сетка
     auto surfaceMesh = Mesh::SurfaceMesh{EMW::Examples::Plate::generateRectangularMesh(N1, N2, h1, h2)};
     surfaceMesh.setName("surface_mesh_" + std::to_string(N1) + "_x_" + std::to_string(N2));
 
     // след падающего поля на расчетной поверхности
-    const Math::SurfaceField incidentField(surfaceMesh, [physics](const Mesh::point_t & point) {
-        return physics.value(point);
-    });
+    const Math::SurfaceField incidentField(surfaceMesh, initial_field);
 
     const VectorXc b3 = incidentField.asSLAERHS();
     const MatrixXc A3 = Matrix::getMatrix(physics.k, surfaceMesh);
@@ -106,7 +107,7 @@ int main() {
     Mesh::VolumeMesh volumeMesh{surfaceMesh, {cellView.begin(), cellView.end()}};
     volumeMesh.setName("volume_mesh_" +
                        std::to_string(N_volume));
-    volumeMesh.calculateAll(physics.E0, physics.k_vec, physics.k);
+    volumeMesh.calculateFullField(physics.k, j, initial_field);
 
     VTK::surface_snapshot(surfaceMesh, Pathes::examples + "plane/test_new_arch/");
 

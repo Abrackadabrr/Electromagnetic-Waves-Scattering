@@ -144,7 +144,7 @@ namespace VTK {
 
         // Создаём снапшот в файле с заданным именем
         std::string fileName =
-                mesh.getName() + "_" + mesh.getSurface().getName() + ".vtu";
+                mesh.getName() + ".vtu";
         vtkSmartPointer<vtkXMLUnstructuredGridWriter> writer = vtkSmartPointer<vtkXMLUnstructuredGridWriter>::New();
         writer->SetFileName((path_to_file + fileName).c_str());
         writer->SetInputData(unstructuredGrid);
