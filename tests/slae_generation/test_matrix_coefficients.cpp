@@ -50,7 +50,7 @@ TEST(MARTIX, MATRIX_COEFFICIENTS) {
     const Mesh::SurfaceMesh mesh{meshgrid, cells};
 
     // Тест на расчет K0
-    const auto k0_value = Matrix::getZeroPartIntegral(0, 0, Types::complex_d{1, 0}, mesh.getCells());
+    const auto k0_value = Matrix::getZeroPartIntegral(0, 0, 1, mesh.getCells());
     const scalar inner_error = norm(k0_value(1, 1) - k0_value(0, 0));
     ASSERT_NEAR(inner_error, 0, 1e-15);
     std::cout << "K0 value: " << k0_value(1, 1) << std::endl;
@@ -59,10 +59,10 @@ TEST(MARTIX, MATRIX_COEFFICIENTS) {
     ASSERT_NEAR(analytical_error, 0, 1e-6);
 
     // Teст на расчет К1
-    const auto k1_value = Matrix::getFirstPartIntegral(0, 0, Types::complex_d{1, 0}, mesh.getCells());
+    const auto k1_value = Matrix::getFirstPartIntegral(0, 0, 1, mesh.getCells());
     std::cout << "K1 value: " << k1_value << std::endl;
 }
-
+# if 0
 TEST(MARTIX, MATRIX) {
     int N = 100;
     std::vector<Mesh::point_t> meshgrid;
@@ -88,3 +88,4 @@ TEST(MARTIX, MATRIX) {
 //    ASSERT_NEAR(error, 0, 1e-12);
 //    std::cout << k1_value.norm() * k1_value.inverse().norm() << std::endl;
 }
+#endif

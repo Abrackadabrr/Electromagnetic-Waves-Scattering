@@ -6,11 +6,11 @@
 #include "types/Types.hpp"
 #include "mesh/MeshTypes.hpp"
 #include "mesh/SurfaceMesh.hpp"
-#include "integration/Quadrature.hpp"
-#include "integration/gauss_quadrature/GaussLegenderPoints.hpp"
+#include "math/integration/Quadrature.hpp"
+#include "math/integration/gauss_quadrature/GaussLegenderPoints.hpp"
 #include "operators/Functions.hpp"
 #include "math/MathConstants.hpp"
-#include "math/SurfaceField.hpp"
+#include "math/fields/SurfaceField.hpp"
 
 namespace EMW::ESA {
     Types::Vector3c sigmaOverCell(Types::complex_d k, const Types::Vector3d &tau,

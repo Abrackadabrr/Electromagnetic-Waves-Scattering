@@ -54,4 +54,23 @@ namespace EMW::Mesh {
 //            tau[1] = Types::Vector3d{0, -1, 0}.normalized();
 //        }
     };
+
+
+    Cell IndexedCell::getVertex() const{
+        Cell result;
+        result.a = cellStructure.A;
+        result.b = result.a + cellStructure.ort1;
+        result.d = result.a + cellStructure.ort2;
+        result.c = cellStructure.diff - result.a + result.b + result.d;
+        return result;
+    }
+
+    Containers::array<Mesh::point_t, 4> IndexedCell::getVertexAsArray() const{
+        Cell result;
+        result.a = cellStructure.A;
+        result.b = result.a + cellStructure.ort1;
+        result.d = result.a + cellStructure.ort2;
+        result.c = cellStructure.diff - result.a + result.b + result.d;
+        return {result.a, result.b, result.c, result.d};
+    }
 }

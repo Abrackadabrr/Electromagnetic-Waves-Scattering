@@ -6,7 +6,7 @@
 #define ELECTROMAGNETIC_WAVES_SCATTERING_GAUSSLEGENDERPOINTS_HPP
 
 #include "types/Types.hpp"
-#include "integration/QuadraturePoints.hpp"
+#include "math/integration/QuadraturePoints.hpp"
 
 namespace EMW::DefiniteIntegrals::GaussLegendre {
 

@@ -10,6 +10,8 @@
 namespace EMW::Helmholtz {
     Types::complex_d F(Types::scalar k, const Types::Vector3d &x, const Types::Vector3d &y);
 
+    Types::complex_d F_bounded_part(Types::scalar k, const Types::Vector3d &x, const Types::Vector3d &y);
+
     Types::Vector3c V(Types::scalar k, const Types::Vector3d &x, const Types::Vector3d &y);
 
     Types::Vector3c

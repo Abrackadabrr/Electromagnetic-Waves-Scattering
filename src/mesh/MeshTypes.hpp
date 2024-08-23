@@ -60,6 +60,10 @@ namespace EMW::Mesh {
         Containers::array<Types::Vector3d, 4> mul;
     };
 
+    struct Cell {
+        point_t a, b, c, d;
+    };
+
     /**
      * Тип аппроксимированной ячейки сетки по четырём индексам
      * Содержит в себе вершины четырехугольника, точку коллокации, площадь
@@ -86,6 +90,10 @@ namespace EMW::Mesh {
         [[nodiscard]] Types::scalar multiplier(Types::scalar p, Types::scalar q) const noexcept {
             return (integrationParameters.a + p * integrationParameters.b + q * integrationParameters.c).norm();
         }
+
+        [[nodiscard]] Cell getVertex() const;
+
+        [[nodiscard]]Containers::array<Mesh::point_t, 4> getVertexAsArray() const;
     };
 }
 

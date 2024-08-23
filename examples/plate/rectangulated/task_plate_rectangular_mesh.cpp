@@ -5,7 +5,7 @@
 #include "examples/plate/PlateGrid.hpp"
 #include "slae_generation/MatrixGeneration.hpp"
 #include "visualisation/VTKFunctions.hpp"
-#include "math/SurfaceField.hpp"
+#include "math/fields/SurfaceField.hpp"
 #include "mesh/SurfaceMesh.hpp"
 #include "mesh/VolumeMesh.hpp"
 #include "math/MathConstants.hpp"

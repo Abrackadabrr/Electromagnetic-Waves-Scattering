@@ -3,8 +3,8 @@
 //
 
 #include "SurfaceField.hpp"
-#include "MathConstants.hpp"
-#include "Productions.hpp"
+#include "math/MathConstants.hpp"
+#include "math/Productions.hpp"
 
 #include <ranges>
 
@@ -23,6 +23,15 @@ EMW::Math::SurfaceField::SurfaceField(const EMW::Math::SurfaceField::manifold_t 
     const auto filed_data_view = points | std::views::transform(function);
     field_data_ = std::vector<field_t>{filed_data_view.begin(), filed_data_view.end()};
 }
+
+EMW::Math::SurfaceField::SurfaceField(const manifold_t &man_ref,
+                                      const std::function<field_t(const Mesh::IndexedCell &)> &function) : manifold_(
+        man_ref), initialized(true) {
+    field_data_.reserve(man_ref.getCells().size());
+    const auto filed_data_view = man_ref.getCells() | std::views::transform(function);
+    field_data_ = std::vector<field_t>{filed_data_view.begin(), filed_data_view.end()};
+}
+
 
 EMW::Types::VectorXc EMW::Math::SurfaceField::asSLAERHS() const {
     const auto &cells = manifold_.getCells();
@@ -56,7 +65,7 @@ EMW::Math::SurfaceField EMW::Math::SurfaceField::ZeroField(const EMW::Math::Surf
 
 EMW::Math::SurfaceField EMW::Math::SurfaceField::surfaceProjection() const {
     const auto field_data =
-            std::views::iota(0, static_cast<int>(manifold_.getCells().size())) | std::views::transform([&](int i){
+            std::views::iota(0, static_cast<int>(manifold_.getCells().size())) | std::views::transform([&](int i) {
                 const auto cell = manifold_.getCells()[i];
                 const Types::complex_d c0 = Math::quasiDot(field_data_[i], cell.tau[0]);
                 const Types::complex_d c1 = Math::quasiDot(field_data_[i], cell.tau[1]);
@@ -70,5 +79,22 @@ EMW::Math::SurfaceField EMW::Math::SurfaceField::NormalField(const EMW::Math::Su
         return cell.normal;
     });
     return {manifold, {normals_view.begin(), normals_view.end()}};
-};
+}
 
+EMW::Math::SurfaceField
+EMW::Math::operator-(const EMW::Math::SurfaceField &lhs, const EMW::Math::SurfaceField &rhs) {
+    Containers::vector<Types::Vector3c> field_data{}; field_data.reserve(lhs.getField().size());
+    for (int i = 0; i != lhs.getField().size(); i++) {
+        field_data.emplace_back(lhs.getField()[i] - rhs.getField()[i]);
+    }
+    return {lhs.getManifold(), field_data};
+}
+
+EMW::Math::SurfaceField
+EMW::Math::operator+(const EMW::Math::SurfaceField &lhs, const EMW::Math::SurfaceField &rhs) {
+    Containers::vector<Types::Vector3c> field_data{}; field_data.reserve(lhs.getField().size());
+    for (int i = 0; i != lhs.getField().size(); i++) {
+        field_data.emplace_back(lhs.getField()[i] + rhs.getField()[i]);
+    }
+    return {lhs.getManifold(), field_data};
+}

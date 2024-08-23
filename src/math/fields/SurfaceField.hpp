@@ -21,7 +21,7 @@ namespace EMW::Math {
 
     public:
         /**
-         * Консткруктор нулевого поля на поверхности
+         * Консткруктор "никакого" поля на поверхности
          * @param manifold_ref
          */
         explicit SurfaceField(const manifold_t &manifold_ref) : manifold_(manifold_ref),
@@ -39,11 +39,18 @@ namespace EMW::Math {
                                                                                                  initialized(true) {}
 
         /**
-         * Конструктор поля по аналитическому заданию в точках поверхности
+         * Конструктор поля по аналитическому заданию
          * @param man_ref
          * @param function
          */
         SurfaceField(const manifold_t &man_ref, const std::function<field_t(const Mesh::point_t &)> &function);
+
+        /**
+         * Конструктор поля по ячейкам
+         * @param man_ref
+         * @param function
+         */
+        SurfaceField(const manifold_t &man_ref, const std::function<field_t(const Mesh::IndexedCell &)> &function);
 
         // --- Methods --- //
         [[nodiscard]] SurfaceField surfaceProjection() const;
@@ -66,6 +73,11 @@ namespace EMW::Math {
 
         static SurfaceField NormalField(const manifold_t &manifold);
     };
+
+    // --- Operators --- //
+    SurfaceField operator-(const SurfaceField &lhs, const SurfaceField& rhs);
+
+    SurfaceField operator+(const SurfaceField &lhs, const SurfaceField& rhs);
 }
 
 #endif //ELECTROMAGNETIC_WAVES_SCATTERING_SURFACEFIELD_HPP

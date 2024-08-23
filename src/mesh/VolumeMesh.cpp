@@ -5,8 +5,8 @@
 #include "VolumeMesh.hpp"
 #include "operators/Functions.hpp"
 #include "operators/Operators.hpp"
-#include "integration/Quadrature.hpp"
-#include "integration/gauss_quadrature/GaussLegenderPoints.hpp"
+#include "math/integration/Quadrature.hpp"
+#include "math/integration/gauss_quadrature/GaussLegenderPoints.hpp"
 #include "math/MathConstants.hpp"
 #include "math/Productions.hpp"
 

@@ -34,3 +34,19 @@ TEST_F(CELL_TESTS, PRAMETRIZATION) {
             ASSERT_NEAR(mul, 1, 1e-14);
         }
 }
+
+TEST_F(CELL_TESTS, GET_VERTEX) {
+    const Containers::vector<Mesh::point_t> points = {
+            Mesh::point_t{1, 1, 0},
+            Mesh::point_t{4, 1, 0},
+            Mesh::point_t{6, 4, 0},
+            Mesh::point_t{6, 4, 0}
+    };
+    Mesh::IndexedCell cell{{0, 1, 2, 3}, points};
+
+    const auto vertex = cell.getVertex();
+    ASSERT_NEAR((vertex.a - points[0]).norm(), 0, 1e-15);
+    ASSERT_NEAR((vertex.b - points[1]).norm(), 0, 1e-15);
+    ASSERT_NEAR((vertex.c - points[2]).norm(), 0, 1e-15);
+    ASSERT_NEAR((vertex.d - points[3]).norm(), 0, 1e-15);
+}

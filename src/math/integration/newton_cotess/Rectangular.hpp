@@ -6,7 +6,7 @@
 #define ELECTROMAGNETIC_WAVES_SCATTERING_NK_HPP
 
 #include "types/Types.hpp"
-#include "integration/QuadraturePoints.hpp"
+#include "math/integration/QuadraturePoints.hpp"
 
 namespace EMW::DefiniteIntegrals::NewtonCotess {
 
