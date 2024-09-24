@@ -51,7 +51,33 @@ TEST_F(K1_TESTS, SINGULARITY_EXTRACTION) {
                                                                                                                  k);
     std::cout << result_with_extration << std::endl;
 }
-// (0.422814,0.28455)
+
+TEST_F(K1_TESTS, COMPARISON_OF_INTEGRALS) {
+    // объявляем ячейку, по которой происходит интегрирование
+    const Types::scalar h = 0.01;
+    const Containers::vector<Mesh::point_t> points = {
+            Mesh::point_t{-1, -1, 0} * h,
+            Mesh::point_t{1, -1, 0} * h,
+            Mesh::point_t{1, 1, 0} * h,
+            Mesh::point_t{-1, 1, 0} * h
+    };
+    Mesh::IndexedCell cell{{0, 1, 2, 2}, points};
+    // объявляем точку, в которой интегрируем
+    const Mesh::point_t point{0, 0, 0};
+
+    const Types::complex_d
+            result_with_extration = Operators::detail::K1OverSingularCellRnDWithSingularityExtraction<GL2<8, 8>>(point,
+                                                                                                                 cell,
+                                                                                                                 k);
+    const Types::complex_d
+            result_without = Operators::detail::K1OverSingularCellReducedAndDivided<GL2<8, 8>>(point,
+                                                                                               cell,
+                                                                                               k);
+    std::cout.precision(17);
+    std::cout << result_with_extration << std::endl;
+    std::cout << result_without << std::endl;
+}
+
 TEST_F(K1_TESTS, TEST_MIDDLE_ZONE) {
     // объявляем ячейку, по которой происходит интегрирование
     const Containers::vector<Mesh::point_t> points = {

@@ -60,8 +60,10 @@ TEST(MARTIX, MATRIX_COEFFICIENTS) {
 
     // Teст на расчет К1
     const auto k1_value = Matrix::getFirstPartIntegral(0, 0, 1, mesh.getCells());
+    std::cout.precision(15);
     std::cout << "K1 value: " << k1_value << std::endl;
 }
+
 # if 0
 TEST(MARTIX, MATRIX) {
     int N = 100;

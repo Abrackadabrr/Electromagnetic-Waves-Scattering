@@ -2,7 +2,7 @@
 // Created by evgen on 27.06.24.
 //
 
-#include "examples/plate/PlateGrid.hpp"
+#include "meshes/plate/PlateGrid.hpp"
 #include "slae_generation/MatrixGeneration.hpp"
 #include "visualisation/VTKFunctions.hpp"
 #include "mesh/VolumeMesh.hpp"
@@ -38,27 +38,31 @@ void cartesian_productXY(Range1 const &r1, Range2 const &r2, OutputIterator out,
 
 int main() {
     int N_volume = 81;
-    scalar h_volume = 0.075/2;
+    scalar h_volume = 0.075 / 2;
 
     // сетка на пластинке
-    const std::string nodesFile = "/media/evgen/SecondLinuxDisk/4_level/Electromagnetic-Waves-Scattering/meshes/plate/triangulated/1191_nodes.csv";
-    const std::string cellsFile = "/media/evgen/SecondLinuxDisk/4_level/Electromagnetic-Waves-Scattering/meshes/plate/triangulated/2256_cells.csv";
+    const std::string nodesFile = "/media/evgen/SecondLinuxDisk/MasterDegree/thesis/Electromagnetic-Waves-Scattering/meshes/plate/triangulated/1191_nodes.csv";
+    const std::string cellsFile = "/media/evgen/SecondLinuxDisk/MasterDegree/thesis/Electromagnetic-Waves-Scattering/meshes/plate/triangulated/2256_cells.csv";
     const EMW::Types::index nNodes = 1191;
     const EMW::Types::index nCells = 2256;
-    auto *surfaceMesh = new Mesh::SurfaceMesh{EMW::Parser::parseMesh(nodesFile, cellsFile, nNodes, nCells)};
+    auto surfaceMesh = Mesh::SurfaceMesh{EMW::Parser::parseMesh(nodesFile, cellsFile, nNodes, nCells)};
 
-    surfaceMesh->setName("surface_mesh_triangular" + std::to_string(nNodes));
+    surfaceMesh.setName("surface_mesh_triangular" + std::to_string(nNodes));
 
     // физика
-    EMW::Physics::physicalConditionsCase physics{
-            .E0 = Vector3d{0, 1, 0}.normalized(),
-            .k = 4 * Math::Constants::PI<scalar>(),
-            .k_vec = Vector3d{0, 0, 1}.normalized()
+    EMW::Physics::planeWaveCase physics{
+            Vector3d{0, 1, 0}.normalized(),
+            4 * Math::Constants::PI<scalar>(),
+            Vector3d{0, 0, 1}.normalized()
     };
-    physics.k_vec *= physics.k;
+    const auto initial_field_function = [physics](const Mesh::point_t & point) -> Vector3c {
+        return physics.value(point);
+    };
+    // след падающего поля на расчетной поверхности
+    const Math::SurfaceField incidentField(surfaceMesh, initial_field_function);
 
-    const VectorXc b3 = VectorXc{Matrix::getRHS(physics.E0, physics.k_vec, surfaceMesh->getCells())};
-    const MatrixXc A3 = Matrix::getMatrix(physics.k, surfaceMesh->getCells());
+    const VectorXc b3 = incidentField.asSLAERHS();
+    const MatrixXc A3 = Matrix::getMatrix(physics.k, surfaceMesh);
 
     auto method = Eigen::GMRES<MatrixXc>{};
     method.setMaxIterations(30000);
@@ -66,29 +70,13 @@ int main() {
     method.setTolerance(1e-5);
     method.set_restart(3000);
     method.compute(A3);
-    const auto j = VectorXc{method.solve(b3)};
+    const VectorXc j_vec = VectorXc{method.solve(b3)};
+    auto j = Math::SurfaceField::TangentField(surfaceMesh, j_vec);
+    j.setName("j");
     std::cout << "total iterations: " << method.iterations() << std::endl;
     std::cout << "total error: " << method.error() << std::endl;
     std::cout << "Info: " << static_cast<int>(method.info()) << std::endl;
-    surfaceMesh->fillJ(j);
+    surfaceMesh.fillJ(j_vec);
 
-    // создаем окружающую сетку
-
-    Containers::vector<Mesh::point_t> nodes;
-    nodes.reserve(N_volume * N_volume * N_volume);
-    cartesian_productXY(std::ranges::views::iota(0, N_volume),
-                        std::ranges::views::iota(0, N_volume),
-                        std::back_inserter(nodes), N_volume, h_volume);
-
-    const auto cellView = nodes | std::views::transform([](const Mesh::point_t &p) { return Mesh::Node{p}; });
-
-    Mesh::VolumeMesh volumeMesh{*surfaceMesh, {cellView.begin(), cellView.end()}};
-    volumeMesh.setName("volume_mesh_triangular" + std::to_string(N_volume));
-    volumeMesh.calculateAll(physics.E0, physics.k_vec, physics.k);
-
-    VTK::surface_snapshot(1, *surfaceMesh,
-                          Pathes::examples + "plane/triangular/");
-
-    VTK::volume_snapshot(1, volumeMesh,
-                         Pathes::examples + "plane/triangular/");
+    VTK::united_snapshot(surfaceMesh, {j}, Pathes::examples + "plane/new_discretization/");
 }

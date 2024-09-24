@@ -13,7 +13,7 @@
 #include "examples/pathes.hpp"
 #include "experiment/PhysicalCondition.hpp"
 #include "operators/Operators.hpp"
-#include "integration/gauss_quadrature/GaussLegenderPoints.hpp"
+#include "math/integration/gauss_quadrature/GaussLegenderPoints.hpp"
 #include "mesh/Algorithms.hpp"
 
 #include "Functions.hpp"
@@ -59,10 +59,11 @@ Math::SurfaceField solve(const Math::SurfaceField &rhs, scalar k) {
 
 Math::SurfaceField operatorK(const Math::SurfaceField &field, scalar k) {
     const auto analytical = [field, k](const Types::Vector3d &point) {
-        return EMW::Operators::K1 < DefiniteIntegrals::GaussLegendre::Quadrature < 8, 8 >> (point, k, field) +
-                                                                                           EMW::Operators::K0 <
-                                                                                      DefiniteIntegrals::GaussLegendre::Quadrature <
-                                                                                      8 >> (point, k, field);
+        return EMW::Operators::K1_singularityExtraction<DefiniteIntegrals::GaussLegendre::Quadrature<8, 8 >>(point, k,
+                                                                                                             field) +
+               EMW::Operators::K0<
+                       DefiniteIntegrals::GaussLegendre::Quadrature<
+                               8 >>(point, k, field);
     };
 
     return Math::SurfaceField(field.getManifold(), analytical);

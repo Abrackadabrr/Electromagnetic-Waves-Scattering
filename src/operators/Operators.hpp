@@ -67,7 +67,6 @@ namespace EMW::Operators {
                    Math::AnalyticalIntegration::integrate_1_div_r(point, cell);
         }
 
-
         /**
          * Расчет множеителя - интергала по одной ячейке в операторе К0 в виде тензора
          * @tparam Quadrature тип квадратуры

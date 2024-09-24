@@ -2,8 +2,8 @@
 // Created by evgen on 08.02.24.
 //
 
-#include "examples/plate/PlateGrid.hpp"
 #include "slae_generation/MatrixGeneration.hpp"
+#include "meshes/plate/PlateGrid.hpp"
 #include "visualisation/VTKFunctions.hpp"
 #include "math/fields/SurfaceField.hpp"
 #include "mesh/SurfaceMesh.hpp"
@@ -16,6 +16,7 @@
 #include <Eigen/IterativeLinearSolvers>
 #include <unsupported/Eigen/IterativeSolvers>
 #include <iostream>
+#include <ranges>
 
 using namespace EMW;
 using namespace EMW::Types;
@@ -95,23 +96,5 @@ int main() {
     std::cout << "Info: " << static_cast<int>(method.info()) << std::endl;
     surfaceMesh.fillJ(j_vec);
 
-    // создаем окружающую сетку
-    Containers::vector<Mesh::point_t> nodes;
-    nodes.reserve(N_volume * N_volume);
-    cartesian_productXY(std::ranges::views::iota(0, N_volume),
-                        std::ranges::views::iota(0, N_volume),
-                        std::back_inserter(nodes), N_volume, h_volume);
-
-    const auto cellView = nodes | std::views::transform([](const Mesh::point_t &p) { return Mesh::Node{p}; });
-
-    Mesh::VolumeMesh volumeMesh{surfaceMesh, {cellView.begin(), cellView.end()}};
-    volumeMesh.setName("volume_mesh_" +
-                       std::to_string(N_volume));
-    volumeMesh.calculateFullField(physics.k, j, initial_field);
-
-    VTK::surface_snapshot(surfaceMesh, Pathes::examples + "plane/test_new_arch/");
-
-    VTK::volume_snapshot(volumeMesh, Pathes::examples + "plane/test_new_arch/");
-
-    VTK::field_snapshot(j, Pathes::examples + "plane/test_new_arch/");
+    VTK::united_snapshot(surfaceMesh, {j}, Pathes::examples + "plane/new_discretization/");
 }
