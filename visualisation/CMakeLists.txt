@@ -1,6 +1,7 @@
 add_library(visual VTKFunctions.hpp VTKFunctions.cpp)
 
-set(VTK_DIR "/media/evgen/SecondLinuxDisk/Libraries/vtkbase/lib/cmake/vtk-9.1")
+set(VTK_DIR "/opt/lib/vtk/lib/cmake/vtk-9.3")
+
 find_package(VTK REQUIRED)
 
 target_link_libraries(visual ${PROJECT_NAME} ${VTK_LIBRARIES})

@@ -9,9 +9,9 @@
 
 namespace Pathes {
     std::string examples =
-            "/media/evgen/SecondLinuxDisk/MasterDegree/thesis/Electromagnetic-Waves-Scattering/vtk_files/examples/";
+            "/home/evgen/Education/MasterDegree/thesis/Electromagnetic-Waves-Scattering/vtk_files/examples/";
     std::string studies =
-            "/media/evgen/SecondLinuxDisk/MasterDegree/thesis/Electromagnetic-Waves-Scattering/vtk_files/studies/";
+            "/home/evgen/Education/MasterDegree/thesis/Electromagnetic-Waves-Scattering/vtk_files/studies/";
 }
 
 #endif //ELECTROMAGNETIC_WAVES_SCATTERING_PATHES_HPP

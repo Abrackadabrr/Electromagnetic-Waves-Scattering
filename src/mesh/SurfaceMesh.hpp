@@ -19,7 +19,9 @@ namespace EMW::Mesh {
         Containers::vector<IndexedCell> cells_;
         std::string name = "default_mesh_name";
         bool jFille = false;
+
     public:
+
         SurfaceMesh(Containers::vector<point_t> nodes, Containers::vector<Containers::array<Types::index, 4>> cells);
 
         void fillJ(const Types::VectorXc &j);

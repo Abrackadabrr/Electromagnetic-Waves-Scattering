@@ -26,6 +26,9 @@
 using namespace EMW;
 using namespace EMW::Types;
 
+/*
+ * Сеточный аналог векторной дельта-функции, заданной на ячейках сетки
+ */
 Vector3c discrete_delta(const Vector3d &e, const Mesh::IndexedCell &cell) {
     const Mesh::point_t support{0, 0, 0};
     return e * Mesh::Algorithm::PointInTriangle(support, cell.getVertex()) / cell.area_;

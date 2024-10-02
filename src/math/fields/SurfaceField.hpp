@@ -39,14 +39,14 @@ namespace EMW::Math {
                                                                                                  initialized(true) {}
 
         /**
-         * Конструктор поля по аналитическому заданию
+         * Конструктор поля по аналитическому заданию (сеточная функция на узалх)
          * @param man_ref
          * @param function
          */
         SurfaceField(const manifold_t &man_ref, const std::function<field_t(const Mesh::point_t &)> &function);
 
         /**
-         * Конструктор поля по ячейкам
+         * Конструктор поля по ячейкам (сеточная яункция по ячейкам)
          * @param man_ref
          * @param function
          */
@@ -55,7 +55,11 @@ namespace EMW::Math {
         // --- Methods --- //
         [[nodiscard]] SurfaceField surfaceProjection() const;
 
+        [[nodiscard]] SurfaceField crossWithNormalField() const;
+
         [[nodiscard]] Types::VectorXc asSLAERHS() const;
+
+        [[nodiscard]] Types::scalar supNorm() const;
 
         // --- Getters & Setters --- //
         [[nodiscard]] const manifold_t &getManifold() const { return manifold_; };
@@ -75,6 +79,10 @@ namespace EMW::Math {
     };
 
     // --- Operators --- //
+    /*
+     * Пока что эти функции не безопасные для использования, их можно успользовать только если поля заданы
+     * на одном и том же многообразии
+     */
     SurfaceField operator-(const SurfaceField &lhs, const SurfaceField& rhs);
 
     SurfaceField operator+(const SurfaceField &lhs, const SurfaceField& rhs);
