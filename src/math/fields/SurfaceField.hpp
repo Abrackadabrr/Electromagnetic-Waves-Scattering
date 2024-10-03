@@ -78,6 +78,8 @@ namespace EMW::Math {
         static SurfaceField NormalField(const manifold_t &manifold);
     };
 
+
+
     // --- Operators --- //
     /*
      * Пока что эти функции не безопасные для использования, их можно успользовать только если поля заданы

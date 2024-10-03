@@ -36,31 +36,24 @@ void cartesian_productXY(Range1 const &r1, Range2 const &r2, OutputIterator out,
     }
 }
 
-int main() {
-    int N_volume = 81;
-    scalar h_volume = 0.075 / 2;
-
-    // сетка на пластинке
-    const std::string nodesFile = "/media/evgen/SecondLinuxDisk/MasterDegree/thesis/Electromagnetic-Waves-Scattering/meshes/plate/triangulated/1191_nodes.csv";
-    const std::string cellsFile = "/media/evgen/SecondLinuxDisk/MasterDegree/thesis/Electromagnetic-Waves-Scattering/meshes/plate/triangulated/2256_cells.csv";
-    const EMW::Types::index nNodes = 1191;
-    const EMW::Types::index nCells = 2256;
-    auto surfaceMesh = Mesh::SurfaceMesh{EMW::Parser::parseMesh(nodesFile, cellsFile, nNodes, nCells)};
-
-    surfaceMesh.setName("surface_mesh_triangular" + std::to_string(nNodes));
-
-    // физика
-    EMW::Physics::planeWaveCase physics{
-            Vector3d{0, 1, 0}.normalized(),
-            4 * Math::Constants::PI<scalar>(),
-            Vector3d{0, 0, 1}.normalized()
+std::array<Types::Vector3d, 3> equalLocalBasis_1(const Mesh::IndexedCell &cell) {
+    return {
+        Vector3d{1, 0, 0},
+        Vector3d{0, 1, 0},
+        cell.normal
     };
-    const auto initial_field_function = [physics](const Mesh::point_t & point) -> Vector3c {
-        return physics.value(point);
-    };
-    // след падающего поля на расчетной поверхности
-    const Math::SurfaceField incidentField(surfaceMesh, initial_field_function);
+}
 
+std::array<Types::Vector3d, 3> equalLocalBasis_2(const Mesh::IndexedCell &cell) {
+    return {
+        Vector3d{1, 1, 0}.normalized(),
+        Vector3d{-1, 1, 0}.normalized(),
+        cell.normal
+    };
+}
+
+Math::SurfaceField solve(const Math::SurfaceField &incidentField, const Physics::planeWaveCase& physics) {
+    const Mesh::SurfaceMesh &surfaceMesh = incidentField.getManifold();
     const VectorXc b3 = incidentField.asSLAERHS();
     const MatrixXc A3 = Matrix::getMatrix(physics.k, surfaceMesh);
 
@@ -76,7 +69,43 @@ int main() {
     std::cout << "total iterations: " << method.iterations() << std::endl;
     std::cout << "total error: " << method.error() << std::endl;
     std::cout << "Info: " << static_cast<int>(method.info()) << std::endl;
-    surfaceMesh.fillJ(j_vec);
+    return j;
+}
+
+int main() {
+    // сетка на пластинке
+    const std::string nodesFile = "/home/evgen/Education/MasterDegree/thesis/Electromagnetic-Waves-Scattering/meshes/plate/triangulated/1191_nodes.csv";
+    const std::string cellsFile = "/home/evgen/Education/MasterDegree/thesis/Electromagnetic-Waves-Scattering/meshes/plate/triangulated/2256_cells.csv";
+    const EMW::Types::index nNodes = 1191;
+    const EMW::Types::index nCells = 2256;
+    auto surfaceMesh = Mesh::SurfaceMesh{EMW::Parser::parseMesh(nodesFile, cellsFile, nNodes, nCells)};
+
+    surfaceMesh.setName("surface_mesh_triangular_basis_1" + std::to_string(nNodes));
+    surfaceMesh.customLocalBasis(equalLocalBasis_1);
+
+    // физика
+    EMW::Physics::planeWaveCase physics{
+            Vector3d{0, 1, 0}.normalized(),
+            4 * Math::Constants::PI<scalar>(),
+            Vector3d{0, 0, 1}.normalized()
+    };
+    const auto initial_field_function = [physics](const Mesh::point_t & point) -> Vector3c {
+        return physics.value(point);
+    };
+
+    // след падающего поля на расчетной поверхности
+    const Math::SurfaceField incidentField(surfaceMesh, initial_field_function);
+    const auto j = solve(incidentField, physics);
 
     VTK::united_snapshot(surfaceMesh, {j}, Pathes::examples + "plane/new_discretization/");
+
+    // изменение параметров сетки и повторное решение методом
+    surfaceMesh.customLocalBasis(equalLocalBasis_2);
+    surfaceMesh.setName("surface_mesh_triangular_basis_2" + std::to_string(nNodes));
+    const auto j2 = solve(incidentField, physics);
+
+    auto diff = j - j2;
+    diff.setName("diff");
+
+    VTK::united_snapshot(surfaceMesh, {j2, diff}, Pathes::examples + "plane/new_discretization/");
 }
