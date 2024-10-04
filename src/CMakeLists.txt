@@ -4,7 +4,8 @@ message("Building a library: " ${PROJECT_NAME})
 
 file(GLOB_RECURSE SOURCES *.hpp *.cpp)
 
-add_library(${PROJECT_NAME} STATIC ${SOURCES})
+add_library(${PROJECT_NAME} STATIC ${SOURCES}
+        math/fields/SurfaceFieldBase.h)
 
 set(TARGET_LIBS eigen)
 

@@ -5,7 +5,7 @@
 #include "meshes/plate/PlateGrid.hpp"
 #include "gtest/gtest.h"
 
-#include "math/fields/SurfaceField.hpp"
+#include "math/fields/SurfaceVectorField.hpp"
 
 using namespace EMW;
 using namespace EMW::Types;

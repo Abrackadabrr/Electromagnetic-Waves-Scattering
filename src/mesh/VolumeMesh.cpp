@@ -11,7 +11,7 @@
 #include "math/Productions.hpp"
 
 namespace EMW::Mesh {
-    void EMW::Mesh::VolumeMesh::evaluateOperator(Types::scalar k, const Math::SurfaceField &field) {
+    void EMW::Mesh::VolumeMesh::evaluateOperator(Types::scalar k, const Math::SurfaceVectorField &field) {
         for (auto &node: nodes_) {
             node.E_ = Operators::K0<DefiniteIntegrals::GaussLegendre::Quadrature<8>>(node.point_, k, field) +
                       Operators::K1<DefiniteIntegrals::GaussLegendre::Quadrature<8, 8>>(node.point_, k, field);
@@ -24,7 +24,7 @@ namespace EMW::Mesh {
         }
     }
 
-    void VolumeMesh::calculateFullField(Types::scalar k, const Math::SurfaceField &field,
+    void VolumeMesh::calculateFullField(Types::scalar k, const Math::SurfaceVectorField &field,
                                         const std::function<Types::Vector3c(Mesh::point_t)> &initial) {
         evaluateOperator(k, field);
         addInitialField(initial);

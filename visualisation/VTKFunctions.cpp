@@ -133,7 +133,7 @@ namespace VTK {
     }
 
 
-    void field_snapshot(const EMW::Math::SurfaceField &field, const std::string &path_to_file) {
+    void field_snapshot(const EMW::Math::SurfaceVectorField &field, const std::string &path_to_file) {
         // VTK grid
         vtkSmartPointer<vtkUnstructuredGrid> unstructuredGrid = vtkSmartPointer<vtkUnstructuredGrid>::New();
         unstructuredGrid->Allocate(field.getManifold().getCells().size());
@@ -177,7 +177,7 @@ namespace VTK {
         writer->Write();
     }
 
-    void united_snapshot(const EMW::Mesh::SurfaceMesh &mesh, std::initializer_list<EMW::Math::SurfaceField> fields,
+    void united_snapshot(const EMW::Mesh::SurfaceMesh &mesh, std::initializer_list<EMW::Math::SurfaceVectorField> fields,
                     const std::string &path_to_file) {
         // Создаем поверхность
         vtkSmartPointer<vtkUnstructuredGrid> unstructuredGrid = formUnstructuredGrid(mesh);

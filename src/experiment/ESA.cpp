@@ -3,14 +3,14 @@
 //
 
 #include "ESA.hpp"
-#include "types/Types.hpp"
-#include "mesh/MeshTypes.hpp"
-#include "mesh/SurfaceMesh.hpp"
+#include "math/MathConstants.hpp"
+#include "math/fields/SurfaceVectorField.hpp"
 #include "math/integration/Quadrature.hpp"
 #include "math/integration/gauss_quadrature/GaussLegenderPoints.hpp"
+#include "mesh/MeshTypes.hpp"
+#include "mesh/SurfaceMesh.hpp"
 #include "operators/Functions.hpp"
-#include "math/MathConstants.hpp"
-#include "math/fields/SurfaceField.hpp"
+#include "types/Types.hpp"
 
 namespace EMW::ESA {
     Types::Vector3c sigmaOverCell(Types::complex_d k, const Types::Vector3d &tau,
@@ -25,7 +25,7 @@ namespace EMW::ESA {
     }
 
     Types::scalar calculateESA(const Types::Vector3d &tau, Types::complex_d k,
-                               const Math::SurfaceField &j_field) {
+                               const Math::SurfaceVectorField &j_field) {
         const auto & cells = j_field.getManifold().getCells();
         const auto & field = j_field.getField();
         Types::Vector3c result = Types::Vector3c::Zero();

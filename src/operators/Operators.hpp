@@ -5,13 +5,13 @@
 #ifndef ELECTROMAGNETIC_WAVES_SCATTERING_OPERATORS_HPP
 #define ELECTROMAGNETIC_WAVES_SCATTERING_OPERATORS_HPP
 
-#include <types/Types.hpp>
-#include "mesh/MeshTypes.hpp"
 #include "Functions.hpp"
-#include "math/fields/SurfaceField.hpp"
+#include "math/MathConstants.hpp"
+#include "math/fields/SurfaceVectorField.hpp"
 #include "math/integration/Quadrature.hpp"
 #include "math/integration/analytical/SingularIntegration.hpp"
-#include "math/MathConstants.hpp"
+#include "mesh/MeshTypes.hpp"
+#include <types/Types.hpp>
 
 namespace EMW::Operators {
     namespace detail {
@@ -180,7 +180,7 @@ namespace EMW::Operators {
 
     /** Численный расчет оператора K1 в точке point */
     template<typename Quadrature>
-    Types::Vector3c K1(const Mesh::point_t &point, const Types::scalar k, const Math::SurfaceField &field) {
+    Types::Vector3c K1(const Mesh::point_t &point, const Types::scalar k, const Math::SurfaceVectorField &field) {
         const auto &cells = field.getManifold().getCells();
         const auto &f = field.getField();
         Types::Vector3c result = Types::Vector3c::Zero();
@@ -192,7 +192,7 @@ namespace EMW::Operators {
 
     /** Полуаналитический расчет оператора K1 в точке point */
     template<typename Quadrature>
-    Types::Vector3c K1_singularityExtraction(const Mesh::point_t &point, const Types::scalar k, const Math::SurfaceField &field) {
+    Types::Vector3c K1_singularityExtraction(const Mesh::point_t &point, const Types::scalar k, const Math::SurfaceVectorField &field) {
         const auto &cells = field.getManifold().getCells();
         const auto &f = field.getField();
         Types::Vector3c result = Types::Vector3c::Zero();
@@ -204,7 +204,7 @@ namespace EMW::Operators {
 
     /** Полный расчет оператора K0 в точке point */
     template<typename Quadrature>
-    Types::Vector3c K0(const Mesh::point_t &point, const Types::scalar k, const Math::SurfaceField &field) {
+    Types::Vector3c K0(const Mesh::point_t &point, const Types::scalar k, const Math::SurfaceVectorField &field) {
         const auto &cells = field.getManifold().getCells();
         const auto &f = field.getField();
         Types::Vector3c result = Types::Vector3c::Zero();
