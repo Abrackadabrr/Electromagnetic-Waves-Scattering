@@ -23,6 +23,7 @@ template <typename field> class SurfaceFieldBase {
     std::string name_ = "default_field_name";
 
   public:
+    virtual ~SurfaceFieldBase() = default;
     /**
      * Консткруктор "никакого" поля на поверхности
      * @param manifold_ref

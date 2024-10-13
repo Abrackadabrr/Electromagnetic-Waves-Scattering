@@ -55,46 +55,70 @@ void cartesian_productXY(Range1 const &r1, Range2 const &r2, OutputIterator out,
     }
 }
 
-int main() {
-    int N_volume = 41;
-    scalar h_volume = 0.075;
+std::array<Types::Vector3d, 3> equalLocalBasis_1(const Mesh::IndexedCell &cell) {
+    return {Vector3d{1, 0, 0}, Vector3d{0, 1, 0}, cell.normal};
+}
 
+std::array<Types::Vector3d, 3> equalLocalBasis_2(const Mesh::IndexedCell &cell) {
+    return {Vector3d{1, 1, 0}.normalized(), Vector3d{-1, 1, 0}.normalized(), cell.normal};
+}
+
+Math::SurfaceVectorField solve(const Math::SurfaceVectorField &incidentField, const Physics::planeWaveCase &physics) {
+    const Mesh::SurfaceMesh &surfaceMesh = incidentField.getManifold();
+    const VectorXc b3 = incidentField.asSLAERHS();
+    const MatrixXc A3 = Matrix::getMatrix(physics.k, surfaceMesh);
+
+    auto method = Eigen::GMRES<MatrixXc>{};
+    method.setMaxIterations(30000);
+    std::cout << method.maxIterations() << std::endl;
+    method.setTolerance(1e-5);
+    method.set_restart(3000);
+    method.compute(A3);
+    const VectorXc j_vec = VectorXc{method.solve(b3)};
+    auto j = Math::SurfaceVectorField::TangentField(surfaceMesh, j_vec);
+    j.setName("j");
+    std::cout << "total iterations: " << method.iterations() << std::endl;
+    std::cout << "total error: " << method.error() << std::endl;
+    std::cout << "Info: " << static_cast<int>(method.info()) << std::endl;
+    return j;
+}
+
+int main() {
     int N1 = 41;
     scalar h1 = 1. / (N1 - 1);
     int N2 = 31;
     scalar h2 = 1. / (N2 - 1);
 
     // физика
-    EMW::Physics::planeWaveCase physics(Vector3d{0, 1, 0}.normalized(),
-                                        4 * Math::Constants::PI<scalar>(),
-                                        Vector3d{1, 0, 0}.normalized());
+    EMW::Physics::planeWaveCase physics{Vector3d{0, 1, 0}.normalized(), 4 * Math::Constants::PI<scalar>(),
+                                        Vector3d{0, 0, 1}.normalized()};
+
     const auto initial_field = [physics](const Mesh::point_t & point) {
         return physics.value(point);
     };
 
-    // сетка
-    auto surfaceMesh = Mesh::SurfaceMesh{EMW::Examples::Plate::generateRectangularMesh(N1, N2, h1, h2)};
-    surfaceMesh.setName("surface_mesh_" + std::to_string(N1) + "_x_" + std::to_string(N2));
+    auto surfaceMesh = Examples::Plate::generateRectangularMesh(N1, N2, h1, h2);
+
+    surfaceMesh.setName("surface_mesh_rect_basis_1");
+    surfaceMesh.customLocalBasis(equalLocalBasis_1);
 
     // след падающего поля на расчетной поверхности
-    const Math::SurfaceField incidentField(surfaceMesh, initial_field);
+    const Math::SurfaceVectorField incidentField(surfaceMesh, initial_field);
+    const Math::SurfaceVectorField j = solve(incidentField, physics);
 
-    const VectorXc b3 = incidentField.asSLAERHS();
-    const MatrixXc A3 = Matrix::getMatrix(physics.k, surfaceMesh);
+    VTK::united_snapshot({j}, {}, surfaceMesh, Pathes::examples + "plane/new_discretization/");
 
-    auto method = Eigen::GMRES<MatrixXc>{};
-    method.setMaxIterations(20000);
-    std::cout << method.maxIterations() << std::endl;
-    method.setTolerance(1e-5);
-    method.set_restart(1000);
-    method.compute(A3);
-    const VectorXc j_vec = VectorXc{method.solve(b3)};
-    auto j = Math::SurfaceField::TangentField(surfaceMesh, j_vec);
-    j.setName("j");
-    std::cout << "total iterations: " << method.iterations() << std::endl;
-    std::cout << "total error: " << method.error() << std::endl;
-    std::cout << "Info: " << static_cast<int>(method.info()) << std::endl;
-    surfaceMesh.fillJ(j_vec);
+    /*// изменение параметров сетки и повторное решение методом
+    surfaceMesh.customLocalBasis(equalLocalBasis_2);
+    surfaceMesh.setName("surface_mesh_rect_basis_2");
+    const auto j2 = solve(incidentField, physics);
 
-    VTK::united_snapshot(surfaceMesh, {j}, Pathes::examples + "plane/new_discretization/");
+    auto diff = j - j2;
+    auto diff_norm = diff.fieldNorm();
+    diff.setName("diff");
+    diff_norm.setName("diff_norm");
+
+    VTK::united_snapshot({j2, diff}, {diff_norm}, surfaceMesh, Pathes::examples + "plane/new_discretization/");
+    */
+
 }

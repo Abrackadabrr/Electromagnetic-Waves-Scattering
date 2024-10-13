@@ -20,21 +20,6 @@
 using namespace EMW;
 using namespace EMW::Types;
 
-template <typename Range1, typename Range2, typename OutputIterator>
-void cartesian_productXY(Range1 const &r1, Range2 const &r2, OutputIterator out, Types::index N, Types::scalar h) {
-    using std::begin;
-    using std::end;
-
-    for (auto i = begin(r1); i != end(r1); ++i) {
-        for (auto j = begin(r2); j != end(r2); ++j) {
-
-            *out++ = Types::Vector3d{0, static_cast<Types::scalar>(*i) - static_cast<Types::scalar>(N / 2.),
-                                     static_cast<Types::scalar>(*j) - static_cast<Types::scalar>(N / 2.)} *
-                     h;
-        }
-    }
-}
-
 std::array<Types::Vector3d, 3> equalLocalBasis_1(const Mesh::IndexedCell &cell) {
     return {Vector3d{1, 0, 0}, Vector3d{0, 1, 0}, cell.normal};
 }
@@ -43,18 +28,38 @@ std::array<Types::Vector3d, 3> equalLocalBasis_2(const Mesh::IndexedCell &cell) 
     return {Vector3d{1, 1, 0}.normalized(), Vector3d{-1, 1, 0}.normalized(), cell.normal};
 }
 
-Math::SurfaceVectorField solve(const Math::SurfaceVectorField &incidentField, const Physics::planeWaveCase &physics) {
+Types::Vector3d collocationPoint(const Mesh::IndexedCell &cell) {
+    const auto vertex = cell.getVertexAsArray();
+    return (1./3.) * (vertex[0] + vertex[1] + vertex[2]);
+}
+
+Types::Vector3d collocationPointBad(const Mesh::IndexedCell &cell) {
+    const auto vertex = cell.getVertexAsArray();
+    return (1./ 45) * vertex[0] + (2./ 45) * vertex[1] + (43./45) * vertex[2];
+}
+
+
+Math::SurfaceVectorField solve(const Math::SurfaceVectorField &incidentField, const Physics::planeWaveCase &physics, const scalar tolerance) {
     const Mesh::SurfaceMesh &surfaceMesh = incidentField.getManifold();
     const VectorXc b3 = incidentField.asSLAERHS();
     const MatrixXc A3 = Matrix::getMatrix(physics.k, surfaceMesh);
 
+    // умное предобуславливание
+    const VectorXc JacobiAux = A3.diagonal().cwiseInverse();
+    const MatrixXc newMatrix = A3 * JacobiAux.asDiagonal();
+
+    // полулчили уравнение APy = b, дальше решаем с матрицей AP
+    // и потом y умножаем на P, чтобы получить x = Py (A(x) = b)
+
     auto method = Eigen::GMRES<MatrixXc>{};
     method.setMaxIterations(30000);
     std::cout << method.maxIterations() << std::endl;
-    method.setTolerance(1e-5);
-    method.set_restart(3000);
-    method.compute(A3);
-    const VectorXc j_vec = VectorXc{method.solve(b3)};
+    method.setTolerance(tolerance);
+    method.set_restart(1000);
+    method.compute(newMatrix);
+    const VectorXc y = VectorXc{method.solve(b3)};
+    const VectorXc j_vec = JacobiAux.cwiseProduct(y);
+
     auto j = Math::SurfaceVectorField::TangentField(surfaceMesh, j_vec);
     j.setName("j");
     std::cout << "total iterations: " << method.iterations() << std::endl;
@@ -73,8 +78,9 @@ int main() {
     const EMW::Types::index nCells = 2256;
     auto surfaceMesh = Mesh::SurfaceMesh{EMW::Parser::parseMesh(nodesFile, cellsFile, nNodes, nCells)};
 
-    surfaceMesh.setName("surface_mesh_triangular_basis_1" + std::to_string(nNodes));
+    surfaceMesh.setName("triangular_basis_1_collPoints_bad");
     surfaceMesh.customLocalBasis(equalLocalBasis_1);
+    surfaceMesh.customCollocationPpoints(collocationPointBad);
 
     // физика
     EMW::Physics::planeWaveCase physics{Vector3d{0, 1, 0}.normalized(), 4 * Math::Constants::PI<scalar>(),
@@ -85,17 +91,23 @@ int main() {
 
     // след падающего поля на расчетной поверхности
     const Math::SurfaceVectorField incidentField(surfaceMesh, initial_field_function);
-    const auto j = solve(incidentField, physics);
+    Math::SurfaceVectorField j = solve(incidentField, physics, 1e-3);
+    j.setName("j_1");
+    Math::SurfaceVectorField j_2 = solve(incidentField, physics, 1e-5);
+    j_2.setName("j_2");
+    auto diff = j - j_2;
+    diff.setName("diff_j");
+    VTK::united_snapshot({j, j_2, diff}, {}, surfaceMesh, Pathes::examples + "plane/new_discretization/");
 
-    VTK::united_snapshot(surfaceMesh, {j}, Pathes::examples + "plane/new_discretization/");
-
-    // изменение параметров сетки и повторное решение методом
+    /*// изменение параметров сетки и повторное решение методом
     surfaceMesh.customLocalBasis(equalLocalBasis_2);
     surfaceMesh.setName("surface_mesh_triangular_basis_2" + std::to_string(nNodes));
     const auto j2 = solve(incidentField, physics);
 
     auto diff = j - j2;
+    auto diff_norm = diff.fieldNorm();
     diff.setName("diff");
+    diff_norm.setName("diff_norm");
 
-    VTK::united_snapshot(surfaceMesh, {j2, diff}, Pathes::examples + "plane/new_discretization/");
+    VTK::united_snapshot({j2, diff}, {diff_norm}, surfaceMesh, Pathes::examples + "plane/new_discretization/");*/
 }

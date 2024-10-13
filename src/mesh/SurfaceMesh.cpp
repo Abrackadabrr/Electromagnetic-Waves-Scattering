@@ -26,12 +26,18 @@ namespace EMW::Mesh {
         jFille = true;
     }
 
-    void SurfaceMesh::customLocalBasis(std::function<std::array<Types::Vector3d, 3>(const Mesh::IndexedCell&)> func) {
+    void SurfaceMesh::customLocalBasis(const std::function<std::array<Types::Vector3d, 3>(const Mesh::IndexedCell&)>& func) {
         for (auto &cell: cells_) {
             const auto J = func(cell);
             cell.normal = J[2];
             cell.tau[0] = J[0];
             cell.tau[1] = J[1];
+        }
+    }
+
+    void SurfaceMesh::customCollocationPpoints(const std::function<Types::Vector3d(const Mesh::IndexedCell &)>& func) {
+        for (auto &cell: cells_) {
+            cell.collPoint_.point_ = func(cell);
         }
     }
 

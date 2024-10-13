@@ -26,7 +26,9 @@ namespace EMW::Mesh {
 
         void fillJ(const Types::VectorXc &j);
 
-        void customLocalBasis(std::function<std::array<Types::Vector3d, 3>(const Mesh::IndexedCell&)> func);
+        void customLocalBasis(const std::function<std::array<Types::Vector3d, 3>(const Mesh::IndexedCell&)>& func);
+
+        void customCollocationPpoints(const std::function<Types::Vector3d(const Mesh::IndexedCell &)>& func);
 
         [[nodiscard]] bool jFilled() const {return jFille;}
 

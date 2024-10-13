@@ -1,0 +1,3 @@
+/home/evgen/Education/MasterDegree/thesis/Electromagnetic-Waves-Scattering/visualisation/cmake-build-release/CMakeFiles/visual.dir
+/home/evgen/Education/MasterDegree/thesis/Electromagnetic-Waves-Scattering/visualisation/cmake-build-release/CMakeFiles/edit_cache.dir
+/home/evgen/Education/MasterDegree/thesis/Electromagnetic-Waves-Scattering/visualisation/cmake-build-release/CMakeFiles/rebuild_cache.dir

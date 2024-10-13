@@ -9,6 +9,7 @@
 
 #include "math/Productions.hpp"
 #include "types/Types.hpp"
+#include "math/MathConstants.hpp"
 
 namespace EMW::Physics {
     struct planeWaveCase {

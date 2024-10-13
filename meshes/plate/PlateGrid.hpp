@@ -38,7 +38,7 @@ namespace EMW::Examples::Plate {
     generateRectangularMesh(int N1, int N2, Types::scalar h1, Types::scalar h2) {
         std::vector<Mesh::point_t> meshgrid;
         meshgrid.reserve(N1 * N2);
-        Utils::cartesian_product_unevenYZ(std::ranges::views::iota(0, N1), std::ranges::views::iota(0, N2),
+        Utils::cartesian_product_unevenXY(std::ranges::views::iota(0, N1), std::ranges::views::iota(0, N2),
                                  std::back_inserter(meshgrid), N1, N2, h1, h2);
 
         const auto cellsView = std::views::iota(0, (N1 - 1) * (N2 - 1)) | std::views::transform(

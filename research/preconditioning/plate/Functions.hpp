@@ -5,10 +5,10 @@
 #ifndef PRECONDITIONING_FUNCTIONS_HPP
 #define PRECONDITIONING_FUNCTIONS_HPP
 
-#include "types/Types.hpp"
 #include "math/MathConstants.hpp"
 #include "math/Productions.hpp"
 #include "mesh/Algorithms.hpp"
+#include "types/Types.hpp"
 
 using namespace EMW;
 using namespace EMW::Types;
@@ -29,7 +29,7 @@ complex_d xi(const Vector3d &point, const scalar k) {
 Vector3c analyticalInfinitePlate(const Vector3d &e, const Mesh::IndexedCell &cell, const scalar &k) {
     const Vector3d support{0, 0, 0};
     if (Mesh::Algorithm::PointInTriangle(support, cell.getVertex())) {
-        return {0, 0, 0};
+        return Vector3c{{0., 0.}, {0., 0}, {0., 0}};
     } else {
         const Mesh::point_t point = cell.collPoint_.point_;
         return point * xi(point, k) * Math::quasiDot(point, e) - e * xi(point, k) * point.squaredNorm() -
@@ -37,4 +37,16 @@ Vector3c analyticalInfinitePlate(const Vector3d &e, const Mesh::IndexedCell &cel
     }
 }
 
-#endif //PRECONDITIONING_FUNCTIONS_HPP
+Vector3c kernelFromPaper(const Vector3d &e, const Mesh::IndexedCell &cell, const scalar &k) {
+    const Vector3d support{0, 0, 0};
+    if (Mesh::Algorithm::PointInTriangle(support, cell.getVertex())) {
+        return Vector3c{complex_d{0., 0.}, complex_d{0., 0}, complex_d{0., 0}};
+    }
+    Mesh::point_t r = cell.collPoint_.point_;
+    const scalar R = std::sqrt(r.squaredNorm());
+    r = r / R;
+    return Math::Constants::inverse_4PI<scalar>() * std::exp(Math::Constants::i * k * R) *
+           (e * (-1 / (R * R * R) + (Math::Constants::i * k) / (R * R) + (k * k) / R) +
+            r * r.dot(e) * (3 / (R * R * R) - (3. * Math::Constants::i * k) / (R * R) - (k * k) / R));
+}
+#endif // PRECONDITIONING_FUNCTIONS_HPP

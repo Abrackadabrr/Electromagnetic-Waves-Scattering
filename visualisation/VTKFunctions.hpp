@@ -5,20 +5,62 @@
 #ifndef ELECTROMAGNETIC_WAVES_SCATTERING_VTKFUNCTIONS_HPP
 #define ELECTROMAGNETIC_WAVES_SCATTERING_VTKFUNCTIONS_HPP
 
-#include "math/fields/SurfaceVectorField.hpp"
 #include "mesh/SurfaceMesh.hpp"
 #include "mesh/VolumeMesh.hpp"
 #include "types/Types.hpp"
 
+#include <vtkCellData.h>
+#include <vtkDoubleArray.h>
+#include <vtkPointData.h>
+#include <vtkSmartPointer.h>
+#include <vtkUnstructuredGrid.h>
+
+
 namespace VTK {
-    void surface_snapshot(const EMW::Mesh::SurfaceMesh &mesh, const std::string &part_to_file);
+namespace detail {
+vtkSmartPointer<vtkUnstructuredGrid> formUnstructuredGrid(const EMW::Mesh::SurfaceMesh &mesh);
 
-    void field_snapshot(const EMW::Math::SurfaceVectorField & field, const std::string &part_to_file);
+template<typename field_t>
+void dumpField(const vtkSmartPointer<vtkUnstructuredGrid>& unstructuredGrid, const field_t &field) {
+    auto real_field = vtkSmartPointer<vtkDoubleArray>::New();
+    real_field->SetName((field.getName() + "_real").c_str());
+    real_field->SetNumberOfComponents(field.getNumberOfComponents());
+    auto imag_field = vtkSmartPointer<vtkDoubleArray>::New();
+    imag_field->SetNumberOfComponents(field.getNumberOfComponents());
+    imag_field->SetName((field.getName() + "_imag").c_str());
 
-    void volume_snapshot(const EMW::Mesh::VolumeMesh &mesh, const std::string &part_to_file);
+    // Обходим все точки пространственной окружающей расчётной сетки
+    const auto &cells = field.getManifold().getCells();
+    if constexpr (field.getNumberOfComponents() >= 3) {
+        for (const auto &f : field.getField()) {
+            double f_real[3] = {f(0).real(), f(1).real(), f(2).real()};
+            double f_imag[3] = {f(0).imag(), f(1).imag(), f(2).imag()};
+            real_field->InsertNextTuple(f_real);
+            imag_field->InsertNextTuple(f_imag);
+        }
+    } else {
+        for (const auto &f : field.getField()) {
+            double f_real[1] = {f.real()};
+            double f_imag[1] = {f.imag()};
+            real_field->InsertNextTuple(f_real);
+            imag_field->InsertNextTuple(f_imag);
+        }
+    }
+    unstructuredGrid->GetCellData()->AddArray(real_field);
+    unstructuredGrid->GetCellData()->AddArray(imag_field);
+    std::cout << "Field " << field.getName() << " dumped" << std::endl;
+};
+}
 
-    void united_snapshot(const EMW::Mesh::SurfaceMesh &mesh, std::initializer_list<EMW::Math::SurfaceVectorField> fields,
-                         const std::string &path_to_file);
+void surface_snapshot(const EMW::Mesh::SurfaceMesh &mesh, const std::string &part_to_file);
+
+void field_snapshot(const EMW::Math::SurfaceVectorField &field, const std::string &part_to_file);
+
+void volume_snapshot(const EMW::Mesh::VolumeMesh &mesh, const std::string &part_to_file);
+
+void united_snapshot(std::vector<EMW::Math::SurfaceVectorField> vectorFields,
+                     std::vector<EMW::Math::SurfaceScalarField> scalarFiends, const EMW::Mesh::SurfaceMesh &mesh,
+                     const std::string &path_to_file);
 }
 
 #endif //ELECTROMAGNETIC_WAVES_SCATTERING_VTKFUNCTIONS_HPP

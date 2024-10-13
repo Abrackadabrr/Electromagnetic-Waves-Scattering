@@ -8,6 +8,7 @@
 #include "SurfaceFieldBase.h"
 #include "mesh/MeshTypes.hpp"
 #include "mesh/SurfaceMesh.hpp"
+#include "SurfaceScalarField.h"
 #include "types/Types.hpp"
 
 namespace EMW::Math {
@@ -31,9 +32,21 @@ class SurfaceVectorField : public SurfaceFieldBase<Types::Vector3c> {
 
     [[nodiscard]] SurfaceVectorField crossWithNormalField() const;
 
+    [[nodiscard]] SurfaceVectorField normalCrossField() const;
+
     [[nodiscard]] Types::VectorXc asSLAERHS() const;
 
     [[nodiscard]] Types::scalar supNorm() const;
+
+    [[nodiscard]] SurfaceScalarField fieldNorm(const std::string name) const;
+
+    [[nodiscard]] SurfaceVectorField pointwiseMultiplication(const std::function<Types::scalar(const Types::Vector3d &)> &function) const;
+
+    [[nodiscard]] SurfaceVectorField pointwiseMultiplication(const std::function<Types::scalar(const Mesh::IndexedCell &)> &function) const;
+
+    void multiply(const std::function<Types::scalar(const Types::Vector3d &)> &function);
+
+    void multiply(const std::function<Types::scalar(const Mesh::IndexedCell &)> &function);
 
     // --- Fabric --- //
     static SurfaceVectorField ZeroField(const manifold_t &manifold);
@@ -41,6 +54,9 @@ class SurfaceVectorField : public SurfaceFieldBase<Types::Vector3c> {
     static SurfaceVectorField TangentField(const manifold_t &manifold, const Types::VectorXc &fieldProjections);
 
     static SurfaceVectorField NormalField(const manifold_t &manifold);
+
+    // --- Служебные methods --- //
+    static constexpr int getNumberOfComponents() { return 3; };
 };
 
 // --- Operators --- //

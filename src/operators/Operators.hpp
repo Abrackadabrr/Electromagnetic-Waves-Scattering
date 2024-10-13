@@ -136,7 +136,7 @@ namespace EMW::Operators {
     template<typename Quadrature, typename cell_t>
     Types::Vector3c K1OverSingularCellDividedSingularityExtraction(const Mesh::point_t &point, const Types::Vector3c &j, const cell_t &cell,
                                               const Types::scalar k) {
-        return j * detail::K1OverSingularCellRnDWithSingularityExtraction<Quadrature>(point, cell, k);
+        return detail::K1OverSingularCellRnDWithSingularityExtraction<Quadrature>(point, cell, k) * j;
     }
 
     /**

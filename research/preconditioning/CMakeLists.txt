@@ -11,6 +11,7 @@ add_subdirectory(../../visualisation visualisation)
 #set (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${OpenMP_CXX_FLAGS}")
 
 set(EXE_NAME analytical_solution)
-add_executable(${EXE_NAME} plate/study_on_analytial_solution.cpp)
+add_executable(${EXE_NAME}
+        plate/study_on_analytial_solution.cpp)
 target_link_libraries(${EXE_NAME} ${PROJECT_NAME} visual)
 target_include_directories(${EXE_NAME} PUBLIC "../../src")
