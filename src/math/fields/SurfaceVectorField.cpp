@@ -20,14 +20,15 @@ EMW::Types::VectorXc EMW::Math::SurfaceVectorField::asSLAERHS() const {
     return result;
 }
 
-EMW::Types::scalar EMW::Math::SurfaceVectorField::supNorm() const {
+EMW::Types::complex_d EMW::Math::SurfaceVectorField::supNorm() const {
     const auto element = std::max_element(field_data_.begin(), field_data_.end(),
                                           [](const field_t &v1, const field_t &v2) { return v1.norm() < v2.norm(); });
     if (element == field_data_.end()) {
-        return -1;
+        return {-1, -1};
     }
-    return element->norm();
+    return {element->real().norm(), element->imag().norm()};
 }
+
 EMW::Math::SurfaceScalarField
 EMW::Math::SurfaceVectorField::fieldNorm(const std::string name = "delfault_field_name") const {
     const auto field_view = field_data_ | std::views::transform([](const field_t &v) -> Types::complex_d {
@@ -121,7 +122,7 @@ EMW::Math::SurfaceVectorField EMW::Math::SurfaceVectorField::normalCrossField() 
                             std::views::transform([&](int k) -> Types::Vector3c {
                                 const auto cell = manifold_.getCells()[k];
                                 const Types::Vector3d real = cell.normal.cross(field_data_[k].real());
-                                const Types::Vector3d imag = cell.normal.cross(field_data_[k].imag());;
+                                const Types::Vector3d imag = cell.normal.cross(field_data_[k].imag());
                                 return (real + Math::Constants::i * imag);
                             });
     return {manifold_, {field_data.begin(), field_data.end()}};
@@ -153,4 +154,30 @@ EMW::Math::SurfaceVectorField EMW::Math::operator+(const EMW::Math::SurfaceVecto
         field_data.emplace_back(lhs.getField()[i] + rhs.getField()[i]);
     }
     return {lhs.getManifold(), field_data};
+}
+
+EMW::Math::SurfaceVectorField EMW::Math::operator-(const EMW::Math::SurfaceVectorField &lhs) {
+    Containers::vector<Types::Vector3c> field_data{};
+    field_data.reserve(lhs.getField().size());
+    for (const auto & i : lhs.getField()) {
+        field_data.emplace_back(-i);
+    }
+    return {lhs.getManifold(), field_data};
+}
+
+EMW::Math::SurfaceVectorField EMW::Math::operator*(const std::complex<double> &lhs, const SurfaceVectorField &rhs) {
+    Containers::vector<Types::Vector3c> field_data{};
+    field_data.reserve(rhs.getField().size());
+    for (const auto &i : rhs.getField()) {
+        field_data.emplace_back(lhs * i);
+    }
+    return {rhs.getManifold(), field_data};
+}
+EMW::Math::SurfaceVectorField EMW::Math::operator*(const Types::scalar &lhs, const SurfaceVectorField &rhs) {
+    Containers::vector<Types::Vector3c> field_data{};
+    field_data.reserve(rhs.getField().size());
+    for (const auto &i : rhs.getField()) {
+        field_data.emplace_back(lhs * i);
+    }
+    return {rhs.getManifold(), field_data};
 }

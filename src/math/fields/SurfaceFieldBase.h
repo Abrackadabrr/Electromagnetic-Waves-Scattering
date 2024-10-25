@@ -76,20 +76,11 @@ SurfaceFieldBase<field_t>::SurfaceFieldBase(
     const SurfaceFieldBase<field_t>::manifold_t &man_ref,
     const std::function<field_t(const Mesh::point_t &)> &function)
     : manifold_(man_ref), initialized(true) {
-    field_data_.reserve(man_ref.getCells().size());
-    const auto coll_points_data_view =
-        man_ref.getCells() |
-        std::views::transform(
-            [](const Mesh::IndexedCell &cell) -> Mesh::point_t {
-                return cell.collPoint_.point_;
-            });
-    // странно, поскольку не могу применить подряд несколько трансформов
-    auto points = Containers::vector<Mesh::point_t>{
-        coll_points_data_view.begin(), coll_points_data_view.end()};
-
-    const auto filed_data_view = points | std::views::transform(function);
-    field_data_ =
-        std::vector<field_t>{filed_data_view.begin(), filed_data_view.end()};
+    field_data_.resize(man_ref.getCells().size());
+#pragma omp parallel for num_threads(14) schedule(dynamic)
+    for (int i = 0; i < man_ref.getCells().size(); ++i) {
+        field_data_[i] = function(man_ref.getCells()[i].collPoint_.point_);
+    }
     field_data_.shrink_to_fit();
 }
 
@@ -99,8 +90,11 @@ SurfaceFieldBase<field_t>::SurfaceFieldBase(
     const std::function<field_t(const Mesh::IndexedCell &)> &function)
     : manifold_(man_ref), initialized(true) {
     field_data_.reserve(man_ref.getCells().size());
- const auto filed_data_view = man_ref.getCells() | std::views::transform(function);
- field_data_ = std::vector<field_t>{filed_data_view.begin(), filed_data_view.end()};
+#pragma omp parallel for num_threads(14) schedule(dynamic)
+    for (int i = 0; i < man_ref.getCells().size(); ++i) {
+        field_data_[i] = function(man_ref.getCells()[i]);
+    }
+    field_data_.shrink_to_fit();
 }
 }
 

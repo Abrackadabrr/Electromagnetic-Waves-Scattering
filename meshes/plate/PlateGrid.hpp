@@ -10,14 +10,14 @@
 #include <ranges>
 
 #include "types/Types.hpp"
-#include "meshes/Utils.hpp"
+#include "mesh/Utils.hpp"
 #include "mesh/SurfaceMesh.hpp"
 
 namespace EMW::Examples::Plate {
     EMW::Mesh::SurfaceMesh generatePlatePrimaryMesh(int N, Types::scalar h) {
         std::vector<Mesh::point_t> meshgrid;
         meshgrid.reserve(N * N);
-        Utils::cartesian_productYZ(std::ranges::views::iota(0, N), std::ranges::views::iota(0, N),
+        Mesh::Utils::cartesian_productYZ(std::ranges::views::iota(0, N), std::ranges::views::iota(0, N),
                           std::back_inserter(meshgrid), N, h);
 
         const auto cellsView = std::views::iota(0, (N - 1) * (N - 1)) | std::views::transform(
@@ -38,7 +38,7 @@ namespace EMW::Examples::Plate {
     generateRectangularMesh(int N1, int N2, Types::scalar h1, Types::scalar h2) {
         std::vector<Mesh::point_t> meshgrid;
         meshgrid.reserve(N1 * N2);
-        Utils::cartesian_product_unevenXY(std::ranges::views::iota(0, N1), std::ranges::views::iota(0, N2),
+        Mesh::Utils::cartesian_product_unevenXY(std::ranges::views::iota(0, N1), std::ranges::views::iota(0, N2),
                                  std::back_inserter(meshgrid), N1, N2, h1, h2);
 
         const auto cellsView = std::views::iota(0, (N1 - 1) * (N2 - 1)) | std::views::transform(

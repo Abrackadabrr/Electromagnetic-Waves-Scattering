@@ -18,7 +18,7 @@ class SurfaceVectorField : public SurfaceFieldBase<Types::Vector3c> {
     using field_t = SurfaceFieldBase<Types::Vector3c>::field_t;
 
   public:
-    SurfaceVectorField(const manifold_t &manifold_ref) : Base(manifold_){};
+    SurfaceVectorField(const manifold_t &manifold_ref) : Base(manifold_ref){};
     SurfaceVectorField(const manifold_t &man_ref, const Containers::vector<field_t> &field_data)
         : Base(man_ref, field_data){};
     SurfaceVectorField(const manifold_t &manifold_ref, const std::function<field_t(const Mesh::point_t &)> &function)
@@ -36,7 +36,7 @@ class SurfaceVectorField : public SurfaceFieldBase<Types::Vector3c> {
 
     [[nodiscard]] Types::VectorXc asSLAERHS() const;
 
-    [[nodiscard]] Types::scalar supNorm() const;
+    [[nodiscard]] Types::complex_d supNorm() const;
 
     [[nodiscard]] SurfaceScalarField fieldNorm(const std::string name) const;
 
@@ -67,6 +67,12 @@ class SurfaceVectorField : public SurfaceFieldBase<Types::Vector3c> {
 SurfaceVectorField operator-(const SurfaceVectorField &lhs, const SurfaceVectorField &rhs);
 
 SurfaceVectorField operator+(const SurfaceVectorField &lhs, const SurfaceVectorField& rhs);
+
+SurfaceVectorField operator-(const SurfaceVectorField &lhs);
+
+SurfaceVectorField operator*(const Types::complex_d &lhs, const SurfaceVectorField &rhs);
+
+SurfaceVectorField operator*(const Types::scalar &lhs, const SurfaceVectorField &rhs);
 }
 
 #endif //ELECTROMAGNETIC_WAVES_SCATTERING_SurfaceVectorField_HPP
