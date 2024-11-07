@@ -11,7 +11,20 @@ add_subdirectory(../../visualisation visualisation)
 #set (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${OpenMP_CXX_FLAGS}")
 
 set(EXE_NAME analytical_solution)
-add_executable(${EXE_NAME}
-        plate/study_on_analytial_solution.cpp)
+add_executable(${EXE_NAME} plate/study_solution_comparison.cpp)
+
+find_package(OpenMP)
+if (OPENMP_FOUND)
+    message("OpenMP Found")
+endif ()
+
+find_package (Eigen3 REQUIRED NO_MODULE)
+if (EIGEN_FOUND)
+    message("Eigen Found")
+endif ()
+
+target_link_libraries (${EXE_NAME} eigen)
+target_link_libraries(${EXE_NAME} OpenMP::OpenMP_CXX)
 target_link_libraries(${EXE_NAME} ${PROJECT_NAME} visual)
+target_include_directories(${EXE_NAME} PUBLIC )
 target_include_directories(${EXE_NAME} PUBLIC "../../src")

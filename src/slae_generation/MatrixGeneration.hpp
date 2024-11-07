@@ -40,7 +40,7 @@ namespace EMW::Matrix {
      * @return
      */
     Types::complex_d
-    getFirstPartIntegral(Types::index i, Types::index j, Types::scalar k,
+    getFirstPartIntegral(Types::index i, Types::index j, Types::complex_d k,
                          const Containers::vector<Mesh::IndexedCell> &cells);
 
 
@@ -53,14 +53,14 @@ namespace EMW::Matrix {
      * @return
      */
     Types::Matrix3c
-    getZeroPartIntegral(Types::index i, Types::index j, Types::scalar k,
+    getZeroPartIntegral(Types::index i, Types::index j, Types::complex_d k,
                         const Containers::vector<Mesh::IndexedCell> &cells);
 
     MatrixCoefs
-    getMatrixCoefs(Types::index i, Types::index j, Types::scalar k,
+    getMatrixCoefs(Types::index i, Types::index j, Types::complex_d k,
                    const Containers::vector<Mesh::IndexedCell> &cells);
 
-    Types::MatrixXc getMatrix(Types::scalar k, const Mesh::SurfaceMesh& surface_mesh);
+    Types::MatrixXc getMatrix(Types::complex_d k, const Mesh::SurfaceMesh& surface_mesh);
 }
 
 #endif //ELECTROMAGNETIC_WAVES_SCATTERING_MATRIXGENERATIONFUNCTION_HPP

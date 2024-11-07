@@ -89,8 +89,8 @@ SurfaceFieldBase<field_t>::SurfaceFieldBase(
     const manifold_t &man_ref,
     const std::function<field_t(const Mesh::IndexedCell &)> &function)
     : manifold_(man_ref), initialized(true) {
-    field_data_.reserve(man_ref.getCells().size());
-#pragma omp parallel for num_threads(14) schedule(dynamic)
+    field_data_.resize(man_ref.getCells().size());
+#pragma omp parallel for num_threads(14)
     for (int i = 0; i < man_ref.getCells().size(); ++i) {
         field_data_[i] = function(man_ref.getCells()[i]);
     }

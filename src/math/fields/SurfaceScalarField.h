@@ -24,6 +24,12 @@ class SurfaceScalarField : public SurfaceFieldBase<Types::complex_d> {
         : Base(manifold_ref, function){}
 
     static constexpr int getNumberOfComponents() {return 1;}
+
+    void multiply(const std::function<Types::scalar(const Types::Vector3d &)> &function);
+
+    void multiply(const std::function<Types::scalar(const Mesh::IndexedCell &)> &function);
+
+    void modify(const std::function<field_t(const Mesh::point_t &, const field_t &)> &function);
 };
 } // namespace EMW::Math
 

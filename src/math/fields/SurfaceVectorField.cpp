@@ -139,9 +139,10 @@ EMW::Math::SurfaceVectorField::NormalField(const EMW::Math::SurfaceVectorField::
 EMW::Math::SurfaceVectorField EMW::Math::operator-(const EMW::Math::SurfaceVectorField &lhs,
                                                    const EMW::Math::SurfaceVectorField &rhs) {
     Containers::vector<Types::Vector3c> field_data{};
-    field_data.reserve(lhs.getField().size());
+    field_data.resize(lhs.getField().size());
+#pragma omp parallel for schedule(dynamic) num_threads(14)
     for (int i = 0; i != lhs.getField().size(); i++) {
-        field_data.emplace_back(lhs.getField()[i] - rhs.getField()[i]);
+        field_data[i] = lhs.getField()[i] - rhs.getField()[i];
     }
     return {lhs.getManifold(), field_data};
 }
@@ -165,7 +166,7 @@ EMW::Math::SurfaceVectorField EMW::Math::operator-(const EMW::Math::SurfaceVecto
     return {lhs.getManifold(), field_data};
 }
 
-EMW::Math::SurfaceVectorField EMW::Math::operator*(const std::complex<double> &lhs, const SurfaceVectorField &rhs) {
+EMW::Math::SurfaceVectorField EMW::Math::operator*(const Types::complex_d &lhs, const SurfaceVectorField &rhs) {
     Containers::vector<Types::Vector3c> field_data{};
     field_data.reserve(rhs.getField().size());
     for (const auto &i : rhs.getField()) {
@@ -173,6 +174,7 @@ EMW::Math::SurfaceVectorField EMW::Math::operator*(const std::complex<double> &l
     }
     return {rhs.getManifold(), field_data};
 }
+
 EMW::Math::SurfaceVectorField EMW::Math::operator*(const Types::scalar &lhs, const SurfaceVectorField &rhs) {
     Containers::vector<Types::Vector3c> field_data{};
     field_data.reserve(rhs.getField().size());

@@ -13,8 +13,6 @@
 #include "mesh/MeshTypes.hpp"
 #include "types/Types.hpp"
 
-#include "omp.h"
-
 namespace EMW::Operators {
 namespace detail {
 /**
@@ -33,7 +31,7 @@ namespace detail {
  */
 template <typename Quadrature, typename cell_t>
 Types::complex_d K1OverSingularCellReducedAndDivided(const Mesh::point_t &point, const cell_t &cell,
-                                                     const Types::scalar k) {
+                                                     const Types::complex_d k) {
     const auto phi = [&](Types::scalar p, Types::scalar q) -> Types::complex_d {
         const Types::Vector3d y = cell.parametrization(p, q);
         const Types::scalar mul = cell.multiplier(p, q);
@@ -57,7 +55,7 @@ Types::complex_d K1OverSingularCellReducedAndDivided(const Mesh::point_t &point,
  */
 template <typename Quadrature, typename cell_t>
 Types::complex_d K1OverSingularCellRnDWithSingularityExtraction(const Mesh::point_t &point, const cell_t &cell,
-                                                                const Types::scalar k) {
+                                                                const Types::complex_d k) {
     const auto phi = [&](Types::scalar p, Types::scalar q) -> Types::complex_d {
         const Types::Vector3d y = cell.parametrization(p, q);
         const Types::scalar mul = cell.multiplier(p, q);
@@ -77,7 +75,7 @@ Types::complex_d K1OverSingularCellRnDWithSingularityExtraction(const Mesh::poin
  * @return тензор, умножение на вектор происходит справа
  */
 template <typename Quadrature, typename cell_t>
-Types::Matrix3c K0TensorOverSingularCell(const Mesh::point_t &point, const cell_t &cell, Types::scalar k) {
+Types::Matrix3c K0TensorOverSingularCell(const Mesh::point_t &point, const cell_t &cell, Types::complex_d k) {
     const auto AB = [&](Types::scalar t) -> Types::Vector3c {
         const Types::Vector3d y = cell.parametrization(t, 0);
         return Helmholtz::V(k, point, y);
@@ -114,7 +112,7 @@ Types::Matrix3c K0TensorOverSingularCell(const Mesh::point_t &point, const cell_
  */
 template <typename Quadrature, typename cell_t>
 Types::Vector3c K1OverSingularCellDivided(const Mesh::point_t &point, const Types::Vector3c &j, const cell_t &cell,
-                                          const Types::scalar k) {
+                                          const Types::complex_d k) {
     return j * detail::K1OverSingularCellReducedAndDivided<Quadrature>(point, cell, k);
 }
 
@@ -130,7 +128,7 @@ Types::Vector3c K1OverSingularCellDivided(const Mesh::point_t &point, const Type
  */
 template <typename Quadrature, typename cell_t>
 Types::Vector3c K1OverSingularCellDividedSingularityExtraction(const Mesh::point_t &point, const Types::Vector3c &j,
-                                                               const cell_t &cell, const Types::scalar k) {
+                                                               const cell_t &cell, const Types::complex_d k) {
     return detail::K1OverSingularCellRnDWithSingularityExtraction<Quadrature>(point, cell, k) * j;
 }
 
@@ -146,7 +144,7 @@ Types::Vector3c K1OverSingularCellDividedSingularityExtraction(const Mesh::point
  */
 template <typename Quadrature, typename cell_t>
 Types::Vector3c K1OverSingularCell(const Mesh::point_t &point, const Types::Vector3c &j, const cell_t &cell,
-                                   const Types::scalar k) {
+                                   const Types::complex_d k) {
     return k * k * j * detail::K1OverSingularCellReducedAndDivided<Quadrature>(point, cell, k);
 }
 
@@ -162,31 +160,33 @@ Types::Vector3c K1OverSingularCell(const Mesh::point_t &point, const Types::Vect
  */
 template <typename Quadrature, typename cell_t>
 Types::Vector3c K1OverSingularCellSingularityExtraction(const Mesh::point_t &point, const Types::Vector3c &j,
-                                                        const cell_t &cell, const Types::scalar k) {
+                                                        const cell_t &cell, const Types::complex_d k) {
     return k * k * j * detail::K1OverSingularCellRnDWithSingularityExtraction<Quadrature>(point, cell, k);
 }
 
 template <typename Quadrature, typename cell_t>
 Types::Vector3c K0OverSingularCell(const Mesh::point_t &point, const Types::Vector3c &j, const cell_t &cell,
-                                   Types::scalar k) {
+                                   Types::complex_d k) {
     return detail::K0TensorOverSingularCell<Quadrature>(point, cell, k) * j;
 }
 
 /** Численный расчет оператора K1 в точке point */
 template <typename Quadrature>
-Types::Vector3c K1(const Mesh::point_t &point, const Types::scalar k, const Math::SurfaceVectorField &field) {
+Types::Vector3c K1(const Mesh::point_t &point, const Types::complex_d k, const Math::SurfaceVectorField &field) {
     const auto &cells = field.getManifold().getCells();
     const auto &f = field.getField();
     Types::Vector3c result = Types::Vector3c::Zero();
+
     for (int i = 0; i != cells.size(); i++) {
         result += K1OverSingularCellDivided<Quadrature>(point, f[i], cells[i], k);
     }
+
     return result * k * k;
 }
 
 /** Полуаналитический расчет оператора K1 в точке point */
 template<typename Quadrature>
-Types::Vector3c K1_singularityExtraction(const Mesh::point_t &point, const Types::scalar k, const Math::SurfaceVectorField &field) {
+Types::Vector3c K1_singularityExtraction(const Mesh::point_t &point, const Types::complex_d k, const Math::SurfaceVectorField &field) {
     const auto &cells = field.getManifold().getCells();
     const auto &f = field.getField();
     Types::Vector3c result = Types::Vector3c::Zero();
@@ -198,7 +198,7 @@ Types::Vector3c K1_singularityExtraction(const Mesh::point_t &point, const Types
 
 /** Полный расчет оператора K0 в точке point */
 template<typename Quadrature>
-Types::Vector3c K0(const Mesh::point_t &point, const Types::scalar k, const Math::SurfaceVectorField &field) {
+Types::Vector3c K0(const Mesh::point_t &point, const Types::complex_d k, const Math::SurfaceVectorField &field) {
     const auto &cells = field.getManifold().getCells();
     const auto &f = field.getField();
     Types::Vector3c result = Types::Vector3c::Zero();
@@ -207,6 +207,13 @@ Types::Vector3c K0(const Mesh::point_t &point, const Types::scalar k, const Math
     }
     return result;
 }
+
+/**
+* Оператор K, действующий на сетке
+*/
+class operatorK {
+    const Types::MatrixXc matrix;
+};
 }
 
 #endif //ELECTROMAGNETIC_WAVES_SCATTERING_OPERATORS_HPP

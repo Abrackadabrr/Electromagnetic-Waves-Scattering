@@ -33,7 +33,7 @@ vtkSmartPointer<vtkUnstructuredGrid> detail::formUnstructuredGrid(const EMW::Mes
     const EMW::Containers::vector<EMW::Mesh::IndexedCell> &cells = mesh.getCells();
 
     // Обходим точки коллакации нашей сетки
-    for (auto &cell : cells) {
+    for (const auto &cell : cells) {
         dumpPoints->InsertNextPoint(cell.collPoint_.point_.x(), cell.collPoint_.point_.y(), cell.collPoint_.point_.z());
         tau1->InsertNextTuple(cell.tau[0].data());
         tau2->InsertNextTuple(cell.tau[1].data());
@@ -53,7 +53,7 @@ vtkSmartPointer<vtkUnstructuredGrid> detail::formUnstructuredGrid(const EMW::Mes
     unstructuredGrid->SetPoints(dumpPoints);
 
     // А теперь пишем, как наши точки объединены в четырехугольники (поверхностныее полигоны)
-    for (auto &cell : cells) {
+    for (const auto &cell : cells) {
         auto poly = vtkSmartPointer<vtkPolygon>::New();
         poly->GetPointIds()->SetNumberOfIds(4);
         poly->GetPointIds()->SetId(0, cell.points_[0] + cells.size());
@@ -163,19 +163,19 @@ void field_snapshot(const EMW::Math::SurfaceVectorField &field, const std::strin
     writer->Write();
 }
 
-void united_snapshot(std::vector<EMW::Math::SurfaceVectorField> vectorFields,
-                     std::vector<EMW::Math::SurfaceScalarField> scalarFields, const EMW::Mesh::SurfaceMesh &mesh,
+void united_snapshot(const std::vector<EMW::Math::SurfaceVectorField> &vectorFields,
+                     const std::vector<EMW::Math::SurfaceScalarField> &scalarFields, const EMW::Mesh::SurfaceMesh &mesh,
                      const std::string &path_to_file) {
-        // Создаем поверхность
-        vtkSmartPointer<vtkUnstructuredGrid> unstructuredGrid = detail::formUnstructuredGrid(mesh);
+    // Создаем поверхность
+    vtkSmartPointer<vtkUnstructuredGrid> unstructuredGrid = detail::formUnstructuredGrid(mesh);
 
-        // Создаем поля
-        for (const auto &field : vectorFields) {
-            detail::dumpField(unstructuredGrid, field);
-        }
+    // Создаем поля
+    for (const auto &field : vectorFields) {
+        detail::dumpField<EMW::Math::SurfaceVectorField>(unstructuredGrid, field);
+    }
 
-        for (const auto &field : scalarFields) {
-            detail::dumpField(unstructuredGrid, field);
+    for (const auto &field : scalarFields) {
+            detail::dumpField<EMW::Math::SurfaceScalarField>(unstructuredGrid, field);
         }
 
         // Создаём снапшот в файле с заданным именем
@@ -184,7 +184,8 @@ void united_snapshot(std::vector<EMW::Math::SurfaceVectorField> vectorFields,
         writer->SetFileName((path_to_file + fileName).c_str());
         writer->SetInputData(unstructuredGrid);
         writer->Write();
-    }
+}
+
 }
 
 

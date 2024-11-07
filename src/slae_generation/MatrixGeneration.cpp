@@ -10,28 +10,28 @@
 
 namespace EMW::Matrix {
     Types::complex_d
-    getFirstPartIntegral(Types::index i, Types::index j, Types::scalar k,
+    getFirstPartIntegral(Types::index i, Types::index j, Types::complex_d k,
                          const Containers::vector<Mesh::IndexedCell> &cells) {
         const Types::scalar critical_rho = 0.1;
         return (cells[i].collPoint_.point_ - cells[i].collPoint_.point_).norm() > critical_rho ?
-               EMW::Operators::detail::K1OverSingularCellRnDWithSingularityExtraction<DefiniteIntegrals::GaussLegendre::Quadrature<4, 4>>(
+               EMW::Operators::detail::K1OverSingularCellRnDWithSingularityExtraction<DefiniteIntegrals::GaussLegendre::Quadrature<8, 8>>(
                        cells[i].collPoint_.point_, cells[j], k)
                       :
-               EMW::Operators::detail::K1OverSingularCellReducedAndDivided<DefiniteIntegrals::GaussLegendre::Quadrature<4, 4>>(
+               EMW::Operators::detail::K1OverSingularCellReducedAndDivided<DefiniteIntegrals::GaussLegendre::Quadrature<8, 8>>(
                        cells[i].collPoint_.point_, cells[j], k);
     }
 
     Types::Matrix3c
-    getZeroPartIntegral(Types::index i, Types::index j, Types::scalar k,
+    getZeroPartIntegral(Types::index i, Types::index j, Types::complex_d k,
                         const Containers::vector<Mesh::IndexedCell> &cells) {
         return
 //        i == j ? Types::Matrix3c::Zero() :
-        EMW::Operators::detail::K0TensorOverSingularCell<DefiniteIntegrals::GaussLegendre::Quadrature<4>>(
+        EMW::Operators::detail::K0TensorOverSingularCell<DefiniteIntegrals::GaussLegendre::Quadrature<8>>(
                 cells[i].collPoint_.point_, cells[j], k);
     }
 
     MatrixCoefs
-    getMatrixCoefs(Types::index i, Types::index j, Types::scalar k,
+    getMatrixCoefs(Types::index i, Types::index j, Types::complex_d k,
                    const Containers::vector<Mesh::IndexedCell> &cells) {
         const Types::Matrix3c int0 = getZeroPartIntegral(i, j, k, cells);
         const Types::complex_d int1_k2 = k * k * getFirstPartIntegral(i, j, k, cells);
@@ -49,12 +49,12 @@ namespace EMW::Matrix {
         return {a11_0 + a11_1, a12_0 + a12_1, a21_0 + a21_1, a22_0 + a22_1};
     }
 
-    Types::MatrixXc getMatrix(Types::scalar k, const Mesh::SurfaceMesh& surface_mesh) {
+    Types::MatrixXc getMatrix(Types::complex_d k, const Mesh::SurfaceMesh& surface_mesh) {
         const auto & cells = surface_mesh.getCells();
         const long N = static_cast<long>(cells.size());
         Types::MatrixXc result = Types::MatrixXc::Zero(2 * N, 2 * N);
 
-#pragma omp parallel for schedule(dynamic) num_threads(14) collapse(2)
+#pragma omp parallel for num_threads(14) collapse(2)
         for (long i = 0; i < N; ++i) {
             for (long j = 0; j < N; ++j) {
                 const auto coefs = getMatrixCoefs(i, j, k, cells);

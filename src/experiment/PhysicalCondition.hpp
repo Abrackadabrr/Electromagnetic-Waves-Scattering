@@ -16,15 +16,15 @@ namespace EMW::Physics {
         // polarization
         Types::Vector3d E0;
         // wave number
-        Types::scalar k;
-        // wave vector
+        Types::complex_d k;
+        // unit wave vector
         Types::Vector3d k_vec;
 
-        planeWaveCase(Types::Vector3d polarization, Types::scalar k_fig, const Types::Vector3d& k_unit_vec) : E0(
-                std::move(polarization)), k(k_fig), k_vec(k_fig * k_unit_vec) {};
+        planeWaveCase(Types::Vector3d polarization, Types::complex_d k_fig, Types::Vector3d k_unit_vec) : E0(
+                std::move(polarization)), k(k_fig), k_vec(std::move(k_unit_vec)) {};
 
         [[nodiscard]] Types::Vector3c value(const Types::Vector3d& point) const{
-            return E0 * std::exp(-Math::Constants::i * Math::quasiDot(k_vec, point));
+            return E0 * std::exp(-Math::Constants::i * k * Math::quasiDot(k_vec, point));
         }
     };
 }

@@ -58,8 +58,8 @@ void field_snapshot(const EMW::Math::SurfaceVectorField &field, const std::strin
 
 void volume_snapshot(const EMW::Mesh::VolumeMesh &mesh, const std::string &part_to_file);
 
-void united_snapshot(std::vector<EMW::Math::SurfaceVectorField> vectorFields,
-                     std::vector<EMW::Math::SurfaceScalarField> scalarFiends, const EMW::Mesh::SurfaceMesh &mesh,
+void united_snapshot(const std::vector<EMW::Math::SurfaceVectorField> & vectorFields,
+                     const std::vector<EMW::Math::SurfaceScalarField> & scalarFiends, const EMW::Mesh::SurfaceMesh &mesh,
                      const std::string &path_to_file);
 }
 

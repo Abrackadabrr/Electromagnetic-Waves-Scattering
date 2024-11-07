@@ -37,7 +37,7 @@ Vector3c analyticalInfinitePlate(const Vector3d &e, const Mesh::IndexedCell &cel
     }
 }
 
-Vector3c kernelFromPaper(const Vector3d &e, const Mesh::IndexedCell &cell, const scalar &k) {
+Vector3c kernelFromPaper(const Vector3d &e, const Mesh::IndexedCell &cell, const complex_d &k) {
     const Vector3d support{0, 0, 0};
     if (Mesh::Algorithm::PointInTriangle(support, cell.getVertex())) {
         return Vector3c{complex_d{0., 0.}, complex_d{0., 0}, complex_d{0., 0}};
