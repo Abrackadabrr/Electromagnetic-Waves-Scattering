@@ -11,7 +11,7 @@ namespace EMW::Math::AnalyticalIntegration {
         // определяем основные геометрические характеритики
         const Types::Vector3d n = cell.normal;
         const auto vertex = cell.getVertexAsArray();
-        const Types::scalar d = std::abs((r - cell.collPoint_.point_).dot(n));
+        const Types::scalar d = std::abs((r - cell.collPoint_).dot(n));
         Types::scalar result = 0;
         for (int i = 0; i != vertex.size(); i++) {
             const auto &rp = vertex[(i + 1) % vertex.size()];

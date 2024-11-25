@@ -18,19 +18,18 @@ namespace EMW::Mesh {
         Containers::vector<point_t> nodes_;
         Containers::vector<IndexedCell> cells_;
         std::string name = "default_mesh_name";
-        bool jFille = false;
 
     public:
 
         SurfaceMesh(Containers::vector<point_t> nodes, Containers::vector<Containers::array<Types::index, 4>> cells);
 
-        void fillJ(const Types::VectorXc &j);
+        SurfaceMesh(Containers::vector<point_t> nodes, Containers::vector<Containers::array<Types::index, 4>> cells,
+        const std::function<point_t(const Containers::array<Types::index, 4> &,
+                                                 const Containers::vector<point_t> &)> &getPoint);
 
         void customLocalBasis(const std::function<std::array<Types::Vector3d, 3>(const Mesh::IndexedCell&)>& func);
 
         void customCollocationPpoints(const std::function<Types::Vector3d(const Mesh::IndexedCell &)>& func);
-
-        [[nodiscard]] bool jFilled() const {return jFille;}
 
         [[nodiscard]] constexpr const Containers::vector<IndexedCell> &getCells() const { return cells_; }
 
@@ -39,11 +38,6 @@ namespace EMW::Mesh {
         [[nodiscard]] std::string getName() const { return name; }
 
         void setName(const std::string &n) {name = n;}
-
-        // deprecated
-        //        SurfaceMesh(Containers::vector<Point> nodes,
-        //                    Containers::vector<Containers::array<Types::index, 4>> cells,
-        //                    Containers::vector<Types::Vector3c> E_field, Containers::vector<Types::Vector3c> H_field);
     };
 }
 #endif //ELECTROMAGNETIC_WAVES_SCATTERING_SURFACEMESH_HPP

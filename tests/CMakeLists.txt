@@ -6,7 +6,10 @@ foreach (TEST IN LISTS TESTS)
     get_filename_component(FILE_NAME ${TEST} NAME_WE)
     set(EXE_NAME run_${FILE_NAME})
     add_executable(${EXE_NAME} ${TEST}
-            math/test_surface_field.cpp)
+            math/test_surface_field.cpp
+            operators/test_R_operator.cpp
+            slae_generation/test_r_matrix.cpp
+            slae_generation/test_r_matrix.hpp)
     message("TEST: ${EXE_NAME}")
     target_link_libraries(${EXE_NAME} ${PROJECT_NAME} gtest gtest_main visual)
     target_compile_options(${EXE_NAME} PRIVATE -Werror)

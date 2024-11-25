@@ -60,7 +60,7 @@ void volume_snapshot(const EMW::Mesh::VolumeMesh &mesh, const std::string &part_
 
 void united_snapshot(const std::vector<EMW::Math::SurfaceVectorField> & vectorFields,
                      const std::vector<EMW::Math::SurfaceScalarField> & scalarFiends, const EMW::Mesh::SurfaceMesh &mesh,
-                     const std::string &path_to_file);
+                     const std::string &path_to_file, int number = 0);
 }
 
 #endif //ELECTROMAGNETIC_WAVES_SCATTERING_VTKFUNCTIONS_HPP

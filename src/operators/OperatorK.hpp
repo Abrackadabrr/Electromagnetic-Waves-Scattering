@@ -13,7 +13,7 @@
 #include "mesh/MeshTypes.hpp"
 #include "types/Types.hpp"
 
-namespace EMW::Operators {
+namespace EMW::OperatorK {
 namespace detail {
 /**
  * Расчет интергального оператора К1/{k^2} на одной ячейке без умножения на вектор
@@ -207,13 +207,6 @@ Types::Vector3c K0(const Mesh::point_t &point, const Types::complex_d k, const M
     }
     return result;
 }
-
-/**
-* Оператор K, действующий на сетке
-*/
-class operatorK {
-    const Types::MatrixXc matrix;
-};
 }
 
 #endif //ELECTROMAGNETIC_WAVES_SCATTERING_OPERATORS_HPP

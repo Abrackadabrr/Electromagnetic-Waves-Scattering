@@ -66,7 +66,7 @@ EMW::Math::SurfaceVectorField EMW::Math::SurfaceVectorField::pointwiseMultiplica
     const auto field_data = std::views::iota(0, static_cast<int>(manifold_.getCells().size())) |
                             std::views::transform([&](int i) -> Types::Vector3c {
                                 const auto cell = manifold_.getCells()[i];
-                                return field_data_[i] * function(cell.collPoint_.point_);
+                                return field_data_[i] * function(cell.collPoint_);
                             });
     return {manifold_, {field_data.begin(), field_data.end()}};
 }
@@ -75,7 +75,7 @@ void EMW::Math::SurfaceVectorField::multiply(
     const std::function<Types::scalar(const EMW::Types::Vector3d &)> &function) {
     for (int i = 0; i < static_cast<int>(manifold_.getCells().size()); i++) {
         const auto cell = manifold_.getCells()[i];
-        field_data_[i] = field_data_[i] * function(cell.collPoint_.point_);
+        field_data_[i] = field_data_[i] * function(cell.collPoint_);
     }
 }
 
@@ -140,7 +140,7 @@ EMW::Math::SurfaceVectorField EMW::Math::operator-(const EMW::Math::SurfaceVecto
                                                    const EMW::Math::SurfaceVectorField &rhs) {
     Containers::vector<Types::Vector3c> field_data{};
     field_data.resize(lhs.getField().size());
-#pragma omp parallel for schedule(dynamic) num_threads(14)
+#pragma omp parallel for num_threads(14)
     for (int i = 0; i != lhs.getField().size(); i++) {
         field_data[i] = lhs.getField()[i] - rhs.getField()[i];
     }

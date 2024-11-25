@@ -34,7 +34,7 @@ vtkSmartPointer<vtkUnstructuredGrid> detail::formUnstructuredGrid(const EMW::Mes
 
     // Обходим точки коллакации нашей сетки
     for (const auto &cell : cells) {
-        dumpPoints->InsertNextPoint(cell.collPoint_.point_.x(), cell.collPoint_.point_.y(), cell.collPoint_.point_.z());
+        dumpPoints->InsertNextPoint(cell.collPoint_.x(), cell.collPoint_.y(), cell.collPoint_.z());
         tau1->InsertNextTuple(cell.tau[0].data());
         tau2->InsertNextTuple(cell.tau[1].data());
         n->InsertNextTuple(cell.normal.data());
@@ -141,7 +141,7 @@ void field_snapshot(const EMW::Math::SurfaceVectorField &field, const std::strin
     for (auto [i, cell] : cells | std::views::enumerate) {
         const auto node = cell.collPoint_;
         // Вставляем новую точку в сетку VTK-снапшота
-        dumpPoints->InsertNextPoint(node.point_.x(), node.point_.y(), node.point_.z());
+        dumpPoints->InsertNextPoint(node.x(), node.y(), node.z());
         const auto f = field.getField()[i];
         double f_real[3] = {f(0).real(), f(1).real(), f(2).real()};
         double f_imag[3] = {f(0).imag(), f(1).imag(), f(2).imag()};
@@ -165,7 +165,7 @@ void field_snapshot(const EMW::Math::SurfaceVectorField &field, const std::strin
 
 void united_snapshot(const std::vector<EMW::Math::SurfaceVectorField> &vectorFields,
                      const std::vector<EMW::Math::SurfaceScalarField> &scalarFields, const EMW::Mesh::SurfaceMesh &mesh,
-                     const std::string &path_to_file) {
+                     const std::string &path_to_file, int number) {
     // Создаем поверхность
     vtkSmartPointer<vtkUnstructuredGrid> unstructuredGrid = detail::formUnstructuredGrid(mesh);
 
@@ -175,15 +175,14 @@ void united_snapshot(const std::vector<EMW::Math::SurfaceVectorField> &vectorFie
     }
 
     for (const auto &field : scalarFields) {
-            detail::dumpField<EMW::Math::SurfaceScalarField>(unstructuredGrid, field);
-        }
-
-        // Создаём снапшот в файле с заданным именем
-        std::string fileName = mesh.getName() + ".vtu";
-        vtkSmartPointer<vtkXMLUnstructuredGridWriter> writer = vtkSmartPointer<vtkXMLUnstructuredGridWriter>::New();
-        writer->SetFileName((path_to_file + fileName).c_str());
-        writer->SetInputData(unstructuredGrid);
-        writer->Write();
+        detail::dumpField<EMW::Math::SurfaceScalarField>(unstructuredGrid, field);
+    }
+    // Создаём снапшот в файле с заданным именем
+    std::string fileName = mesh.getName() + (number ? std::to_string(number) : std::string("")) + ".vtu";
+    vtkSmartPointer<vtkXMLUnstructuredGridWriter> writer = vtkSmartPointer<vtkXMLUnstructuredGridWriter>::New();
+    writer->SetFileName((path_to_file + fileName).c_str());
+    writer->SetInputData(unstructuredGrid);
+    writer->Write();
 }
 
 }

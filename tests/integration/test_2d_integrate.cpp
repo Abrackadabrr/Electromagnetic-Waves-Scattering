@@ -5,9 +5,9 @@
 #include "gtest/gtest.h"
 
 #include "types/Types.hpp"
-#include "integration/gauss_quadrature/GaussLegenderPoints.hpp"
-#include "integration/newton_cotess/Rectangular.hpp"
-#include "integration/Quadrature.hpp"
+#include "math/integration/gauss_quadrature/GaussLegenderPoints.hpp"
+#include "math/integration/newton_cotess/Rectangular.hpp"
+#include "math/integration/Quadrature.hpp"
 
 using EMW::Types::scalar;
 using namespace EMW;

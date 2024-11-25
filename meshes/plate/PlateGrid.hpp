@@ -14,7 +14,7 @@
 #include "mesh/SurfaceMesh.hpp"
 
 namespace EMW::Examples::Plate {
-    EMW::Mesh::SurfaceMesh generatePlatePrimaryMesh(int N, Types::scalar h) {
+    inline EMW::Mesh::SurfaceMesh generatePlatePrimaryMesh(int N, Types::scalar h) {
         std::vector<Mesh::point_t> meshgrid;
         meshgrid.reserve(N * N);
         Mesh::Utils::cartesian_productYZ(std::ranges::views::iota(0, N), std::ranges::views::iota(0, N),
@@ -34,7 +34,7 @@ namespace EMW::Examples::Plate {
         return Mesh::SurfaceMesh{meshgrid, cells};
     }
 
-    EMW::Mesh::SurfaceMesh
+    inline EMW::Mesh::SurfaceMesh
     generateRectangularMesh(int N1, int N2, Types::scalar h1, Types::scalar h2) {
         std::vector<Mesh::point_t> meshgrid;
         meshgrid.reserve(N1 * N2);

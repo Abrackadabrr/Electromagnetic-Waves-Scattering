@@ -19,13 +19,13 @@ class VolumeMesh {
              const Containers::vector<Node> &nodes)
       : nodes_(nodes){};
 
-  void evaluateOperator(Types::scalar k, const Math::SurfaceVectorField &field);
+  void evaluateOperator(Types::complex_d k, const Math::SurfaceVectorField &field);
 
   void addInitialField(
       const std::function<Types::Vector3c(Mesh::point_t)> &initial);
 
   void calculateFullField(
-      Types::scalar k, const Math::SurfaceVectorField &field,
+      Types::complex_d k, const Math::SurfaceVectorField &field,
       const std::function<Types::Vector3c(Mesh::point_t)> &initial);
 
   [[nodiscard]] const Containers::vector<Node> &getNodes() const noexcept {

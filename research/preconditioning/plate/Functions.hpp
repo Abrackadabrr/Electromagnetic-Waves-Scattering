@@ -31,7 +31,7 @@ Vector3c analyticalInfinitePlate(const Vector3d &e, const Mesh::IndexedCell &cel
     if (Mesh::Algorithm::PointInTriangle(support, cell.getVertex())) {
         return Vector3c{{0., 0.}, {0., 0}, {0., 0}};
     } else {
-        const Mesh::point_t point = cell.collPoint_.point_;
+        const Mesh::point_t point = cell.collPoint_;
         return point * xi(point, k) * Math::quasiDot(point, e) - e * xi(point, k) * point.squaredNorm() -
                2. * phi(point, k) * e;
     }
@@ -42,7 +42,7 @@ Vector3c kernelFromPaper(const Vector3d &e, const Mesh::IndexedCell &cell, const
     if (Mesh::Algorithm::PointInTriangle(support, cell.getVertex())) {
         return Vector3c{complex_d{0., 0.}, complex_d{0., 0}, complex_d{0., 0}};
     }
-    Mesh::point_t r = cell.collPoint_.point_;
+    Mesh::point_t r = cell.collPoint_;
     const scalar R = std::sqrt(r.squaredNorm());
     r = r / R;
     return Math::Constants::inverse_4PI<scalar>() * std::exp(Math::Constants::i * k * R) *

@@ -4,17 +4,17 @@
 
 #include "VolumeMesh.hpp"
 #include "operators/Functions.hpp"
-#include "operators/Operators.hpp"
+#include "operators/OperatorK.hpp"
 #include "math/integration/Quadrature.hpp"
 #include "math/integration/gauss_quadrature/GaussLegenderPoints.hpp"
 #include "math/MathConstants.hpp"
 #include "math/Productions.hpp"
 
 namespace EMW::Mesh {
-    void EMW::Mesh::VolumeMesh::evaluateOperator(Types::scalar k, const Math::SurfaceVectorField &field) {
+    void EMW::Mesh::VolumeMesh::evaluateOperator(Types::complex_d k, const Math::SurfaceVectorField &field) {
         for (auto &node: nodes_) {
-            node.E_ = Operators::K0<DefiniteIntegrals::GaussLegendre::Quadrature<8>>(node.point_, k, field) +
-                      Operators::K1<DefiniteIntegrals::GaussLegendre::Quadrature<8, 8>>(node.point_, k, field);
+            node.E_ = OperatorK::K0<DefiniteIntegrals::GaussLegendre::Quadrature<8>>(node.point_, k, field) +
+                      OperatorK::K1<DefiniteIntegrals::GaussLegendre::Quadrature<8, 8>>(node.point_, k, field);
         }
     }
 
@@ -24,7 +24,7 @@ namespace EMW::Mesh {
         }
     }
 
-    void VolumeMesh::calculateFullField(Types::scalar k, const Math::SurfaceVectorField &field,
+    void VolumeMesh::calculateFullField(Types::complex_d k, const Math::SurfaceVectorField &field,
                                         const std::function<Types::Vector3c(Mesh::point_t)> &initial) {
         evaluateOperator(k, field);
         addInitialField(initial);

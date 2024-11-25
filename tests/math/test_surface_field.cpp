@@ -31,6 +31,6 @@ TEST_F(SURFACE_FILEDS_TESTS, CROSS_WITH_NORMAL) {
     const Math::SurfaceVectorField field_y (surfaceMesh, [](Vector3d x)->Vector3c{return y_unit(x);});
     const auto field_diff = field_z.crossWithNormalField() + field_y;
     const auto field_diff2 = field_z.normalCrossField() - field_y;
-    ASSERT_NEAR(field_diff.supNorm(), 0, 1e-14);
-    ASSERT_NEAR(field_diff2.supNorm(), 0, 1e-14);
+    ASSERT_NEAR(std::abs(field_diff.supNorm()), 0, 1e-14);
+    ASSERT_NEAR(std::abs(field_diff2.supNorm()), 0, 1e-14);
 }

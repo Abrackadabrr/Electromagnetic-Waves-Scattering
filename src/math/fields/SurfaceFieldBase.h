@@ -79,7 +79,7 @@ SurfaceFieldBase<field_t>::SurfaceFieldBase(
     field_data_.resize(man_ref.getCells().size());
 #pragma omp parallel for num_threads(14) schedule(dynamic)
     for (int i = 0; i < man_ref.getCells().size(); ++i) {
-        field_data_[i] = function(man_ref.getCells()[i].collPoint_.point_);
+        field_data_[i] = function(man_ref.getCells()[i].collPoint_);
     }
     field_data_.shrink_to_fit();
 }

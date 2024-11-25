@@ -1,7 +1,6 @@
 //
-// Created by evgen on 13.10.2024.
+// Created by evgen on 11.11.2024.
 //
-
 #include "examples/pathes.hpp"
 #include "experiment/PhysicalCondition.hpp"
 #include "math/MathConstants.hpp"
@@ -33,7 +32,7 @@ using namespace EMW::Types;
  * Сеточный аналог векторной дельта-функции, заданной на ячейках сетки
  */
 Vector3c discrete_delta(const Mesh::IndexedCell &cell) {
-    const Vector3c e{complex_d{0, 0}, complex_d{1, 0}, complex_d{0, 0}};
+    const Vector3c e{complex_d{1, 0}, complex_d{0, 0}, complex_d{0, 0}};
     const Mesh::point_t support{0, 0.001, 0};
     return e * Mesh::Algorithm::PointInTriangle(support, cell.getVertex()) / cell.area_;
 }
@@ -107,40 +106,25 @@ scalar checkBasis(const Mesh::SurfaceMesh &mesh) {
     return result;
 }
 
-/*
- * Мы имеем аналитическое решение для бесконечной плоскости, и знаем то, как оно задается.
- * Пусть f_1 -- это решение по аналитической формуле, но при этом плоскость будет конечная
- * Пусть f_2 -- это решение, полученное численным методом, то есть через обычнцю процедуру
- * дискретизации и решения СЛАУ. При этом парвые части у уравнений мы предполагаем одинаковыми
- * Мы хотим сравнить насколько сильно поля f_1 f_2 отличаются друг от друга, и можно ли использовать
- * поле f_1 как, например, первое приближение к поиску поля f_2
- *
- * 1) Первый тест на грубой сетке с точностью 1е-5 показал, что решение качественно совпадает с аналитическим,
- * однако сильно меньше по амплитуде. Так же странное поведение решения на границе наводит на мысли о том, что
- * идет неверное заполнение тангенциального поля. Хотя, мб, в этом есть сцецифика.
- *
- * 2) На более крупной сетке получается, что решение вне некоторой окрестности совпадает лучше, чем на мелкой сетке,
- * при этом на границе чето нетривиальное происходит: амплитуда решения начинает увеличиваться. Кажется все же, что
- * это именно специфика ограниценной задачи, а не неправильное заполнение матрицы
- *
- * 3) На ещё более крупной сетке результат аналогичен. Кажется, что решение на ограниченной плоскости
- * просто сгущается у края из-за того, что плоскость ограничена. В некоторой окрестности носителя дельты
- * расчет точен с 0.1 - 0.08 (если домножить численное решение на отношение норм аналитики и численного).
- *
- * 4) Плоскость большего размера
- * История абсоютно аналогична той что и для плоскости 1_1 с сеткой
- *
- * 5) При всей сходимости мнимой части решения, части действиельные сходятся довольно слабо
- */
+Math::SurfaceVectorField operatorK(const Math::SurfaceVectorField &field, const Types::complex_d k,
+                                   const Mesh::SurfaceMesh &targetMesh) {
+    const auto analytical = [field, k](const Types::Vector3d &point) -> Vector3c {
+        return EMW::Operators::K1_singularityExtraction<DefiniteIntegrals::GaussLegendre::Quadrature<4, 4>>(point, k,
+                                                                                                            field) +
+               EMW::Operators::K0<DefiniteIntegrals::GaussLegendre::Quadrature<4>>(point, k, field);
+    };
+
+    return Math::SurfaceVectorField(targetMesh, analytical);
+}
 
 int main() {
     // треугольная сетка не пластинке
     // auto surfaceMesh = Mesh::Utils::loadTriangularMesh(2350, 4522, "1_1");
     // surfaceMesh.customLocalBasis(equalLocalBasis_1);
 
-    int N1 = 64;
+    int N1 = 41;
     scalar h1 = 1. / (N1 - 1);
-    int N2 = 64;
+    int N2 = 41;
     scalar h2 = 1. / (N2 - 1);
     auto surfaceMesh = Examples::Plate::generateRectangularMesh(N1, N2, h1, h2);
 
@@ -149,9 +133,9 @@ int main() {
     const auto mesh_name = surfaceMesh.getName();
 
     // падающее поле на треугольной сетке
-    constexpr complex_d k = 4 * Math::Constants::PI<scalar>() * complex_d{1, 0.1};
+    constexpr complex_d k = 4 * Math::Constants::PI<scalar>() * complex_d{1, 0.05};
 
-    EMW::Physics::planeWaveCase physics{Vector3d{0, 1, 0}, k, Vector3d{0, 0, -1}.normalized()};
+    EMW::Physics::planeWaveCase physics{Vector3d{1, 0, 0}, k, Vector3d{0, 0, -1}.normalized()};
     auto rhs_field =
         Math::SurfaceVectorField{surfaceMesh, [physics](const Mesh::point_t &point) { return physics.value(point); }};
     rhs_field.setName("constant_rhs");
@@ -164,34 +148,34 @@ int main() {
     // имеет решение вида u = (4/k^2) n x K[m].
     // в качестве m сейчас у нас дельта-функция discrete_delta_field
     // построим такое же решение, но на конечной плоскости surfaceMesh
-    auto analytical_solution = (4. / (k * k)) * (matrixOperatorK(MatrixK, rhs_field).normalCrossField());
+    auto analytical_solution = (4. / (k * k)) * matrixOperatorK(MatrixK, rhs_field).normalCrossField();
     analytical_solution.setName("analytical_solution");
     std::cout << analytical_solution.getName() << std::endl;
-//    analytical_solution.multiply(multiplier);
+    //    analytical_solution.multiply(multiplier);
 
     // рассмотрим задачу K[u] = m x n численно и решим её как обычно
-    auto numerical_solution = solve(MatrixK, rhs_field.crossWithNormalField(), 1e-5);
+    auto numerical_solution = solve(MatrixK, rhs_field.crossWithNormalField(), 1e-2);
     numerical_solution.setName("numerical_solution");
     // numerical_solution.multiply(multiplier);
 
-    // сравниваем поля, рисуем относительную и абсолютные ошибки
-    auto abs_error = analytical_solution - numerical_solution;
-    abs_error.setName("difference");
-    auto relativeError = Math::FieldUtils::relativeError(analytical_solution, numerical_solution);
-    relativeError.setName("relativeError");
-
-    // смотрим неявзку, воспроизводимую аналитическим решением
-    // r = K[analytical_solution] - [m x n]
-    auto analytical_residual = residual(MatrixK, analytical_solution, rhs_field);
-    analytical_residual.setName("residual");
-    // analytical_residual.multiply(multiplier);
-    auto numerical_residual = residual(MatrixK, numerical_solution, rhs_field);
-    numerical_residual.setName("num_residual");
+    // вводим ещё одно многообразие и смотрим на нем картину полей
+    auto sliceMesh = Examples::Plate::generatePlatePrimaryMesh(41, 1. / 40);
+    sliceMesh.setName("sliceMesh_" + std::to_string(k.real()) + "_+_i_" + std::to_string(k.imag()) + "_" +
+                      rhs_field.getName());
+    auto e_from_numerical =
+        operatorK(numerical_solution, k, sliceMesh) +
+        Math::SurfaceVectorField{sliceMesh, [physics](const Mesh::point_t &point) { return physics.value(point); }};
+    e_from_numerical.setName("e_from_numerical");
+    auto e_from_analytical = operatorK(analytical_solution, k, sliceMesh) +
+        Math::SurfaceVectorField{sliceMesh, [physics](const Mesh::point_t &point) { return physics.value(point); }};
+    e_from_analytical.setName("e_from_analytical");
+    auto e_difference = e_from_numerical - e_from_analytical;
+    e_difference.setName("e_difference");
 
     // сохраняем результаты
-    const std::string path = Pathes::studies + "plane/comparison/complex_k/" + mesh_name + '/';
+    const std::string path = Pathes::studies + "plane/comparison/complex_k/weak/" + mesh_name + '/';
     std::filesystem::create_directories(path);
-    VTK::united_snapshot({rhs_field, analytical_solution,
-        numerical_solution, abs_error, analytical_residual, numerical_residual},
-        {relativeError}, surfaceMesh, path);
+
+    VTK::united_snapshot({rhs_field, analytical_solution, numerical_solution},{}, surfaceMesh, path);
+    VTK::united_snapshot({e_from_numerical, e_from_analytical, e_difference},{}, sliceMesh, path);
 };
