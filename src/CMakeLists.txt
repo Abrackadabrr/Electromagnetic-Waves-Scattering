@@ -4,7 +4,10 @@ message("Building a library: " ${PROJECT_NAME})
 
 file(GLOB_RECURSE SOURCES *.cpp)
 
-add_library(${PROJECT_NAME} STATIC ${SOURCES})
+add_library(${PROJECT_NAME} STATIC ${SOURCES}
+        experiment/SWC.cpp
+        experiment/SWC.hpp
+        Utils.hpp)
 
 set(TARGET_LIBS eigen)
 

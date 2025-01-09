@@ -8,7 +8,8 @@ add_subdirectory(../../third_party third_party)
 add_subdirectory(../../visualisation visualisation)
 
 set(EXE_NAME rupor_study)
-add_executable(${EXE_NAME} first_calculation.cpp)
+add_executable(${EXE_NAME}
+        esa_calculation.cpp)
 
 find_package(OpenMP)
 if (OPENMP_FOUND)

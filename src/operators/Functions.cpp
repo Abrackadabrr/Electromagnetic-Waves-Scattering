@@ -36,7 +36,8 @@ Types::Vector3c sigmaKernel(Types::complex_d k, const Types::Vector3d &tau,
                                        const Types::Vector3d &point_on_surface, const Types::Vector3c &j_e,
                                        const Types::Vector3c &j_m) {
     const Types::complex_d exponent = std::exp((-1.) * Math::Constants::i * k * tau.dot(point_on_surface));
-    const Types::Vector3c vec_e = Math::Constants::i * Math::Constants::mu_0_c * k * (j_e - tau * Math::quasiDot(j_e, tau));
+    const Types::scalar epsilon = 1;
+    const Types::Vector3c vec_e = Math::Constants::i * k * (j_e - tau * Math::quasiDot(j_e, tau)) / epsilon;
     const Types::Vector3c vec_m = Math::Constants::i * k * (tau.cross(j_m.real()) + Math::Constants::i * tau.cross(j_m.imag()));
     return exponent * (vec_e - vec_m);
 }

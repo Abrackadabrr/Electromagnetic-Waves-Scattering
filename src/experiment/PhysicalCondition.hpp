@@ -27,5 +27,12 @@ namespace EMW::Physics {
             return E0 * std::exp(-Math::Constants::i * k * Math::quasiDot(k_vec, point));
         }
     };
+
+    /**
+     * Расчитывает волновое число по частоте в ГИГАГерцах
+     */
+    inline Types::scalar get_k_on_frquency(const Types::scalar frequency) {
+        return 2 * Math::Constants::PI<Types::scalar>() * 1e9 * frequency / Math::Constants::c;
+    }
 }
 #endif //ELECTROMAGNETIC_WAVES_SCATTERING_PHYSICALCONDITION_HPP

@@ -34,7 +34,7 @@ namespace EMW::ESA {
         const auto & field_m = j_m.getField();
         Types::Vector3c result = Types::Vector3c::Zero();
         for (int i = 0; i != field_e.size(); i++) {
-            result -= sigmaOverCell(k, tau, cells_e[i], field_e[i], Types::Vector3c::Zero());
+            result += sigmaOverCell(k, tau, cells_e[i], field_e[i], Types::Vector3c::Zero());
         }
 
         for (int i = 0; i != field_m.size(); i++) {

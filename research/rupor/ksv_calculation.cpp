@@ -1,4 +1,7 @@
 //
+// Created by evgen on 10.01.2025.
+//
+//
 // Created by evgen on 24.12.2024.
 //
 
@@ -27,9 +30,12 @@
 
 #include "experiment/PhysicalCondition.hpp"
 
+#include "Utils.hpp"
+
+#include <math/integration/gauss_quadrature/GaussLegenderPoints.hpp>
+
 #include <chrono>
 #include <iostream>
-#include <math/integration/gauss_quadrature/GaussLegenderPoints.hpp>
 
 using namespace EMW;
 
@@ -95,58 +101,26 @@ Types::Vector3c getE_in_point(const Math::SurfaceVectorField &j_e, const Math::S
 Math::SurfaceVectorField getE(const Math::SurfaceVectorField &j_e, const Math::SurfaceVectorField &j_m,
                               const Types::complex_d k, const Mesh::SurfaceMesh &targetMesh) {
     const Types::complex_d mul = Math::Constants::i / k;
+#ifdef OLD
     return mul * operatorK(j_e, k, targetMesh) - operatorR(j_m, k, targetMesh);
+#else
+    const Types::MatrixXc R_matrix = Matrix::getMatrixR(k, j_m.getManifold(), targetMesh);
+    std::cout << "matrix R computation done" << std::endl;
+    const Types::MatrixXc K_matrix = Matrix::getMatrixK(k, j_e.getManifold(), targetMesh);
+    std::cout << "matrix K computation done" << std::endl;
+
+    std::cout << K_matrix.rows() << std::endl;
+    std::cout << K_matrix.cols() << std::endl;
+    std::cout << R_matrix.rows() << std::endl;
+    std::cout << R_matrix.cols() << std::endl;
+    std::cout << j_e.asSLAERHS().rows() << std::endl;
+    std::cout << j_m.asSLAERHS().rows() << std::endl;
+    const Types::VectorXc e_vector = mul * K_matrix * j_e.asSLAERHS() - R_matrix * j_m.asSLAERHS();
+    std::cout << "multiplication done" << std::endl;
+    return Math::SurfaceVectorField::TangentField(targetMesh, e_vector);
+#endif
 }
 #endif
-
-template <typename Container>
-void to_csv(const Container &cont1, const Container &cont2, const std::string &name1, const std::string &name2,
-            std::ofstream &str) {
-    str << name1 << "," << name2 << "\n";
-    for (int i = 0; i < cont1.size(); i++) {
-        str << cont1[i] << ',' << cont2[i] << '\n';
-    }
-}
-
-void getSigmaValuesXZ(const Types::complex_d k, const Math::SurfaceVectorField &j_e,
-                    const Math::SurfaceVectorField &j_m) {
-    int samples = 360;
-    Containers::vector<Types::scalar> esas;
-    esas.reserve(samples);
-    Containers::vector_d angles;
-    angles.reserve(samples);
-
-    for (int i = 0; i < samples; i++) {
-        Types::scalar angle = i * Math::Constants::PI<Types::scalar>() * 2 / samples;
-        Types::Vector3d tau = {std::cos(angle), 0, std::sin(angle)};
-        esas.push_back(ESA::calculateESA(tau, k, j_e, j_m));
-        angles.push_back(angle);
-    }
-    std::ofstream sigma(
-        "/home/evgen/Education/MasterDegree/thesis/Electromagnetic-Waves-Scattering/vtk_files/studies/rupor/sigmaXZ.csv");
-
-    to_csv(esas, angles, "sigma", "angle", sigma);
-}
-
-void getSigmaValuesYZ(const Types::complex_d k, const Math::SurfaceVectorField &j_e,
-                    const Math::SurfaceVectorField &j_m) {
-    int samples = 360;
-    Containers::vector<Types::scalar> esas;
-    esas.reserve(samples);
-    Containers::vector_d angles;
-    angles.reserve(samples);
-
-    for (int i = 0; i < samples; i++) {
-        Types::scalar angle = i * Math::Constants::PI<Types::scalar>() * 2 / samples;
-        Types::Vector3d tau = {0, std::cos(angle), std::sin(angle)};
-        esas.push_back(ESA::calculateESA(tau, k, j_e, j_m));
-        angles.push_back(angle);
-    }
-    std::ofstream sigma(
-        "/home/evgen/Education/MasterDegree/thesis/Electromagnetic-Waves-Scattering/vtk_files/studies/rupor/sigmaYZ.csv");
-
-    to_csv(esas, angles, "sigma", "angle", sigma);
-}
 
 template <typename Callable>
 void getSWConAxis(const Math::SurfaceVectorField &j_e, const Math::SurfaceVectorField &j_m, const Types::complex_d k,
@@ -154,20 +128,20 @@ void getSWConAxis(const Math::SurfaceVectorField &j_e, const Math::SurfaceVector
     // собрать точки на оси
     int N = 5 * 41;
     Types::scalar h = 0.17 / (N - 1);
-    const auto points_view = std::views::iota(0, N) | std::views::transform([&](auto p) { return p * h; });
+    const auto points_view = std::views::iota(0, N) | std::views::transform([&](auto p) { return Types::Vector3d{0, 0, p * h}; });
     const auto z_values_view = points_view | std::views::transform([&](auto p) { return p.z(); });
-    const Containers::vector<Types::scalar> points{std::begin(points_view), std::end(points_view)};
+    Containers::vector<Mesh::point_t> points{std::begin(points_view), std::end(points_view)};
     const Containers::vector<Types::scalar> z_coordinate{std::begin(z_values_view), std::end(z_values_view)};
 
     const auto inverse_field = [&](Mesh::point_t &point) {
         return getE_in_point(j_e, j_m, k, point) - direct_field(point);
     };
 
-    const auto result = EngineeringCoefficients::SWC(direct_field, inverse_field);
+    const auto result = EngineeringCoefficients::SWC(direct_field, inverse_field, points);
 
     std::ofstream sigma(
         "/home/evgen/Education/MasterDegree/thesis/Electromagnetic-Waves-Scattering/vtk_files/studies/rupor/ksv.csv");
-    to_csv(result, z_coordinate, "z", "ksv", sigma);
+    Utils::to_csv(result, z_coordinate, "z", "ksv", sigma);
 }
 
 int main() {
@@ -214,7 +188,7 @@ int main() {
 
     std::cout << "Matrix assembled" << std::endl;
 
-    const auto result = solve(matrix, rhs, 1e-3);
+    const auto result = solve(matrix, rhs, 1e-2);
 
     // Разбиваем на два тока и рисуем на разных многообразиях
     const Types::VectorXc electric_current = result.block(0, 0, 2 * mesh_all.getCells().size(), 1);
@@ -232,25 +206,5 @@ int main() {
     VTK::united_snapshot({e_c}, {}, mesh_all, path);
     VTK::united_snapshot({m_c}, {}, mesh_zero, path);
 
-    // Рисуем картину поля в плоскости y = 0
-    int N1 = 41;
-    Types::scalar h1 = a / (N1 - 1);
-    int N2 = 5 * 41;
-    Types::scalar h2 = 2 * 0.17 / (N2 - 1);
-    auto set_of_points_for_E = Examples::Plate::generateRectangularMesh(N1, N2, h1, h2);
-    set_of_points_for_E.setName("E_mesh");
-    std::cout << "f" << std::endl;
-    auto e_field = getE(e_c, m_c, k, set_of_points_for_E);
-    //  + Math::SurfaceVectorField{set_of_points_for_E, get_e_h10_mode}
-    e_field.setName("e_field");
-    auto e_direct_field = Math::SurfaceVectorField{set_of_points_for_E, get_e_h10_mode};
-    e_direct_field.setName("e_direct_field");
-
-    auto e_inverse_field = e_field - e_direct_field;
-    e_inverse_field.setName("e_inverse_field");
-
-    VTK::united_snapshot({e_field, e_direct_field, e_inverse_field}, {}, set_of_points_for_E, path);
-
-    getSigmaValuesXZ(k, e_c, m_c);
-    getSigmaValuesYZ(k, e_c, m_c);
+    getSWConAxis(e_c, m_c, k, get_e_h10_mode);
 }

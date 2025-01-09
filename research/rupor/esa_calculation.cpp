@@ -1,4 +1,7 @@
 //
+// Created by evgen on 10.01.2025.
+//
+//
 // Created by evgen on 24.12.2024.
 //
 
@@ -14,6 +17,7 @@
 #include "experiment/SWC.hpp"
 
 #include "Equations.hpp"
+#include "Utils.hpp"
 #include "VTKFunctions.hpp"
 
 #include "meshes/plate/PlateGrid.hpp"
@@ -57,56 +61,6 @@ Types::VectorXc solve(const Types::MatrixXc &A, const Types::VectorXc &b, Types:
     std::cout << "Info: " << static_cast<int>(method.info()) << std::endl;
     return j_vec;
 }
-#if 1
-
-Types::Vector3c operatorK_in_point(const Math::SurfaceVectorField &field, const Types::complex_d k,
-                                   const Mesh::point_t &point) {
-    return EMW::OperatorK::K1<DefiniteIntegrals::GaussLegendre::Quadrature<4, 4>>(point, k, field) +
-           EMW::OperatorK::K0<DefiniteIntegrals::GaussLegendre::Quadrature<4>>(point, k, field);
-}
-
-Math::SurfaceVectorField operatorK(const Math::SurfaceVectorField &field, const Types::complex_d k,
-                                   const Mesh::SurfaceMesh &targetMesh) {
-
-    const auto analytical = [field, k](const Types::Vector3d &point) -> Types::Vector3c {
-        return operatorK_in_point(field, k, point);
-    };
-    return Math::SurfaceVectorField(targetMesh, analytical);
-}
-
-Types::Vector3c operatorR_in_point(const Math::SurfaceVectorField &field, const Types::complex_d k,
-                                   const Mesh::point_t &point) {
-    return EMW::OperatorR::detail::R<DefiniteIntegrals::GaussLegendre::Quadrature<4, 4>>(point, k, field);
-}
-
-Math::SurfaceVectorField operatorR(const Math::SurfaceVectorField &field, const Types::complex_d k,
-                                   const Mesh::SurfaceMesh &targetMesh) {
-    const auto analytical = [field, k](const Types::Vector3d &point) -> Types::Vector3c {
-        return operatorR_in_point(field, k, point);
-    };
-    return Math::SurfaceVectorField(targetMesh, analytical);
-}
-
-Types::Vector3c getE_in_point(const Math::SurfaceVectorField &j_e, const Math::SurfaceVectorField &j_m,
-                              const Types::complex_d k, const Mesh::point_t &point) {
-    const Types::complex_d mul = Math::Constants::i / k;
-    return mul * operatorK_in_point(j_e, k, point) - operatorR_in_point(j_m, k, point);
-}
-Math::SurfaceVectorField getE(const Math::SurfaceVectorField &j_e, const Math::SurfaceVectorField &j_m,
-                              const Types::complex_d k, const Mesh::SurfaceMesh &targetMesh) {
-    const Types::complex_d mul = Math::Constants::i / k;
-    return mul * operatorK(j_e, k, targetMesh) - operatorR(j_m, k, targetMesh);
-}
-#endif
-
-template <typename Container>
-void to_csv(const Container &cont1, const Container &cont2, const std::string &name1, const std::string &name2,
-            std::ofstream &str) {
-    str << name1 << "," << name2 << "\n";
-    for (int i = 0; i < cont1.size(); i++) {
-        str << cont1[i] << ',' << cont2[i] << '\n';
-    }
-}
 
 void getSigmaValuesXZ(const Types::complex_d k, const Math::SurfaceVectorField &j_e,
                     const Math::SurfaceVectorField &j_m) {
@@ -125,7 +79,7 @@ void getSigmaValuesXZ(const Types::complex_d k, const Math::SurfaceVectorField &
     std::ofstream sigma(
         "/home/evgen/Education/MasterDegree/thesis/Electromagnetic-Waves-Scattering/vtk_files/studies/rupor/sigmaXZ.csv");
 
-    to_csv(esas, angles, "sigma", "angle", sigma);
+    Utils::to_csv(esas, angles, "sigma", "angle", sigma);
 }
 
 void getSigmaValuesYZ(const Types::complex_d k, const Math::SurfaceVectorField &j_e,
@@ -145,29 +99,7 @@ void getSigmaValuesYZ(const Types::complex_d k, const Math::SurfaceVectorField &
     std::ofstream sigma(
         "/home/evgen/Education/MasterDegree/thesis/Electromagnetic-Waves-Scattering/vtk_files/studies/rupor/sigmaYZ.csv");
 
-    to_csv(esas, angles, "sigma", "angle", sigma);
-}
-
-template <typename Callable>
-void getSWConAxis(const Math::SurfaceVectorField &j_e, const Math::SurfaceVectorField &j_m, const Types::complex_d k,
-                  const Callable &direct_field) {
-    // собрать точки на оси
-    int N = 5 * 41;
-    Types::scalar h = 0.17 / (N - 1);
-    const auto points_view = std::views::iota(0, N) | std::views::transform([&](auto p) { return p * h; });
-    const auto z_values_view = points_view | std::views::transform([&](auto p) { return p.z(); });
-    const Containers::vector<Types::scalar> points{std::begin(points_view), std::end(points_view)};
-    const Containers::vector<Types::scalar> z_coordinate{std::begin(z_values_view), std::end(z_values_view)};
-
-    const auto inverse_field = [&](Mesh::point_t &point) {
-        return getE_in_point(j_e, j_m, k, point) - direct_field(point);
-    };
-
-    const auto result = EngineeringCoefficients::SWC(direct_field, inverse_field);
-
-    std::ofstream sigma(
-        "/home/evgen/Education/MasterDegree/thesis/Electromagnetic-Waves-Scattering/vtk_files/studies/rupor/ksv.csv");
-    to_csv(result, z_coordinate, "z", "ksv", sigma);
+    Utils::to_csv(esas, angles, "sigma", "angle", sigma);
 }
 
 int main() {
@@ -231,25 +163,6 @@ int main() {
 
     VTK::united_snapshot({e_c}, {}, mesh_all, path);
     VTK::united_snapshot({m_c}, {}, mesh_zero, path);
-
-    // Рисуем картину поля в плоскости y = 0
-    int N1 = 41;
-    Types::scalar h1 = a / (N1 - 1);
-    int N2 = 5 * 41;
-    Types::scalar h2 = 2 * 0.17 / (N2 - 1);
-    auto set_of_points_for_E = Examples::Plate::generateRectangularMesh(N1, N2, h1, h2);
-    set_of_points_for_E.setName("E_mesh");
-    std::cout << "f" << std::endl;
-    auto e_field = getE(e_c, m_c, k, set_of_points_for_E);
-    //  + Math::SurfaceVectorField{set_of_points_for_E, get_e_h10_mode}
-    e_field.setName("e_field");
-    auto e_direct_field = Math::SurfaceVectorField{set_of_points_for_E, get_e_h10_mode};
-    e_direct_field.setName("e_direct_field");
-
-    auto e_inverse_field = e_field - e_direct_field;
-    e_inverse_field.setName("e_inverse_field");
-
-    VTK::united_snapshot({e_field, e_direct_field, e_inverse_field}, {}, set_of_points_for_E, path);
 
     getSigmaValuesXZ(k, e_c, m_c);
     getSigmaValuesYZ(k, e_c, m_c);

@@ -16,19 +16,25 @@ namespace EMW::Matrix {
 namespace DiscreteK {
 Types::complex_d getFirstPartIntegral(const Mesh::IndexedCell &cell_i, const Mesh::IndexedCell &cell_j,
                                       Types::complex_d k) {
-    return EMW::OperatorK::detail::K1OverSingularCellReducedAndDivided<
-        DefiniteIntegrals::GaussLegendre::Quadrature<8, 8>>(cell_i.collPoint_, cell_j, k);
+    if ((cell_i.collPoint_ - cell_j.collPoint_).norm() < 1e-15)
+        return EMW::OperatorK::detail::K1OverSingularCellReducedAndDivided<
+            DefiniteIntegrals::GaussLegendre::Quadrature<4, 4>>(cell_i.collPoint_, cell_j, k);
+    return EMW::OperatorK::detail::K1OverSingularCellRnDWithSingularityExtraction<
+        DefiniteIntegrals::GaussLegendre::Quadrature<4, 4>>(cell_i.collPoint_, cell_j, k);
 }
 
 Types::complex_d getFirstPartIntegral(Types::index i, Types::index j, Types::complex_d k,
                                       const Containers::vector<Mesh::IndexedCell> &cells) {
+    if (i == j)
+        return EMW::OperatorK::detail::K1OverSingularCellRnDWithSingularityExtraction<
+            DefiniteIntegrals::GaussLegendre::Quadrature<4, 4>>(cells[i].collPoint_, cells[j], k);
     return EMW::OperatorK::detail::K1OverSingularCellReducedAndDivided<
-        DefiniteIntegrals::GaussLegendre::Quadrature<8, 8>>(cells[i].collPoint_, cells[j], k);
+        DefiniteIntegrals::GaussLegendre::Quadrature<4, 4>>(cells[i].collPoint_, cells[j], k);
 }
 
 Types::Matrix3c getZeroPartIntegral(const Mesh::IndexedCell &cell_i, const Mesh::IndexedCell &cell_j,
                                     Types::complex_d k) {
-    return EMW::OperatorK::detail::K0TensorOverSingularCell<DefiniteIntegrals::GaussLegendre::Quadrature<8>>(
+    return EMW::OperatorK::detail::K0TensorOverSingularCell<DefiniteIntegrals::GaussLegendre::Quadrature<4>>(
         cell_i.collPoint_, cell_j, k);
 }
 
@@ -150,8 +156,8 @@ Types::MatrixXc getMatrixK(Types::complex_d k, const Mesh::SurfaceMesh &integrat
 #endif
             result(i, j) = coefs.a11;
             result(i + N, j) = coefs.a21;
-            result(i, j + N) = coefs.a12;
-            result(i + N, j + N) = coefs.a22;
+            result(i, j + M) = coefs.a12;
+            result(i + N, j + M) = coefs.a22;
         }
     }
     return result;
