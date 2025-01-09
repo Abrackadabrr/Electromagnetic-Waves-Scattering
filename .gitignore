@@ -6,6 +6,9 @@ token.txt
 /cmake-build-debug
 /cmake-build-release
 
+research/rupor/cmake-build-debug
+research/rupor/cmake-build-release
+
 # Dirs with visuals
 vtk_files
 
