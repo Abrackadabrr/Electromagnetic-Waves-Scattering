@@ -22,7 +22,7 @@ namespace EMW::DefiniteIntegrals::GaussLegendre {
     struct Quadrature<1> {
         static constexpr Types::index dim = 1;
         static constexpr Types::index size = 1;
-        static constexpr Containers::array<Node<1>, size> nodes = {Node<1>{{0}, 2.}};
+        static constexpr Containers::array<Node<1>, size> nodes = {Node<1>{{0.}, 2.}};
     };
 
     template<>

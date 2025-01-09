@@ -14,6 +14,7 @@ namespace EMW::ESA {
                                   const Mesh::IndexedCell &cell, const Types::Vector3c& j);
 
     Types::scalar calculateESA(const Types::Vector3d &tau, Types::complex_d k,
-                               const Math::SurfaceVectorField &j_field);
+                               const Math::SurfaceVectorField &j_e,
+                               const Math::SurfaceVectorField &j_m);
 }
 #endif //ELECTROMAGNETIC_WAVES_SCATTERING_ESA_HPP

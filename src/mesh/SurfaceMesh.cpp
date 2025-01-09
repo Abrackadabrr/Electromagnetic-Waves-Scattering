@@ -16,6 +16,11 @@ namespace EMW::Mesh {
         );
         cells_ = Containers::vector<IndexedCell>{std::ranges::begin(cellsConstructed),
                                                  std::ranges::end(cellsConstructed)};
+
+        // БОЛЬШУЩИЙ КОСТЫЛЬ ДЛЯ РАСЧЕТА ВОЛНОВОДА
+        for (int i = 1; i <= 200; i++) {
+            cells_[cells.size() - i].tag = IndexedCell::Tag::WAVEGUIDE_CROSS_SECTION;
+        }
     };
 
     SurfaceMesh::SurfaceMesh(Containers::vector<point_t> nodes, Containers::vector<Containers::array<Types::index, 4>> cells,
@@ -45,4 +50,15 @@ namespace EMW::Mesh {
             cell.collPoint_ = func(cell);
         }
     }
+
+    SurfaceMesh SurfaceMesh::getSubmesh(IndexedCell::Tag tag) {
+        std::vector<IndexedCell> subcells;
+        for (auto &cell: cells_) {
+            if (cell.tag == tag) {
+                subcells.push_back(cell);
+            }
+        }
+        return {nodes_, subcells};
+    }
 }
+

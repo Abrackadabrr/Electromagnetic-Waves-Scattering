@@ -18,7 +18,7 @@ namespace EMW::Helmholtz {
     Types::Vector3c V(Types::complex_d k, const Types::Vector3d &x, const Types::Vector3d &y);
 
     Types::Vector3c
-    sigmaKernel(Types::complex_d k, const Types::Vector3d &tau, const Types::Vector3d &y, const Types::Vector3c &j);
+    sigmaKernel(Types::complex_d k, const Types::Vector3d &tau, const Types::Vector3d &point_on_surface, const Types::Vector3c &j_e, const Types::Vector3c& j_m);
 
     Types::scalar smoother(Types::scalar e, const Types::Vector3d &x, const Types::Vector3d &y);
 

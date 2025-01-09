@@ -11,10 +11,7 @@
 
 namespace EMW::Matrix {
 
-enum class operator_t {
-  R = 0,
-  K = 1
-};
+enum class operator_t { R = 0, K = 1 };
 
 /**
  * Contain parts of matrix coefficients
@@ -66,11 +63,52 @@ MatrixCoefs getMatrixCoefs(Types::index i, Types::index j, Types::complex_d k,
 namespace DiscreteR {
 MatrixCoefs getMatrixCoefs(Types::index i, Types::index j, Types::complex_d k,
                            const Containers::vector<Mesh::IndexedCell> &cells);
-}
 
+/**
+ * Расчет коэффициентов матрицы от ячейки cell_j в точке cell_i.collPoint_
+ * @param cell_i ячейка, в которой есть точка коллокации
+ * @param cell_j ячейка, по которой производится расчет интеграла
+ * @param k волновое число
+ * @return четыре коэффициента в матрицу
+ *
+ * @brief Функция, созданная для расчета матриц, где поверхность интегрирования не совпадает с поверьностью, где
+ * лежат точки коллокации
+ */
+MatrixCoefs getMatrixCoefs(const Mesh::IndexedCell &cell_i, const Mesh::IndexedCell &cell_j, Types::complex_d k);
+
+} // namespace DiscreteR
+
+/**
+* Расчет матрицы оператора K для токов и значений образа на одной и той же поверхности
+*/
 Types::MatrixXc getMatrixK(Types::complex_d k, const Mesh::SurfaceMesh &surface_mesh);
 
+/**
+* Расчет матрицы оператора K для токов и значений образа на разных поверхностях
+*/
+Types::MatrixXc getMatrixK(Types::complex_d k, const Mesh::SurfaceMesh &integration_mesh,
+                                               const Mesh::SurfaceMesh &mesh_with_coll_points);
+
+/**
+* Расчет матрицы оператора R для токов и значений образа на одной и той же поверхности
+*/
 Types::MatrixXc getMatrixR(Types::complex_d k, const Mesh::SurfaceMesh &surface_mesh);
+
+/**
+* Расчет матрицы оператора R для токов и значений образа на разных поверхностях
+*/
+Types::MatrixXc getMatrixR(Types::complex_d k, const Mesh::SurfaceMesh &integration_mesh,
+                                               const Mesh::SurfaceMesh &mesh_with_coll_points);
+
+/**
+* Расчет матрицы оператора векторного умножения на нормаль справа
+*/
+Types::MatrixXc getMatrixCrossNormal(Types::complex_d k, const Mesh::SurfaceMesh &surface_mesh);
+
+/**
+ * Расчет матрицы единичного оператора на поверхности
+ */
+Types::MatrixXc getMatrixIdentity(Types::complex_d k, const Mesh::SurfaceMesh &surface_mesh);
 
 } // namespace EMW::Matrix
 

@@ -10,12 +10,12 @@
 #include "types/Types.hpp"
 
 namespace EMW::Mesh {
-using point_t = Types::Vector3d;
+using point_t = EMW::Types::Vector3d;
 
 /**
  * Тип расчетного узла
  */
-struct [[deprecated]] Node {
+struct Node {
     using field_t = Types::Vector3c;
     point_t point_;
     field_t E_;
@@ -68,6 +68,13 @@ struct Cell {
  * Хранение точек происходит в соотвествии с локальным полем нормалей поверхности ("правило буравчика")
  */
 struct IndexedCell {
+
+    enum class Tag {
+        NO_TAG = 0,
+        SIGMA = 1,
+        WAVEGUIDE_CROSS_SECTION = 2,
+    };
+
     using nodes_t = Containers::array<Types::index, 4>;
     nodes_t points_{};
     Types::scalar area_{};
@@ -76,6 +83,8 @@ struct IndexedCell {
     Containers::array<Types::Vector3d, 2> tau;
     CellStructure cellStructure;
     IntegrationParameters integrationParameters;
+
+    Tag tag = Tag::SIGMA;
 
     IndexedCell() = default;
 

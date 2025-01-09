@@ -29,8 +29,7 @@ namespace EMW::Types {
     using MatrixXd = Eigen::MatrixXd;
     using Matrix3d = Eigen::Matrix3<scalar>;
     using Matrix3c = Eigen::Matrix3<complex_d>;
-
-}
+};
 
 namespace EMW::Containers {
     template<Types::index n>
@@ -40,6 +39,6 @@ namespace EMW::Containers {
     using vector_d = std::vector<Types::scalar>;
     template<typename type>
     using vector = std::vector<type>;
-}
+};
 
 #endif //ELECTROMAGNETIC_WAVES_SCATTERING_TYPES_H

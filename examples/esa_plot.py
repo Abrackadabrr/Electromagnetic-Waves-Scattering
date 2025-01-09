@@ -2,8 +2,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 import csv
 
-filename = ("/media/evgen/SecondLinuxDisk/4_level/"
-            "Electromagnetic-Waves-Scattering/vtk_files/examples/cylinder/sigma_back_2002.csv")
+filename = ("/home/evgen/Education/MasterDegree/thesis/Electromagnetic-Waves-Scattering/vtk_files/studies/rupor/sigma.csv")
 
 sigma = []
 angle = []

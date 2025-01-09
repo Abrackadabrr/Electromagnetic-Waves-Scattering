@@ -9,7 +9,7 @@
 #include "types/Types.hpp"
 
 namespace EMW::Mesh::Algorithm {
-
+#if 0
     template <typename I>
     constexpr I logical_nor(I lhs, I rhs) noexcept { return not (lhs or rhs); }
 
@@ -26,6 +26,7 @@ namespace EMW::Mesh::Algorithm {
      * @param cell ячейка (c == d)
      */
     bool PointInTriangle(const Mesh::point_t &pt, const Cell &cell);
+#endif
 }
 
 #endif //PRECONDITIONING_ALGORITHMS_HPP

@@ -30,6 +30,10 @@ class SurfaceScalarField : public SurfaceFieldBase<Types::complex_d> {
     void multiply(const std::function<Types::scalar(const Mesh::IndexedCell &)> &function);
 
     void modify(const std::function<field_t(const Mesh::point_t &, const field_t &)> &function);
+
+    static SurfaceScalarField tagField(const manifold_t& manifold);
+
+    static SurfaceScalarField sequenceNumberField(const manifold_t& manifold);
 };
 } // namespace EMW::Math
 

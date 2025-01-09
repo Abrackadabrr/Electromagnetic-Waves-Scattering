@@ -4,9 +4,7 @@ message("Building a library: " ${PROJECT_NAME})
 
 file(GLOB_RECURSE SOURCES *.cpp)
 
-add_library(${PROJECT_NAME} STATIC ${SOURCES}
-        iterative_solvers/SimpleIterationMethod.hpp
-        operators/OperatorR.hpp)
+add_library(${PROJECT_NAME} STATIC ${SOURCES})
 
 set(TARGET_LIBS eigen)
 
