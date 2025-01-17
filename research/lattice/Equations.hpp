@@ -45,10 +45,13 @@ Types::MatrixXc submatrix(const Mesh::SurfaceMesh &mest_to_integrate,
 
     // Надо понять какие размеры будем иметь итоговая подматрица
     // Сейчас предполагаем, что сетки одинаковые, поэтому размеры остаются как и были раньше
-    const Types::index N = mesh_to_integrate_all.getCells().size();
-    const Types::index K = mesh_to_integrate_zero.getCells().size();
-    const Types::index size = 2 * (N + K);
-    Types::MatrixXc A(size, size);
+    const Types::index N_cols = mesh_to_integrate_all.getCells().size();
+    const Types::index K_cols = mesh_to_integrate_zero.getCells().size();
+    const Types::index cols = 2 * (N_cols + K_cols);
+    const Types::index N_rows = mesh_collocation_all.getCells().size();
+    const Types::index K_rows = mesh_collocation_zero.getCells().size();
+    const Types::index rows = 2 * (N_rows + K_rows);
+    Types::MatrixXc A(rows, cols);
 
     const Types::complex_d epsilon{1., 0};
     const Types::complex_d mu{1., 0};
@@ -66,14 +69,16 @@ Types::MatrixXc submatrix(const Mesh::SurfaceMesh &mest_to_integrate,
 #endif
 
     // 1) генерируем необходимые подматрицы
-    // а) Матрица для оператора К: теперь значения оператора К лежат на другой сетке,
-    // значит и считать надо через более общую функцию
+    // матрица оператора K размерами 2 * N_rows x 2 * N_cols
     auto K_all = Matrix::getMatrixK(k, mesh_to_integrate_all, mesh_collocation_all);
     checkNan(K_all, "K_all");
+    // матрица оператора R размерами 2 * N_rows x 2 * K_cols
     auto R_0 = Matrix::getMatrixR(k, mesh_to_integrate_zero, mesh_collocation_all);
     checkNan(R_0, "R0");
+    // матрица оператора K размерами 2 * K_rows x 2 * K_cols
     auto K_0 = Matrix::getMatrixK(k, mesh_to_integrate_zero, mesh_collocation_zero);
     checkNan(K_0, "K0");
+    // матрица оператора K размерами 2 * K_rows x 2 * N_cols
     auto R_all = Matrix::getMatrixR(k, mesh_to_integrate_all, mesh_collocation_zero);
     checkNan(R_all, "R_all");
 
@@ -84,10 +89,10 @@ Types::MatrixXc submatrix(const Mesh::SurfaceMesh &mest_to_integrate,
     // Если будут изменяться размеры, то придется и этот кусок ниже переписывать
 
     // 2) Собираем матрицу
-    A.block(0, 0, 2 * N, 2 * N) = with_e * K_all;
-    A.block(0, 2 * N, 2 * N, 2 * K) = -R_0;
-    A.block(2 * N, 0, 2 * K, 2 * N) = z * R_all;
-    A.block(2 * N, 2 * N, 2 * K, 2 * K) = z * with_mu * K_0;
+    A.block(0, 0, 2 * N_rows, 2 * N_cols) = with_e * K_all;
+    A.block(0, 2 * N_cols, 2 * N_rows, 2 * K_cols) = -R_0;
+    A.block(2 * N_rows, 0, 2 * K_rows, 2 * N_cols) = z * R_all;
+    A.block(2 * N_rows, 2 * N_cols, 2 * K_rows, 2 * K_cols) = z * with_mu * K_0;
 
     // 3) Готово
     return A;
