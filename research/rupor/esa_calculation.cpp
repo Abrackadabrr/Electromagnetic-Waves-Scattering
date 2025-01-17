@@ -72,7 +72,7 @@ void getSigmaValuesXZ(const Types::complex_d k, const Math::SurfaceVectorField &
 
     for (int i = 0; i < samples; i++) {
         Types::scalar angle = i * Math::Constants::PI<Types::scalar>() * 2 / samples;
-        Types::Vector3d tau = {std::cos(angle), 0, std::sin(angle)};
+        Types::Vector3d tau = {std::sin(angle), 0, std::cos(angle)};
         esas.push_back(ESA::calculateESA(tau, k, j_e, j_m));
         angles.push_back(angle);
     }
@@ -84,15 +84,15 @@ void getSigmaValuesXZ(const Types::complex_d k, const Math::SurfaceVectorField &
 
 void getSigmaValuesYZ(const Types::complex_d k, const Math::SurfaceVectorField &j_e,
                     const Math::SurfaceVectorField &j_m) {
-    int samples = 360;
+    int samples = 180;
     Containers::vector<Types::scalar> esas;
     esas.reserve(samples);
     Containers::vector_d angles;
     angles.reserve(samples);
 
     for (int i = 0; i < samples; i++) {
-        Types::scalar angle = i * Math::Constants::PI<Types::scalar>() * 2 / samples;
-        Types::Vector3d tau = {0, std::cos(angle), std::sin(angle)};
+        Types::scalar angle = i * Math::Constants::PI<Types::scalar>() / samples;
+        Types::Vector3d tau = {0,  std::sin(angle), std::cos(angle)};
         esas.push_back(ESA::calculateESA(tau, k, j_e, j_m));
         angles.push_back(angle);
     }
@@ -127,15 +127,15 @@ int main() {
     const Types::complex_d k{Physics::get_k_on_frquency(freq), 0};
     // расчет коэффициента импеданса
     const Types::complex_d beta = std::sqrt(k * k - (EMW::Math::Constants::PI_square<Types::scalar>() / (a * a)));
-    std::cout << beta << std::endl;
-    std::cout << k.real() << std::endl;
+    std::cout << "Волновое число в волноводе: " << beta.real() << "; Длина волны в волноводе: " << 2 * Math::Constants::PI<Types::scalar>() / beta.real() << std::endl;
+    std::cout << "Волновое число в свободном пространстве: " << k.real() << "; Длина волны в свободном пространстве: " << 2 * Math::Constants::PI<Types::scalar>() / k.real() << std::endl;
 
     // тут сделать векторное поле (direct wave в волноводе)
     const auto get_e_h10_mode = [&k, &a, &beta](const Mesh::point_t &x) {
         const auto pi = Math::Constants::PI<Types::scalar>();
         const Types::complex_d mult = Math::Constants::i * (a / pi) * k / Math::Constants::e_0_c;
-        const Types::complex_d exp = std::exp(Math::Constants::i * beta * x.z());
-        const Types::scalar sin = std::cos(pi * x.x() / a);
+        const Types::complex_d exp = std::exp(Math::Constants::i * beta * (x.z() + 0.17));
+        const Types::scalar sin = std::cos(pi * (x.x()) / a);
         return Types::Vector3c{Types::complex_d{0, 0}, mult * sin * exp, Types::complex_d{0, 0}};
     };
 
@@ -146,7 +146,7 @@ int main() {
 
     std::cout << "Matrix assembled" << std::endl;
 
-    const auto result = solve(matrix, rhs, 1e-3);
+    const auto result = solve(matrix, rhs, 1e-2);
 
     // Разбиваем на два тока и рисуем на разных многообразиях
     const Types::VectorXc electric_current = result.block(0, 0, 2 * mesh_all.getCells().size(), 1);

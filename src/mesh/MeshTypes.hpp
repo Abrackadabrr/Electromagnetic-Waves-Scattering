@@ -12,40 +12,13 @@
 namespace EMW::Mesh {
 using point_t = EMW::Types::Vector3d;
 
-/**
- * Тип расчетного узла
- */
-struct Node {
-    using field_t = Types::Vector3c;
-    point_t point_;
-    field_t E_;
-    field_t H_;
-    field_t J_;
-
-  public:
-    Node() = default;
-
-    explicit Node(point_t point)
-        : point_(std::move(point)),
-          E_(Types::Vector3c{Types::complex_d{0, 0}, Types::complex_d{0, 0}, Types::complex_d{0, 0}}),
-          H_(Types::Vector3c{Types::complex_d{0, 0}, Types::complex_d{0, 0}, Types::complex_d{0, 0}}),
-          J_(Types::Vector3c{Types::complex_d{0, 0}, Types::complex_d{0, 0}, Types::complex_d{0, 0}}){};
-
-    Node(Types::scalar x, Types::scalar y, Types::scalar z, field_t E, field_t H, field_t J)
-        : point_(x, y, z), E_(std::move(E)), H_(std::move(H)), J_(std::move(J)) {}
-
-    void SetE(const field_t &E) { E_ = E; }
-
-    void SetH(const field_t &H) { H_ = H; }
-
-    void SetJ(const field_t &J) { H_ = J; }
-};
-
 struct CellStructure {
     point_t A; // тут перерасход памяти на хранение лишней точки, будет хорошо это исправить
     Types::Vector3d ort1; // B - A
     Types::Vector3d ort2; // D - A
     Types::Vector3d diff; // A + C - B - D
+
+    bool operator==(const CellStructure&) const = default;
 };
 
 struct IntegrationParameters {
@@ -73,6 +46,7 @@ struct IndexedCell {
         NO_TAG = 0,
         SIGMA = 1,
         WAVEGUIDE_CROSS_SECTION = 2,
+        MAGNETIC_CURRENTS = 3,
     };
 
     using nodes_t = Containers::array<Types::index, 4>;
@@ -88,8 +62,8 @@ struct IndexedCell {
 
     IndexedCell() = default;
 
-    IndexedCell(const Containers::array<Types::index, 4> &points, const Containers::vector<point_t> &fullPoints,
-                const std::function<point_t(const Containers::array<Types::index, 4> &,
+    IndexedCell(const nodes_t &points, const Containers::vector<point_t> &fullPoints,
+                const std::function<point_t(const nodes_t &,
                                             const Containers::vector<point_t> &)> &getPoint);
 
     IndexedCell(const Containers::array<Types::index, 4> &points, const Containers::vector<point_t> &fullPoints)
@@ -106,12 +80,12 @@ struct IndexedCell {
 
     [[nodiscard]] Types::scalar multiplier(Types::scalar p, Types::scalar q) const noexcept {
         return (integrationParameters.a + p * integrationParameters.b + q * integrationParameters.c).norm();
-        }
+    }
 
-        [[nodiscard]] Cell getVertex() const;
+    [[nodiscard]] Cell getVertex() const;
 
-        [[nodiscard]]Containers::array<Mesh::point_t, 4> getVertexAsArray() const;
-    };
+    [[nodiscard]]Containers::array<Mesh::point_t, 4> getVertexAsArray() const;
+};
 }
 
 #endif //ELECTROMAGNETIC_WAVES_SCATTERING_MESHTYPES_HPP

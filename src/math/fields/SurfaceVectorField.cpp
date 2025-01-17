@@ -9,13 +9,13 @@
 
 #include <ranges>
 
-EMW::Types::VectorXc EMW::Math::SurfaceVectorField::asSLAERHS() const {
+EMW::Types::VectorXc EMW::Math::SurfaceVectorField::asVector() const {
     const auto &cells = manifold_.getCells();
     const long N = static_cast<long>(cells.size());
     Types::VectorXc result = Types::VectorXc::Zero(2 * N);
     for (int i = 0; i < cells.size(); i++) {
-        result(i) = -Math::quasiDot(cells[i].tau[0], field_data_[i]);
-        result(i + N) = -Math::quasiDot(cells[i].tau[1], field_data_[i]);
+        result(i) = Math::quasiDot(cells[i].tau[0], field_data_[i]);
+        result(i + N) = Math::quasiDot(cells[i].tau[1], field_data_[i]);
     }
     return result;
 }
@@ -110,9 +110,7 @@ EMW::Math::SurfaceVectorField EMW::Math::SurfaceVectorField::crossWithNormalFiel
     const auto field_data = std::views::iota(0, static_cast<int>(manifold_.getCells().size())) |
                             std::views::transform([&](int k) -> Types::Vector3c {
                                 const auto cell = manifold_.getCells()[k];
-                                const Types::Vector3d real = field_data_[k].real().cross(cell.normal);
-                                const Types::Vector3d imag = field_data_[k].imag().cross(cell.normal);
-                                return (real + Math::Constants::i * imag);
+                                return cross(field_data_[k], cell.normal);
                             });
     return {manifold_, {field_data.begin(), field_data.end()}};
 }
@@ -121,9 +119,7 @@ EMW::Math::SurfaceVectorField EMW::Math::SurfaceVectorField::normalCrossField() 
     const auto field_data = std::views::iota(0, static_cast<int>(manifold_.getCells().size())) |
                             std::views::transform([&](int k) -> Types::Vector3c {
                                 const auto cell = manifold_.getCells()[k];
-                                const Types::Vector3d real = cell.normal.cross(field_data_[k].real());
-                                const Types::Vector3d imag = cell.normal.cross(field_data_[k].imag());
-                                return (real + Math::Constants::i * imag);
+                                return cross(cell.normal, field_data_[k]);
                             });
     return {manifold_, {field_data.begin(), field_data.end()}};
 }

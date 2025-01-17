@@ -8,9 +8,11 @@ foreach (TASK IN LISTS TASKS)
     get_filename_component(FILE_NAME ${TASK} NAME_WE)
     set(EXE_NAME run_${FILE_NAME})
     add_executable(${EXE_NAME} ${TASK}
-            ../research/rupor/first_calculation.cpp
-            ../research/rupor/Equations.hpp)
-    target_link_libraries(${EXE_NAME} ${PROJECT_NAME} visual)
+            ../research/lattice/lattice_formation.cpp
+            ../research/lattice/Equations.hpp
+            ../research/lattice/FieldCalculation.hpp)
+    target_link_libraries(${EXE_NAME} ${PROJECT_NAME} visual eigen)
     target_include_directories(${EXE_NAME} PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/../src")
-    target_compile_options(${EXE_NAME} PRIVATE -Werror)
+    target_compile_options(${EXE_NAME} PRIVATE -Wconversion -fsanitize=leak -fsanitize=undefined)
+    target_link_options(${EXE_NAME} PRIVATE -fsanitize=undefined)
 endforeach ()

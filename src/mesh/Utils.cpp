@@ -24,4 +24,17 @@ Mesh::SurfaceMesh loadTriangularMesh(int nNodes, int nCells, std::string type) {
     surfaceMesh.setName(type + "_triangular_mesh_" + std::to_string(nCells));
     return surfaceMesh;
 }
+
+Mesh::SurfaceMesh move_by_vector(const Mesh::SurfaceMesh &mesh, const Types::Vector3d &v) {
+    // собираем новые узлы сетки
+    const auto new_nodes_view = mesh.getNodes() | std::views::transform([&](auto &node) {
+        return node + v;
+    });
+    const Containers::vector<point_t> nodes{new_nodes_view.begin(), new_nodes_view.end()};
+    // собираем старое их объединение в ячейки
+    const auto new_cells_view = mesh.getCells() | std::views::transform([](auto &cell) {return cell.points_;});
+    const Containers::vector<IndexedCell::nodes_t> cells{new_cells_view.begin(), new_cells_view.end()};
+    return {nodes, cells};
+}
+
 } // namespace EMW::Mesh::Utils

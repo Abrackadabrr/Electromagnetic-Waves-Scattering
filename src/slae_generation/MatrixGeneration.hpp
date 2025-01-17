@@ -14,9 +14,9 @@ namespace EMW::Matrix {
 enum class operator_t { R = 0, K = 1 };
 
 /**
- * Contain parts of matrix coefficients
- * first figure means number of tau_i (i - number of an equation)
- * second figure means number of tau_j (j - number of a part in sum)
+ * Контейнер для частей коэффициентов в матрице
+ * первая цифра означает номер tau_i (i - номер уравнения, почти что номер строки в матрице)
+ * вторая цифра означает номер tau_j (j - номер внутри суммы, почти что номер столбца)
  */
 struct MatrixCoefs {
     Types::complex_d a11;
@@ -33,24 +33,24 @@ struct ContourIntegralParts {
     Types::Vector3c da;
 };
 
-/***
- * Returning the first part of matrix coefficient (surface integral) divided by k^2
- * (aka dot product of K_1{ tau[m]_j, \sigma_j} and tau[m]_i)
- * @param i - index of an equation
- * @param j - index inside the equation
- * @param k - wave number
- * @param cells - cells in the mesh (with collocation nodes)
+/**
+ * Рассчитывает первую часть коэффициентов в матрице (поверхностный интеграл) делённый на k^2
+ * (скалярное произведение K_1{\tau[m]_j,\sigma_j} and tau[m]_i)
+ * @param i - индекс уравнения
+ * @param j - индекс внутри уравнения (индекс переменной)
+ * @param k - волновое число
+ * @param cells - ячейки сетки (в порядке как в SurfaceMesh)
  * @return
  */
 Types::complex_d getFirstPartIntegral(Types::index i, Types::index j, Types::complex_d k,
                                       const Containers::vector<Mesh::IndexedCell> &cells);
 
 /**
- * Returning the zero part of matrix coefficients (contour integral)
- * @param i - index of an equation
- * @param j - index inside the equation
- * @param k - wave number
- * @param cells - cells in the mesh (with collocation nodes)
+ * Рассчитывает нулевую часть коэффициентов в матрицу (контурный интеграл)
+ * @param i - индекс уравнения
+ * @param j - индекс внутри уравнения (интекс переменной)
+ * @param k - волновое число
+ * @param cells - ячейки сетки (в порядке, котором они лежат в SurfaceMesh)
  * @return
  */
 Types::Matrix3c getZeroPartIntegral(Types::index i, Types::index j, Types::complex_d k,

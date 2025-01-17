@@ -74,5 +74,6 @@ Containers::array<Mesh::point_t, 4> IndexedCell::getVertexAsArray() const {
     result.d = result.a + cellStructure.ort2;
     result.c = cellStructure.diff - result.a + result.b + result.d;
         return {result.a, result.b, result.c, result.d};
-    }
+}
+
 }

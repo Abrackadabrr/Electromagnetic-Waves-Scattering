@@ -2,7 +2,6 @@
 // Created by evgen on 24.01.24.
 //
 
-#include "PlateGrid.hpp"
 #include "slae_generation/MatrixGeneration.hpp"
 #include "visualisation/VTKFunctions.hpp"
 #include "Eigen/IterativeLinearSolvers"

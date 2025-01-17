@@ -27,8 +27,8 @@ inline void checkNan(const Types::MatrixXc &A, const std::string &msg) {
 /**
  * Вычисляем матрицу для системы уравнений расчета рупорной антенны
  */
-inline EMW::Types::MatrixXc getMatrix(const Mesh::SurfaceMesh &mesh_all, const Mesh::SurfaceMesh &mesh_sigma,
-                                      const Mesh::SurfaceMesh &mesh_zero, Types::scalar a, Types::complex_d k) {
+inline EMW::Types::MatrixXc getMatrix(const Mesh::SurfaceMesh &mesh_all, const Mesh::SurfaceMesh &mesh_zero,
+                                      Types::scalar a, Types::complex_d k) {
     // описываем размеры итоговой матрицы
     const Types::index N = mesh_all.getCells().size();
     const Types::index K = mesh_zero.getCells().size();
@@ -45,11 +45,10 @@ inline EMW::Types::MatrixXc getMatrix(const Mesh::SurfaceMesh &mesh_all, const M
     const Types::complex_d with_e = Math::Constants::i * Math::Constants::mu_0_c / k;
     const Types::complex_d with_mu = Math::Constants::i * Math::Constants::e_0_c / k;
 #else
-    const Types::complex_d z = - k * mu / beta;
+    const Types::complex_d z = -k * mu / beta;
     const Types::complex_d with_e = Math::Constants::i / (k * epsilon);
     const Types::complex_d with_mu = Math::Constants::i / (k * mu);
 #endif
-
 
     // генерируем необходимые подматрицы
     auto K_all = Matrix::getMatrixK(k, mesh_all);
@@ -91,7 +90,7 @@ Types::VectorXc getRhs(const Mesh::SurfaceMesh &mesh_all, const Mesh::SurfaceMes
     const Types::index K = mesh_zero.getCells().size();
 
     const Math::SurfaceVectorField direct_e_field{mesh_zero, rhs};
-    const Types::VectorXc non_zer0_rhs = 2 * (direct_e_field.normalCrossField().asSLAERHS());
+    const Types::VectorXc non_zer0_rhs = -2 * direct_e_field.normalCrossField().asVector();
 
     Types::VectorXc res = Types::VectorXc::Zero(2 * N + 2 * K);
     res.block(2 * N, 0, 2 * K, 1) = non_zer0_rhs;

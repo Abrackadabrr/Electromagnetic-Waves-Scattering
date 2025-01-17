@@ -33,6 +33,7 @@
 #include "Utils.hpp"
 
 #include <math/integration/gauss_quadrature/GaussLegenderPoints.hpp>
+#include "FieldCalculation.hpp"
 
 #include <chrono>
 #include <iostream>
@@ -63,85 +64,30 @@ Types::VectorXc solve(const Types::MatrixXc &A, const Types::VectorXc &b, Types:
     std::cout << "Info: " << static_cast<int>(method.info()) << std::endl;
     return j_vec;
 }
-#if 1
 
-Types::Vector3c operatorK_in_point(const Math::SurfaceVectorField &field, const Types::complex_d k,
-                                   const Mesh::point_t &point) {
-    return EMW::OperatorK::K1<DefiniteIntegrals::GaussLegendre::Quadrature<4, 4>>(point, k, field) +
-           EMW::OperatorK::K0<DefiniteIntegrals::GaussLegendre::Quadrature<4>>(point, k, field);
-}
-
-Math::SurfaceVectorField operatorK(const Math::SurfaceVectorField &field, const Types::complex_d k,
-                                   const Mesh::SurfaceMesh &targetMesh) {
-
-    const auto analytical = [field, k](const Types::Vector3d &point) -> Types::Vector3c {
-        return operatorK_in_point(field, k, point);
-    };
-    return Math::SurfaceVectorField(targetMesh, analytical);
-}
-
-Types::Vector3c operatorR_in_point(const Math::SurfaceVectorField &field, const Types::complex_d k,
-                                   const Mesh::point_t &point) {
-    return EMW::OperatorR::detail::R<DefiniteIntegrals::GaussLegendre::Quadrature<4, 4>>(point, k, field);
-}
-
-Math::SurfaceVectorField operatorR(const Math::SurfaceVectorField &field, const Types::complex_d k,
-                                   const Mesh::SurfaceMesh &targetMesh) {
-    const auto analytical = [field, k](const Types::Vector3d &point) -> Types::Vector3c {
-        return operatorR_in_point(field, k, point);
-    };
-    return Math::SurfaceVectorField(targetMesh, analytical);
-}
-
-Types::Vector3c getE_in_point(const Math::SurfaceVectorField &j_e, const Math::SurfaceVectorField &j_m,
-                              const Types::complex_d k, const Mesh::point_t &point) {
-    const Types::complex_d mul = Math::Constants::i / k;
-    return mul * operatorK_in_point(j_e, k, point) - operatorR_in_point(j_m, k, point);
-}
-Math::SurfaceVectorField getE(const Math::SurfaceVectorField &j_e, const Math::SurfaceVectorField &j_m,
-                              const Types::complex_d k, const Mesh::SurfaceMesh &targetMesh) {
-    const Types::complex_d mul = Math::Constants::i / k;
-#ifdef OLD
-    return mul * operatorK(j_e, k, targetMesh) - operatorR(j_m, k, targetMesh);
-#else
-    const Types::MatrixXc R_matrix = Matrix::getMatrixR(k, j_m.getManifold(), targetMesh);
-    std::cout << "matrix R computation done" << std::endl;
-    const Types::MatrixXc K_matrix = Matrix::getMatrixK(k, j_e.getManifold(), targetMesh);
-    std::cout << "matrix K computation done" << std::endl;
-
-    std::cout << K_matrix.rows() << std::endl;
-    std::cout << K_matrix.cols() << std::endl;
-    std::cout << R_matrix.rows() << std::endl;
-    std::cout << R_matrix.cols() << std::endl;
-    std::cout << j_e.asSLAERHS().rows() << std::endl;
-    std::cout << j_m.asSLAERHS().rows() << std::endl;
-    const Types::VectorXc e_vector = mul * K_matrix * j_e.asSLAERHS() - R_matrix * j_m.asSLAERHS();
-    std::cout << "multiplication done" << std::endl;
-    return Math::SurfaceVectorField::TangentField(targetMesh, e_vector);
-#endif
-}
-#endif
 
 template <typename Callable>
 void getSWConAxis(const Math::SurfaceVectorField &j_e, const Math::SurfaceVectorField &j_m, const Types::complex_d k,
                   const Callable &direct_field) {
     // собрать точки на оси
-    int N = 5 * 41;
+    int N = 2 * 41;
     Types::scalar h = 0.17 / (N - 1);
-    const auto points_view = std::views::iota(0, N) | std::views::transform([&](auto p) { return Types::Vector3d{0, 0, p * h}; });
-    const auto z_values_view = points_view | std::views::transform([&](auto p) { return p.z(); });
+    const auto points_view = std::views::iota(0, N) | std::views::transform([&h](auto p) { return Types::Vector3d{0, 0, -p * h}; });
+    const auto z_values_view = points_view | std::views::transform([&](auto p) { return 0.17 + p.z(); });
     Containers::vector<Mesh::point_t> points{std::begin(points_view), std::end(points_view)};
     const Containers::vector<Types::scalar> z_coordinate{std::begin(z_values_view), std::end(z_values_view)};
 
     const auto inverse_field = [&](Mesh::point_t &point) {
-        return getE_in_point(j_e, j_m, k, point) - direct_field(point);
+        Types::Vector3c value = Rupor::getE_in_point(j_e, j_m, k, point) - direct_field(point);
+        //std::cout << value << std::endl;
+        return value;
     };
 
     const auto result = EngineeringCoefficients::SWC(direct_field, inverse_field, points);
 
     std::ofstream sigma(
         "/home/evgen/Education/MasterDegree/thesis/Electromagnetic-Waves-Scattering/vtk_files/studies/rupor/ksv.csv");
-    Utils::to_csv(result, z_coordinate, "z", "ksv", sigma);
+    Utils::to_csv(result, z_coordinate, "ksv", "z", sigma);
 }
 
 int main() {
@@ -176,8 +122,8 @@ int main() {
     const auto get_e_h10_mode = [&k, &a, &beta](const Mesh::point_t &x) {
         const auto pi = Math::Constants::PI<Types::scalar>();
         const Types::complex_d mult = Math::Constants::i * (a / pi) * k / Math::Constants::e_0_c;
-        const Types::complex_d exp = std::exp(Math::Constants::i * beta * x.z());
-        const Types::scalar sin = std::cos(pi * x.x() / a);
+        const Types::complex_d exp = std::exp(Math::Constants::i * beta * (x.z() + 0.17));
+        const Types::scalar sin = std::cos(pi * (x.x()) / a);
         return Types::Vector3c{Types::complex_d{0, 0}, mult * sin * exp, Types::complex_d{0, 0}};
     };
 

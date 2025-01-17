@@ -6,9 +6,9 @@
 #define ELECTROMAGNETIC_WAVES_SCATTERING_SurfaceVectorField_HPP
 
 #include "SurfaceFieldBase.h"
+#include "SurfaceScalarField.h"
 #include "mesh/MeshTypes.hpp"
 #include "mesh/SurfaceMesh.hpp"
-#include "SurfaceScalarField.h"
 #include "types/Types.hpp"
 
 namespace EMW::Math {
@@ -34,15 +34,24 @@ class SurfaceVectorField : public SurfaceFieldBase<Types::Vector3c> {
 
     [[nodiscard]] SurfaceVectorField normalCrossField() const;
 
-    [[nodiscard]] Types::VectorXc asSLAERHS() const;
-
     [[nodiscard]] Types::complex_d supNorm() const;
+
+    /**
+     * Представление касательной проекции поля в виде вектора из компонент разложения по базису в касательной плоскости
+     * Сначала идут все компоненты, соответствующие "первым" базисным векторам, потом всем "вторым" базисным векторам
+     *
+     * Такое представление в виде вектора очевидно зависит от нумерации ячеек многообразия manifold,
+     * ссылка на которое хранится в классе поля
+     */
+    [[nodiscard]] Types::VectorXc asVector() const;
 
     [[nodiscard]] SurfaceScalarField fieldNorm(const std::string name) const;
 
-    [[nodiscard]] SurfaceVectorField pointwiseMultiplication(const std::function<Types::scalar(const Types::Vector3d &)> &function) const;
+    [[nodiscard]] SurfaceVectorField
+    pointwiseMultiplication(const std::function<Types::scalar(const Types::Vector3d &)> &function) const;
 
-    [[nodiscard]] SurfaceVectorField pointwiseMultiplication(const std::function<Types::scalar(const Mesh::IndexedCell &)> &function) const;
+    [[nodiscard]] SurfaceVectorField
+    pointwiseMultiplication(const std::function<Types::scalar(const Mesh::IndexedCell &)> &function) const;
 
     void multiply(const std::function<Types::scalar(const Types::Vector3d &)> &function);
 
@@ -66,7 +75,7 @@ class SurfaceVectorField : public SurfaceFieldBase<Types::Vector3c> {
  */
 SurfaceVectorField operator-(const SurfaceVectorField &lhs, const SurfaceVectorField &rhs);
 
-SurfaceVectorField operator+(const SurfaceVectorField &lhs, const SurfaceVectorField& rhs);
+SurfaceVectorField operator+(const SurfaceVectorField &lhs, const SurfaceVectorField &rhs);
 
 SurfaceVectorField operator-(const SurfaceVectorField &lhs);
 

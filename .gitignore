@@ -8,6 +8,10 @@ token.txt
 
 research/rupor/cmake-build-debug
 research/rupor/cmake-build-release
+research/lattice/cmake-build-debug
+research/lattice/cmake-build-release
+examples/cmake-build-release
+examples/cmake-build-debug
 
 # Dirs with visuals
 vtk_files

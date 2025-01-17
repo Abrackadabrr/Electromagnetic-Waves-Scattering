@@ -18,7 +18,12 @@ namespace EMW::Mesh {
                                                  std::ranges::end(cellsConstructed)};
 
         // БОЛЬШУЩИЙ КОСТЫЛЬ ДЛЯ РАСЧЕТА ВОЛНОВОДА
-        for (int i = 1; i <= 200; i++) {
+        // этот параметр показывает количество ячеек в плоскости,
+        // где есть матгнитный ток и задается импедансное условие
+        // эти точки помечаются отдельно, чтобы в дальнейшем их вынуть
+        // в своем формате сетки я точно знаю, что эти точки лежат в конце
+        int amount_of_cells_in_active_surface = 200;
+        for (int i = 1; i <= amount_of_cells_in_active_surface; i++) {
             cells_[cells.size() - i].tag = IndexedCell::Tag::WAVEGUIDE_CROSS_SECTION;
         }
     };
@@ -51,7 +56,7 @@ namespace EMW::Mesh {
         }
     }
 
-    SurfaceMesh SurfaceMesh::getSubmesh(IndexedCell::Tag tag) {
+    SurfaceMesh SurfaceMesh::getSubmesh(IndexedCell::Tag tag) const{
         std::vector<IndexedCell> subcells;
         for (auto &cell: cells_) {
             if (cell.tag == tag) {

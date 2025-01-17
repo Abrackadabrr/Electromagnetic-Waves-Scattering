@@ -15,7 +15,10 @@
 /**
  * Хочу проверить тезис о том, что в сетку можно загрузить совпадающие узлы и она корректно отобразится
  */
-TEST(MESH_TESTING_WITH_DUPLICATED_NODES, SIMPLE_TEST) {
+
+class MESH_TESTING_WITH_DUPLICATED_NODES : public ::testing::Test {};
+
+TEST_F(MESH_TESTING_WITH_DUPLICATED_NODES, SIMPLE_TEST) {
     // Генерация прямоугольной сетки с совпадающими узлами
     std::vector<EMW::Mesh::point_t> meshgrid;
     std::vector<EMW::Containers::array<EMW::Types::index, 4>> cells;
@@ -55,13 +58,13 @@ TEST(MESH_TESTING_WITH_DUPLICATED_NODES, SIMPLE_TEST) {
 /**
  * Хочу проверить тезис о том, что в сетку можно загрузить совпадающие узлы и она корректно отобразится
  */
-TEST(MESH_TESTING_WITH_DUPLICATED_NODES, RUPOR_MESH_TEST) {
+TEST_F(MESH_TESTING_WITH_DUPLICATED_NODES, RUPOR_MESH_TEST) {
     const std::string nodesFile = "/home/evgen/Education/MasterDegree/thesis/Electromagnetic-Waves-Scattering/meshes/"
-                                  "rupor/15200_nodes.csv";
+                                  "waveguide/8000_nodes.csv";
     const std::string cellsFile = "/home/evgen/Education/MasterDegree/thesis/Electromagnetic-Waves-Scattering/meshes/"
-                                  "rupor/3800_cells.csv";
-    const EMW::Types::index nNodes = 15200;
-    const EMW::Types::index nCells = 3800;
+                                  "waveguide/2000_cells.csv";
+    const EMW::Types::index nNodes = 8000;
+    const EMW::Types::index nCells = 2000;
 
     const auto parser_out = EMW::Parser::parseMesh(nodesFile, cellsFile, nNodes, nCells);
     auto surfaceMesh = EMW::Mesh::SurfaceMesh{parser_out.first, parser_out.second};

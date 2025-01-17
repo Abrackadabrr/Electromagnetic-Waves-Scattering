@@ -7,6 +7,7 @@
 
 #include "types/Types.hpp"
 #include "math/fields/SurfaceVectorField.hpp"
+#include <iostream>
 
 namespace EMW::EngineeringCoefficients {
 
@@ -22,6 +23,7 @@ Containers::vector<Types::scalar> SWC(const field1& direct_f, const field2& inve
         const auto direct_v = direct_f(point).norm();
         const auto inverse_v = inverse_f(point).norm();
         const Types::scalar value = (direct_v + inverse_v) / (direct_v - inverse_v);
+        // std::cout << value << std::endl;
         swc.emplace_back(value);
     }
     return swc;

@@ -12,9 +12,6 @@ parseMesh(const std::string &csvNodes, const std::string &csvCells, int nNodes, 
     Containers::vector<Containers::array<Types::index, 4>> cells;
     cells.reserve(nCells);
 
-    Containers::vector<Mesh::Node::field_t> testField;
-    testField.reserve(nCells);
-
     io::CSVReader<3> nodesF(csvNodes);
     io::CSVReader<4> cellsF(csvCells);
 
@@ -27,13 +24,9 @@ parseMesh(const std::string &csvNodes, const std::string &csvCells, int nNodes, 
         nodes.emplace_back(x, y, z);
     }
 
-    int counter = 0;
     while (cellsF.read_row(f, s, t, fou)) {
         // было зачем-то cells.push_back({f - 1, s - 1, t - 1, fou - 1});
         cells.push_back({f, s, t, fou});
-        testField.emplace_back(Types::complex_d{static_cast<double>(counter), 0}, Types::complex_d{0, 0},
-                               Types::complex_d{0, 0});
-        counter++;
     }
 
     return {nodes, cells};

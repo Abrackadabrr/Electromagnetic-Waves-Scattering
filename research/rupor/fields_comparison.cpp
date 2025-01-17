@@ -1,5 +1,5 @@
 //
-// Created by evgen on 24.12.2024.
+// Created by evgen on 10.01.2025.
 //
 
 #include <string>
@@ -7,24 +7,21 @@
 #include "mesh/MeshTypes.hpp"
 #include "mesh/Parser.hpp"
 #include "mesh/SurfaceMesh.hpp"
+#include "meshes/plate/PlateGrid.hpp"
 
 #include "math/fields/SurfaceVectorField.hpp"
 
-#include "experiment/ESA.hpp"
-#include "experiment/SWC.hpp"
-
 #include "Equations.hpp"
-#include "VTKFunctions.hpp"
-
-#include "meshes/plate/PlateGrid.hpp"
-
 #include "FieldCalculation.hpp"
+
+#include "experiment/PhysicalCondition.hpp"
+
+#include "VTKFunctions.hpp"
 
 #include <Eigen/Dense>
 #include <Eigen/IterativeLinearSolvers>
+#include <third_party/csv/csv.h>
 #include <unsupported/Eigen/IterativeSolvers>
-
-#include "experiment/PhysicalCondition.hpp"
 
 #include <chrono>
 #include <iostream>
@@ -34,7 +31,7 @@ using namespace EMW;
 Types::VectorXc solve(const Types::MatrixXc &A, const Types::VectorXc &b, Types::scalar tolerance) {
     auto method = Eigen::GMRES<Types::MatrixXc>{};
 
-    Types::index max_iterations = 1000;
+    Types::index max_iterations = 500;
 
     method.setMaxIterations(max_iterations);
     std::cout << method.maxIterations() << std::endl;
@@ -56,6 +53,39 @@ Types::VectorXc solve(const Types::MatrixXc &A, const Types::VectorXc &b, Types:
     return j_vec;
 }
 
+decltype(auto) getVerificationData() {
+    const std::string &e_im_file =
+        "/home/evgen/Education/MasterDegree/thesis/rupor_with_waveguide/comparison/space/csv/E_im.csv";
+    const std::string &e_real_file =
+        "/home/evgen/Education/MasterDegree/thesis/rupor_with_waveguide/comparison/space/csv/E_real.csv";
+    const std::string &grid_f =
+        "/home/evgen/Education/MasterDegree/thesis/rupor_with_waveguide/comparison/space/csv/grid.csv";
+    io::CSVReader<3> realF(e_real_file);
+    io::CSVReader<3> imF(e_im_file);
+    io::CSVReader<3> gridF(grid_f);
+
+    // я просто знаю свыше что будет 800;
+    Containers::vector<Types::Vector3c> field{};
+    field.reserve(800);
+    Containers::vector<Types::Vector3d> points{};
+    points.reserve(800);
+
+    realF.read_header(io::ignore_extra_column, "x", "y", "z");
+    imF.read_header(io::ignore_extra_column, "x", "y", "z");
+    gridF.read_header(io::ignore_extra_column, "x", "y", "z");
+    Types::scalar x, y, z, x1, y1, z1;
+
+    while (realF.read_row(x, y, z)) {
+        imF.read_row(x1, y1, z1);
+        field.emplace_back(Types::complex_d{x, x1}, Types::complex_d{y, y1}, Types::complex_d{z, z1});
+    }
+
+    while (gridF.read_row(x, y, z)) {
+        points.emplace_back(Types::Vector3d{x, y, z});
+    }
+    return std::pair<std::vector<Types::Vector3c>, std::vector<Types::Vector3d>>{field, points};
+}
+
 int main() {
     // считываем сетку на антенне
     const std::string nodesFile = "/home/evgen/Education/MasterDegree/thesis/Electromagnetic-Waves-Scattering/meshes/"
@@ -65,6 +95,7 @@ int main() {
     const EMW::Types::index nNodes = 15200;
     const EMW::Types::index nCells = 3800;
 
+
     const auto parser_out = EMW::Parser::parseMesh(nodesFile, cellsFile, nNodes, nCells);
     auto mesh_all = Mesh::SurfaceMesh{parser_out.first, parser_out.second};
     mesh_all.setName("total_mesh");
@@ -73,25 +104,22 @@ int main() {
     auto mesh_zero = mesh_all.getSubmesh(Mesh::IndexedCell::Tag::WAVEGUIDE_CROSS_SECTION);
     mesh_zero.setName("zero_mesh");
 
-    const Types::scalar value_of_shift = mesh_zero.getCells().front().collPoint_.z();
-    std::cout << value_of_shift << std::endl;
-
     // Короткая сторона волновода
     const Types::scalar a = 0.07;
     // Физика волны в пространстве
     // частота в гигагерцах
-    const Types::scalar freq = Math::Constants::c / 1e8;
+    const Types::scalar freq = 3;
     const Types::complex_d k{Physics::get_k_on_frquency(freq), 0};
     // расчет коэффициента импеданса
     const Types::complex_d beta = std::sqrt(k * k - (EMW::Math::Constants::PI_square<Types::scalar>() / (a * a)));
-    std::cout << "Волновое число в волноводе: " << beta.real() << "; Длина волны в волноводе: " << 2 * Math::Constants::PI<Types::scalar>() / beta.real() << std::endl;
-    std::cout << "Волновое число в свободном пространстве: " << k.real() << "; Длина волны в свободном пространстве: " << 2 * Math::Constants::PI<Types::scalar>() / k.real() << std::endl;
+    std::cout << beta << std::endl;
+    std::cout << k.real() << std::endl;
 
     // тут сделать векторное поле (direct wave в волноводе)
-    const auto get_e_h10_mode = [&k, &a, &beta, &value_of_shift](const Mesh::point_t &x) {
+    const auto get_e_h10_mode = [&k, &a, &beta](const Mesh::point_t &x) {
         const auto pi = Math::Constants::PI<Types::scalar>();
         const Types::complex_d mult = Math::Constants::i * (a / pi) * k / Math::Constants::e_0_c;
-        const Types::complex_d exp = std::exp(Math::Constants::i * beta * (x.z() - value_of_shift));
+        const Types::complex_d exp = std::exp(Math::Constants::i * beta * x.z());
         const Types::scalar sin = std::cos(pi * x.x() / a);
         return Types::Vector3c{Types::complex_d{0, 0}, mult * sin * exp, Types::complex_d{0, 0}};
     };
@@ -99,15 +127,11 @@ int main() {
     // Считаем матрицу и правую часть и решаем СЛАУ
     const auto rhs = Rupor::getRhs(mesh_all, mesh_zero, get_e_h10_mode);
 
-    const auto R_matrix_on_zero_mesh = Matrix::getMatrixR(k, mesh_zero, mesh_zero);
-
-    std::cout << "Норма матрицы оператора R на активном сечении: " << R_matrix_on_zero_mesh.norm() << std::endl;
-
     const auto matrix = Rupor::getMatrix(mesh_all, mesh_sigma, mesh_zero, a, k);
 
     std::cout << "Matrix assembled" << std::endl;
 
-    const auto result = solve(matrix, rhs, 1e-2);
+    const auto result = solve(matrix, rhs, 1e-3);
 
     // Разбиваем на два тока и рисуем на разных многообразиях
     const Types::VectorXc electric_current = result.block(0, 0, 2 * mesh_all.getCells().size(), 1);
@@ -125,19 +149,12 @@ int main() {
     VTK::united_snapshot({e_c}, {}, mesh_all, path);
     VTK::united_snapshot({m_c}, {}, mesh_zero, path);
 
-    // Рисуем картину поля в плоскости y = 0
-    int N1 = 100;
-    Types::scalar h1 = 1. / (N1 - 1);
-    int N2 = 200;
-    Types::scalar h2 = 2. / (N2 - 1);
-
-    std::vector<Mesh::point_t> points;
-    points.reserve(N1 * N2);
-    Mesh::Utils::cartesian_product_unevenXZ(std::ranges::views::iota(0, N1), std::ranges::views::iota(0, N2),
-                             std::back_inserter(points), N1, N2, h1, h2);
-
+    // Рисуем картину поля в нужных точках
+    // 1) Считываем из файла нужные точки
+    const auto [field, points] = getVerificationData();
+    // 2) Считаем поле в этих точках
     const auto calculated_field_view = points | std::views::transform([&](auto p) {return Rupor::getE_in_point(e_c, m_c, k, p);});
     const Containers::vector<Types::Vector3c> calculated_field{calculated_field_view.begin(), calculated_field_view.end()};
 
-    VTK::field_in_points_snapshot({calculated_field}, {"E"}, points, "surrounding_mesh", path);
+    VTK::field_in_points_snapshot({field, calculated_field}, {"verification_E", "my_E"}, points, "verif_E_mesh", path);
 }

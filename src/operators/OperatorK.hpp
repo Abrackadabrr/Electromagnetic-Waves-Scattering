@@ -113,7 +113,7 @@ Types::Matrix3c K0TensorOverSingularCell(const Mesh::point_t &point, const cell_
 template <typename Quadrature, typename cell_t>
 Types::Vector3c K1OverSingularCellDivided(const Mesh::point_t &point, const Types::Vector3c &j, const cell_t &cell,
                                           const Types::complex_d k) {
-    return j * detail::K1OverSingularCellReducedAndDivided<Quadrature>(point, cell, k);
+    return detail::K1OverSingularCellReducedAndDivided<Quadrature>(point, cell, k) * j;
 }
 
 /**
@@ -156,7 +156,7 @@ Types::Vector3c K1OverSingularCell(const Mesh::point_t &point, const Types::Vect
  * @param j постоянное векторное поле на ячейке
  * @param cell ячейка
  * @param k волновое число
- * @return значение K1 в точке point деленое на k^2
+ * @return значение K1 в точке point, расчитанного по одной ячейке cell
  */
 template <typename Quadrature, typename cell_t>
 Types::Vector3c K1OverSingularCellSingularityExtraction(const Mesh::point_t &point, const Types::Vector3c &j,
@@ -178,10 +178,10 @@ Types::Vector3c K1(const Mesh::point_t &point, const Types::complex_d k, const M
     Types::Vector3c result = Types::Vector3c::Zero();
 
     for (int i = 0; i != cells.size(); i++) {
-        result += K1OverSingularCellDivided<Quadrature>(point, f[i], cells[i], k);
+        result += K1OverSingularCell<Quadrature>(point, f[i], cells[i], k);
     }
 
-    return result * k * k;
+    return result;
 }
 
 /** Полуаналитический расчет оператора K1 в точке point */
@@ -191,9 +191,9 @@ Types::Vector3c K1_singularityExtraction(const Mesh::point_t &point, const Types
     const auto &f = field.getField();
     Types::Vector3c result = Types::Vector3c::Zero();
     for (int i = 0; i != cells.size(); i++) {
-        result += K1OverSingularCellDividedSingularityExtraction<Quadrature>(point, f[i], cells[i], k);
+        result += K1OverSingularCellSingularityExtraction<Quadrature>(point, f[i], cells[i], k);
     }
-    return result * k * k;
+    return result;
 }
 
 /** Полный расчет оператора K0 в точке point */

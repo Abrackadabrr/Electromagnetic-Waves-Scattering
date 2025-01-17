@@ -7,9 +7,17 @@
 
 namespace EMW::Helmholtz {
 Types::complex_d F(Types::complex_d k, const Types::Vector3d &x, const Types::Vector3d &y) {
+
+    // добавляю функцию cглаживания
+    // тут хардкод, потому что я знаю что я сейчас считаю рупор на грубой сетке
+    // чтобы выключить сглаживание надо е поставить нулем.
+    const Types::scalar e = 0; // это 2 * h
+    const auto smooth_factor = smoother(e, x, y);
+
     const Types::Vector3d rVec = x - y;
     const Types::scalar r = std::sqrt(Math::quasiDot(rVec, rVec));
-    return Math::Constants::inverse_4PI<Types::scalar>() * (std::exp(Math::Constants::i * k * r) / r);
+    return smooth_factor *
+        Math::Constants::inverse_4PI<Types::scalar>() * (std::exp(Math::Constants::i * k * r) / r);
 }
 
 Types::complex_d F_bounded_part(Types::complex_d k, const Types::Vector3d &x, const Types::Vector3d &y) {
@@ -38,8 +46,8 @@ Types::Vector3c sigmaKernel(Types::complex_d k, const Types::Vector3d &tau,
     const Types::complex_d exponent = std::exp((-1.) * Math::Constants::i * k * tau.dot(point_on_surface));
     const Types::scalar epsilon = 1;
     const Types::Vector3c vec_e = Math::Constants::i * k * (j_e - tau * Math::quasiDot(j_e, tau)) / epsilon;
-    const Types::Vector3c vec_m = Math::Constants::i * k * (tau.cross(j_m.real()) + Math::Constants::i * tau.cross(j_m.imag()));
-    return exponent * (vec_e - vec_m);
+    const Types::Vector3c vec_m = -Math::Constants::i * k * Math::cross(tau, j_m);
+    return (exponent * (vec_e - vec_m));
 }
 
 Types::Vector3c reducedK_kernel(Types::complex_d k, const Types::Vector3d &x, const Types::Vector3d &y,

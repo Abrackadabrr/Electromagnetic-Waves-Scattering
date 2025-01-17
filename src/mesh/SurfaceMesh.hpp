@@ -30,7 +30,7 @@ class SurfaceMesh {
     /**
      * Конструирование сетки по узлам и индексным ячейкам
      */
-    SurfaceMesh(Containers::vector<point_t> nodes, Containers::vector<Containers::array<Types::index, 4>> cells);
+    SurfaceMesh(Containers::vector<point_t> nodes, Containers::vector<IndexedCell::nodes_t> cells);
 
     /**
      * Конструирование поверхностной сетки со специальными точками коллокации
@@ -56,14 +56,15 @@ class SurfaceMesh {
 
     [[nodiscard]] std::string getName() const { return name; }
 
-        void setName(const std::string &n) {name = n;}
+    void setName(const std::string &n) {name = n;}
 
-        /* Немного странные костыльные методы */
+    /* Немного странные костыльные методы */
 
-        /**
-        * Вернуть часть сетки, которая помечана специальным тэгом
-        */
-        SurfaceMesh getSubmesh(IndexedCell::Tag tag);
+    /**
+     * Вернуть часть сетки, которая помечана специальным тэгом
+     */
+    SurfaceMesh getSubmesh(IndexedCell::Tag tag) const;
+
     };
 }
 #endif //ELECTROMAGNETIC_WAVES_SCATTERING_SURFACEMESH_HPP

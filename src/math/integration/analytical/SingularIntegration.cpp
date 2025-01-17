@@ -4,6 +4,7 @@
 
 #include "SingularIntegration.hpp"
 #include <cmath>
+#include <iostream>
 
 namespace EMW::Math::AnalyticalIntegration {
 
@@ -41,6 +42,7 @@ namespace EMW::Math::AnalyticalIntegration {
                 }
             }
         }
+        // std::cout << result << std::endl;
         return result;
     }
 }

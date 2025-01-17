@@ -82,46 +82,6 @@ void surface_snapshot(const EMW::Mesh::SurfaceMesh &mesh, const std::string &pat
     writer->Write();
 }
 
-void volume_snapshot(const EMW::Mesh::VolumeMesh &mesh, const std::string &path_to_file) {
-    // VTK grid
-    vtkSmartPointer<vtkUnstructuredGrid> unstructuredGrid = vtkSmartPointer<vtkUnstructuredGrid>::New();
-    unstructuredGrid->Allocate(100);
-    // VTK points
-    vtkSmartPointer<vtkPoints> dumpPoints = vtkSmartPointer<vtkPoints>::New();
-
-    // Электромагнитное поле
-    auto E_volume = vtkSmartPointer<vtkDoubleArray>::New();
-    E_volume->SetName("E_volume");
-    E_volume->SetNumberOfComponents(3);
-    auto H_volume = vtkSmartPointer<vtkDoubleArray>::New();
-    H_volume->SetNumberOfComponents(3);
-    H_volume->SetName("H_volume");
-
-    // Обходим все точки пространственной окружающей расчётной сетки
-    const EMW::Containers::vector<EMW::Mesh::Node> &volume_nodes = mesh.getNodes();
-    for (auto &node : volume_nodes) {
-        // Вставляем новую точку в сетку VTK-снапшота
-        dumpPoints->InsertNextPoint(node.point_.x(), node.point_.y(), node.point_.z());
-        double e_real[3] = {node.E_(0).real(), node.E_(1).real(), node.E_(2).real()};
-        double h_real[3] = {node.H_(0).real(), node.H_(1).real(), node.H_(2).real()};
-        E_volume->InsertNextTuple(e_real);
-        H_volume->InsertNextTuple(h_real);
-    }
-
-    // Грузим точки в сетку
-    unstructuredGrid->SetPoints(dumpPoints);
-
-    unstructuredGrid->GetPointData()->AddArray(E_volume);
-    unstructuredGrid->GetPointData()->AddArray(H_volume);
-
-    // Создаём снапшот в файле с заданным именем
-    std::string fileName = mesh.getName() + ".vtu";
-    vtkSmartPointer<vtkXMLUnstructuredGridWriter> writer = vtkSmartPointer<vtkXMLUnstructuredGridWriter>::New();
-    writer->SetFileName((path_to_file + fileName).c_str());
-    writer->SetInputData(unstructuredGrid);
-    writer->Write();
-}
-
 void field_snapshot(const EMW::Math::SurfaceVectorField &field, const std::string &path_to_file) {
     // VTK grid
     vtkSmartPointer<vtkUnstructuredGrid> unstructuredGrid = vtkSmartPointer<vtkUnstructuredGrid>::New();
@@ -179,6 +139,60 @@ void united_snapshot(const std::vector<EMW::Math::SurfaceVectorField> &vectorFie
     }
     // Создаём снапшот в файле с заданным именем
     std::string fileName = mesh.getName() + (number ? std::to_string(number) : std::string("")) + ".vtu";
+    vtkSmartPointer<vtkXMLUnstructuredGridWriter> writer = vtkSmartPointer<vtkXMLUnstructuredGridWriter>::New();
+    writer->SetFileName((path_to_file + fileName).c_str());
+    writer->SetInputData(unstructuredGrid);
+    writer->Write();
+}
+
+void dumpField(const vtkSmartPointer<vtkUnstructuredGrid> &unstructuredGrid,
+               const EMW::Containers::vector<EMW::Types::Vector3c> &field, const std::string &name) {
+    auto real_field = vtkSmartPointer<vtkDoubleArray>::New();
+
+    real_field->SetName((name + "_real").c_str());
+    real_field->SetNumberOfComponents(EMW::Types::Vector3c{}.rows());
+    auto imag_field = vtkSmartPointer<vtkDoubleArray>::New();
+    imag_field->SetNumberOfComponents(EMW::Types::Vector3c{}.rows());
+    imag_field->SetName((name + "_imag").c_str());
+
+    // Обходим все точки пространственной окружающей расчётной сетки
+    for (const auto &f : field) {
+        double f_real[3] = {f(0).real(), f(1).real(), f(2).real()};
+        double f_imag[3] = {f(0).imag(), f(1).imag(), f(2).imag()};
+        real_field->InsertNextTuple(f_real);
+        imag_field->InsertNextTuple(f_imag);
+    }
+
+    unstructuredGrid->GetPointData()->AddArray(real_field);
+    unstructuredGrid->GetPointData()->AddArray(imag_field);
+    std::cout << "Field " << name << " dumped" << std::endl;
+};
+
+void field_in_points_snapshot(const std::vector<std::vector<EMW::Types::Vector3c>> &fields,
+                              const std::vector<std::string> &names,
+                              const std::vector<EMW::Types::Vector3d> &points,
+                              const std::string& mesh_name,
+                              const std::string &path_to_file) {
+    // 1) формируем сетку из никак не соединенных точек
+    vtkSmartPointer<vtkUnstructuredGrid> unstructuredGrid = vtkSmartPointer<vtkUnstructuredGrid>::New();
+    unstructuredGrid->Allocate(points.size());
+    // VTK points
+    vtkSmartPointer<vtkPoints> dumpPoints = vtkSmartPointer<vtkPoints>::New();
+
+    // Обходим точки коллакации нашей сетки
+    for (const auto &point : points) {
+        dumpPoints->InsertNextPoint(point.x(), point.y(), point.z());
+    }
+
+    // Грузим точки в сетку и готово
+    unstructuredGrid->SetPoints(dumpPoints);
+
+    // 2) Записываем поля в эту сетку
+    for (const auto [field, name] : std::views::zip(fields, names))
+        dumpField(unstructuredGrid, field, name);
+
+    // 3) Делаем запись
+    std::string fileName = mesh_name + ".vtu";
     vtkSmartPointer<vtkXMLUnstructuredGridWriter> writer = vtkSmartPointer<vtkXMLUnstructuredGridWriter>::New();
     writer->SetFileName((path_to_file + fileName).c_str());
     writer->SetInputData(unstructuredGrid);
