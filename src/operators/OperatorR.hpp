@@ -6,10 +6,11 @@
 #define ELECTROMAGNETIC_WAVES_SCATTERING_OPERATORR_HPP
 
 #include "Functions.hpp"
+#include "math/Productions.hpp"
 #include "math/integration/Quadrature.hpp"
+#include "math/fields/SurfaceVectorField.hpp"
 #include "mesh/MeshTypes.hpp"
 #include "types/Types.hpp"
-#include "math/Productions.hpp"
 
 namespace EMW::OperatorR {
 

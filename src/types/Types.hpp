@@ -27,6 +27,7 @@ namespace EMW::Types {
 
     using MatrixXc = Eigen::MatrixXcd;
     using MatrixXd = Eigen::MatrixXd;
+    template<typename t> using MatrixX = Eigen::Matrix<t, Eigen::Dynamic, Eigen::Dynamic>;
     using Matrix3d = Eigen::Matrix3<scalar>;
     using Matrix3c = Eigen::Matrix3<complex_d>;
 };

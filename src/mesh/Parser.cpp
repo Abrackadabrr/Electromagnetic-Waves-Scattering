@@ -25,7 +25,6 @@ parseMesh(const std::string &csvNodes, const std::string &csvCells, int nNodes, 
     }
 
     while (cellsF.read_row(f, s, t, fou)) {
-        // было зачем-то cells.push_back({f - 1, s - 1, t - 1, fou - 1});
         cells.push_back({f, s, t, fou});
     }
 

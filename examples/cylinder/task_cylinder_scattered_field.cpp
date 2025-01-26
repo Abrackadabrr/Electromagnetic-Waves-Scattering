@@ -8,11 +8,9 @@
 #include "visualisation/VTKFunctions.hpp"
 #include "mesh/Parser.hpp"
 #include "slae_generation/MatrixGeneration.hpp"
-#include "mesh/VolumeMesh.hpp"
 #include "math/MathConstants.hpp"
 #include "examples/pathes.hpp"
 #include "experiment/PhysicalCondition.hpp"
-#include "examples/Utils.hpp"
 
 #include <Eigen/Core>
 #include <Eigen/IterativeLinearSolvers>

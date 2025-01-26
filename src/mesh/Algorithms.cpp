@@ -1,7 +1,7 @@
 //
 // Created by evgen on 19.08.24.
 //
-#if 0
+#if 1
 #include "Algorithms.hpp"
 
 namespace EMW::Mesh::Algorithm {

@@ -24,7 +24,7 @@ namespace EMW::Mesh {
         // в своем формате сетки я точно знаю, что эти точки лежат в конце
         int amount_of_cells_in_active_surface = 200;
         for (int i = 1; i <= amount_of_cells_in_active_surface; i++) {
-            cells_[cells.size() - i].tag = IndexedCell::Tag::WAVEGUIDE_CROSS_SECTION;
+            cells_[static_cast<int>(cells.size()) - i >= 0 ? cells.size() - i : 0].tag = IndexedCell::Tag::WAVEGUIDE_CROSS_SECTION;
         }
     };
 

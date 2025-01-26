@@ -78,15 +78,15 @@ namespace DiscreteR {
 MatrixCoefs getMatrixCoefs(const Mesh::IndexedCell &cell_i, const Mesh::IndexedCell &cell_j, Types::complex_d k) {
     // честно рассчитываем
     const Types::Vector3c integral =
-        OperatorR::detail::forMatrix::commonIntegralPart<DefiniteIntegrals::NewtonCotess::Quadrature<8, 8>>(
+        OperatorR::detail::forMatrix::commonIntegralPart<DefiniteIntegrals::NewtonCotess::Quadrature<2, 2>>(
             cell_j, cell_i.collPoint_, k);
-#if 0
+#if 1
     const Types::complex_d a11 = Math::quasiDot(integral, cell_j.tau[0].cross(cell_i.tau[0]));
     const Types::complex_d a12 = Math::quasiDot(integral, cell_j.tau[1].cross(cell_i.tau[0]));
     const Types::complex_d a21 = Math::quasiDot(integral, cell_j.tau[0].cross(cell_i.tau[1]));
     const Types::complex_d a22 = Math::quasiDot(integral, cell_j.tau[1].cross(cell_i.tau[1]));
 #endif
-#if 1
+#if 0
     const Types::complex_d a11 = Math::quasiDot(cell_i.tau[0], Math::cross(integral, cell_j.tau[0]));
     const Types::complex_d a12 = Math::quasiDot(cell_i.tau[0], Math::cross(integral, cell_j.tau[1]));
     const Types::complex_d a21 = Math::quasiDot(cell_i.tau[1], Math::cross(integral, cell_j.tau[0]));
@@ -100,7 +100,7 @@ MatrixCoefs getMatrixCoefs(Types::index i, Types::index j, Types::complex_d k,
     // это мы знаем из свойств оператора R
     if (j == i)
         return {Types::complex_d{0, 0}, Types::complex_d{0, 0}, Types::complex_d{0, 0}, Types::complex_d{0, 0}};
-    // если i == j то имеем коэффициент, который описывает воздействие на себя
+    // если i == j, то имеем коэффициент, который описывает воздействие на себя
     // это означает совпадение не только точек коллокации, но и плоскостей ячеек
     // именно из-за совпадения плоскостей мы получаем нуль в результате интегрирования
 
@@ -119,13 +119,6 @@ Types::MatrixXc getMatrixK(Types::complex_d k, const Mesh::SurfaceMesh &surface_
     for (long i = 0; i < N; ++i) {
         for (long j = 0; j < N; ++j) {
             const auto coefs = DiscreteK::getMatrixCoefs(i, j, k, cells);
-
-#if 1
-            if (std::isnan(coefs.a11.real()) || std::isnan(coefs.a11.imag())) {
-                std::cout << i << ' ' << j << ' ' << "a11" << std::endl;
-            }
-            // std::cout << coefs.a11 << std::endl; 2933 5867
-#endif
             result(i, j) = coefs.a11;
             result(i + N, j) = coefs.a21;
             result(i, j + N) = coefs.a12;
@@ -147,12 +140,6 @@ Types::MatrixXc getMatrixK(Types::complex_d k, const Mesh::SurfaceMesh &integrat
     for (long i = 0; i < N; ++i) {
         for (long j = 0; j < M; ++j) {
             const auto coefs = DiscreteK::getMatrixCoefs(cells[i], cells_to_integrate[j], k);
-#if 1
-            if (std::isnan(coefs.a11.real()) || std::isnan(coefs.a11.imag())) {
-                std::cout << i << ' ' << j << ' ' << "a11" << std::endl;
-            }
-            // std::cout << coefs.a11 << std::endl;
-#endif
             result(i, j) = coefs.a11;
             result(i + N, j) = coefs.a21;
             result(i, j + M) = coefs.a12;
@@ -192,6 +179,7 @@ Types::MatrixXc getMatrixR(Types::complex_d k, const Mesh::SurfaceMesh &integrat
     for (long i = 0; i < N; ++i) {
         for (long j = 0; j < M; ++j) {
             const auto coefs = DiscreteR::getMatrixCoefs(cells[i], cells_to_integrate[j], k);
+            // if (i == j) std::cout << coefs.a11 << " " << coefs.a12 << " " << coefs.a21 << ' ' << coefs.a22 << std::endl;
             result(i, j) = coefs.a11;
             result(i + N, j) = coefs.a21;
             result(i, j + M) = coefs.a12;

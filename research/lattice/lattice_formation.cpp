@@ -110,8 +110,8 @@ int main() {
     // собираем сетки
     const auto parser_out = EMW::Parser::parseMesh(nodesFile, cellsFile, nNodes, nCells);
     auto mesh_base = Mesh::SurfaceMesh{parser_out.first, parser_out.second};
-    const Types::Vector3d origin_1(-1, 0, 0);
-    const Types::Vector3d origin_2(1, 0, 0);
+    const Types::Vector3d origin_1(-0.05, 0, 0);
+    const Types::Vector3d origin_2(0.05, 0, 0);
     // сетка для первой антенны
     auto mesh_all = Mesh::Utils::move_by_vector(mesh_base, origin_1);
     mesh_all.setName("antenna_1");
@@ -150,13 +150,16 @@ int main() {
     // собираем им матрицу
     const auto matrix = Lattice::getSLAE(mesh_all, mesh_2, a, k);
 
+    // Проверка на "симметричность"
+
+
     // собираем правую часть шаманским спобосом (очень шаманским)
     const auto rhs_1 = Lattice::getRhs(mesh_base, mesh_base.getSubmesh(Mesh::IndexedCell::Tag::WAVEGUIDE_CROSS_SECTION),
                                        get_e_h10_mode);
     Types::VectorXc rhs{2 * rhs_1.rows()};
     rhs.block(0, 0, rhs_1.rows(), 1) = rhs_1;
     // добавляем фазу второй антенне
-    const Types::scalar phi = Math::Constants::PI<Types::scalar>();
+    const Types::scalar phi = 0 * Math::Constants::PI<Types::scalar>();
     const Types::complex_d phase_factor = std::exp(Math::Constants::i * phi);
     rhs.block(rhs_1.rows(), 0, rhs_1.rows(), 1) = phase_factor * rhs_1;
 

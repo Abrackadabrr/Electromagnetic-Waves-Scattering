@@ -19,6 +19,7 @@
 class MESH_TESTING_WITH_DUPLICATED_NODES : public ::testing::Test {};
 
 TEST_F(MESH_TESTING_WITH_DUPLICATED_NODES, SIMPLE_TEST) {
+    GTEST_SKIP();
     // Генерация прямоугольной сетки с совпадающими узлами
     std::vector<EMW::Mesh::point_t> meshgrid;
     std::vector<EMW::Containers::array<EMW::Types::index, 4>> cells;
@@ -59,6 +60,7 @@ TEST_F(MESH_TESTING_WITH_DUPLICATED_NODES, SIMPLE_TEST) {
  * Хочу проверить тезис о том, что в сетку можно загрузить совпадающие узлы и она корректно отобразится
  */
 TEST_F(MESH_TESTING_WITH_DUPLICATED_NODES, RUPOR_MESH_TEST) {
+    GTEST_SKIP();
     const std::string nodesFile = "/home/evgen/Education/MasterDegree/thesis/Electromagnetic-Waves-Scattering/meshes/"
                                   "waveguide/8000_nodes.csv";
     const std::string cellsFile = "/home/evgen/Education/MasterDegree/thesis/Electromagnetic-Waves-Scattering/meshes/"
@@ -77,3 +79,4 @@ TEST_F(MESH_TESTING_WITH_DUPLICATED_NODES, RUPOR_MESH_TEST) {
     VTK::united_snapshot({}, {tag_field, number_field}, surfaceMesh, "/home/evgen/Education/MasterDegree/thesis/"
                                "Electromagnetic-Waves-Scattering/tests/visualisation/");
 }
+

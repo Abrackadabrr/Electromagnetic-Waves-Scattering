@@ -9,9 +9,11 @@
 #include <tuple>
 #include <ranges>
 
-#include "types/Types.hpp"
-#include "mesh/Utils.hpp"
 #include "mesh/SurfaceMesh.hpp"
+#include "mesh/Utils.hpp"
+#include "types/Types.hpp"
+
+#include <iostream>
 
 namespace EMW::Examples::Plate {
     inline EMW::Mesh::SurfaceMesh generatePlatePrimaryMesh(int N, Types::scalar h) {
@@ -53,7 +55,6 @@ namespace EMW::Examples::Plate {
 
         const auto cells = Containers::vector<Mesh::IndexedCell::nodes_t>{std::ranges::begin(cellsView),
                                                                           std::ranges::end(cellsView)};
-
         return Mesh::SurfaceMesh{meshgrid, cells};
     }
 

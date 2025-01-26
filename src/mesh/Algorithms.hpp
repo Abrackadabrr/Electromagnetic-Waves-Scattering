@@ -9,7 +9,7 @@
 #include "types/Types.hpp"
 
 namespace EMW::Mesh::Algorithm {
-#if 0
+#if 1
     template <typename I>
     constexpr I logical_nor(I lhs, I rhs) noexcept { return not (lhs or rhs); }
 

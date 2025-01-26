@@ -28,7 +28,7 @@ Mesh::SurfaceMesh loadTriangularMesh(int nNodes, int nCells, std::string type) {
 Mesh::SurfaceMesh move_by_vector(const Mesh::SurfaceMesh &mesh, const Types::Vector3d &v) {
     // собираем новые узлы сетки
     const auto new_nodes_view = mesh.getNodes() | std::views::transform([&](auto &node) {
-        return node + v;
+        return Types::Vector3d{node + v};
     });
     const Containers::vector<point_t> nodes{new_nodes_view.begin(), new_nodes_view.end()};
     // собираем старое их объединение в ячейки

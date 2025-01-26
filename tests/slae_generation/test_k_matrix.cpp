@@ -1,7 +1,6 @@
 //
-// Created by evgen on 25.11.2024.
+// Created by evgen on 20.01.2025.
 //
-
 #include "mesh/MeshTypes.hpp"
 #include "mesh/SurfaceMesh.hpp"
 #include "meshes/plate/PlateGrid.hpp"
@@ -9,6 +8,7 @@
 #include "types/Types.hpp"
 #include "gtest/gtest.h"
 #include "mesh/Parser.hpp"
+
 #include <filesystem>
 
 using namespace EMW;
@@ -17,7 +17,7 @@ using namespace EMW::Types;
 const std::string PATH = std::filesystem::current_path();
 const std::string PATH_TO_TESTS = PATH.substr(0, PATH.size() - 25);
 
-class R_MATRIX : public testing::Test {
+class K_MATRIX : public testing::Test {
   protected:
     std::string nodes = PATH_TO_TESTS + "tests/meshes_for_tests/cylinder/2002_nodes.csv";
     std::string cells = PATH_TO_TESTS + "tests/meshes_for_tests/cylinder/2050_cells.csv";
@@ -29,7 +29,6 @@ class R_MATRIX : public testing::Test {
 
     void SetUp() override {
         auto parser_output = EMW::Parser::parseMesh(nodes, cells, nNodes, nCells);
-        // специальная обработка для цилиндра, потому что там нумерация узлов с ЕДИНИЦЫ
         for(auto& arr : parser_output.second)
             for (auto& el: arr)
                 el = el - 1;
@@ -37,30 +36,28 @@ class R_MATRIX : public testing::Test {
     }
 };
 
-TEST_F(R_MATRIX, ZERO_VALUES_ON_A_PLANE) {
+TEST_F(K_MATRIX, SIMPLE_COINSIDANCE_BETWEEN_2_IMPLEMENTATION) {
     int N = 20;
     scalar h = 1. / (N - 1);
     const auto mesh = Examples::Plate::generateRectangularMesh(N, N, h, h);
 
-    const auto m = Matrix::getMatrixR(k, mesh);
-    const auto new_m = Matrix::getMatrixR(k, mesh, mesh);
+    const auto m = Matrix::getMatrixK(k, mesh);
+    const auto new_m = Matrix::getMatrixK(k, mesh, mesh);
     for (int i = 0; i < N; i++) {
         for (int j = 0; j < N; j++) {
-            // std::cout << m(i, j) << " ";
-            ASSERT_NEAR(std::abs(m(i, j)), 0, tolerance);
-            ASSERT_NEAR(std::abs(new_m(i, j)), 0, tolerance);
+            ASSERT_NEAR(std::abs(m(i, j) - new_m(i, j)), 0, tolerance);
         }
     }
 }
 
-TEST_F(R_MATRIX, COINSIDANCE_BETWEEN_2_IMPLEMENTATION_ON_CYLINDER) {
-    const auto m = Matrix::getMatrixR(k, cylinder_mesh);
-    const auto new_m = Matrix::getMatrixR(k, cylinder_mesh, cylinder_mesh);
+TEST_F(K_MATRIX, COINSIDANCE_BETWEEN_2_IMPLEMENTATION_ON_CYLINDER) {
+    const auto m = Matrix::getMatrixK(k, cylinder_mesh);
+    const auto new_m = Matrix::getMatrixK(k, cylinder_mesh, cylinder_mesh);
     const MatrixXc diff = m - new_m;
     std::cout << diff.norm() << std::endl;
     for (int i = 0; i < m.rows(); i++) {
         for (int j = 0; j <  m.rows(); j++) {
-            ASSERT_NEAR(std::abs(m(i, j) - new_m(i, j)), 0, tolerance);
+            ASSERT_NEAR(std::abs(m(i, j) - new_m(i, j)), 0, tolerance) << i << " " << j << std::endl;
         }
     }
 }

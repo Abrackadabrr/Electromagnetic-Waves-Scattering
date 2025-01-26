@@ -3,12 +3,12 @@
 //
 #include "gtest/gtest.h"
 
-#include "operators/Operators.hpp"
+#include "operators/OperatorK.hpp"
 #include "operators/Functions.hpp"
 #include "types/Types.hpp"
 #include "mesh/MeshTypes.hpp"
-#include "integration/gauss_quadrature/GaussLegenderPoints.hpp"
-#include "integration/newton_cotess/Rectangular.hpp"
+#include "math/integration/gauss_quadrature/GaussLegenderPoints.hpp"
+#include "math/integration/newton_cotess/Rectangular.hpp"
 
 using namespace EMW;
 

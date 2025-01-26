@@ -5,9 +5,10 @@
 #include "gtest/gtest.h"
 
 #include "types/Types.hpp"
-#include "integration/gauss_quadrature/GaussLegenderPoints.hpp"
-#include "integration/newton_cotess/Rectangular.hpp"
-#include "integration/Quadrature.hpp"
+#include "math/integration/gauss_quadrature/GaussLegenderPoints.hpp"
+#include "math/integration/newton_cotess/Rectangular.hpp"
+#include "math/integration/Quadrature.hpp"
+#include "math/MathConstants.hpp"
 
 using EMW::Types::scalar;
 using namespace EMW;
@@ -15,7 +16,7 @@ namespace GL = DefiniteIntegrals::GaussLegendre;
 namespace NC = DefiniteIntegrals::NewtonCotess;
 
 Types::complex_d constant(scalar x, scalar y) {
-    return 1i;
+    return Math::Constants::i;
 }
 
 scalar f4(scalar x, scalar y) {

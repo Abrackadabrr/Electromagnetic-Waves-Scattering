@@ -71,7 +71,7 @@ struct IndexedCell {
               points, fullPoints,
               [&](const Containers::array<Types::index, 4> &p, const Containers::vector<point_t> &fp) -> point_t {
                   return (static_cast<Types::scalar>(1) / static_cast<Types::scalar>(4)) *
-                         (fp[p[0]] + fp[p[1]] + fp[p[2]] + fp[p[3]]);
+                         (fp.at(p[0]) + fp.at(p[1]) + fp.at(p[2]) + fp.at(p[3]));
               }) {}
 
     [[nodiscard]] point_t parametrization(Types::scalar p, Types::scalar q) const noexcept {

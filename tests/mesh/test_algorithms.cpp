@@ -2,7 +2,6 @@
 // Created by evgen on 19.08.24.
 //
 #include "gtest/gtest.h"
-
 #include "mesh/Algorithms.hpp"
 
 using namespace EMW;

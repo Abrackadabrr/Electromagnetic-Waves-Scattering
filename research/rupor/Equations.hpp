@@ -38,7 +38,7 @@ inline EMW::Types::MatrixXc getMatrix(const Mesh::SurfaceMesh &mesh_all, const M
     const Types::complex_d epsilon{1., 0};
     const Types::complex_d mu{1., 0};
 
-    // расчет коэффициента импеданса и вспоногательных констант
+    // расчет коэффициента импеданса и вспомогательных констант
     const Types::complex_d beta = std::sqrt(k * k - EMW::Math::Constants::PI_square<Types::scalar>() / (a * a));
 #ifdef OLD
     const Types::complex_d z = -k * Math::Constants::one_div_c / beta;

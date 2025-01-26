@@ -23,7 +23,7 @@ void cartesian_product(Range1 const &r1, Range2 const &r2, Range3 const &r3, Typ
             for (auto k = begin(r1); k != end(r1); ++k) {
                 *out++ = Types::Vector3d{h1 * (static_cast<Types::scalar>(*k) - static_cast<Types::scalar>(N1 / 2)),
                                          h2 * (static_cast<Types::scalar>(*j) - static_cast<Types::scalar>(N2 / 2)),
-                                         h1 * (static_cast<Types::scalar>(*i) - static_cast<Types::scalar>(N3 / 2))};
+                                         h3 * (static_cast<Types::scalar>(*i) - static_cast<Types::scalar>(N3 / 2))};
             }
         }
     }
