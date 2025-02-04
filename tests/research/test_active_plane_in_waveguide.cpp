@@ -10,12 +10,11 @@
 #include "mesh/SurfaceMesh.hpp"
 #include "research/lattice/GeneralizedEquations.hpp"
 #include "types/Types.hpp"
-#include <experiment/PhysicalCondition.hpp>
+#include "experiment/PhysicalCondition.hpp"
 
 using namespace EMW;
 
 TEST(WAVEGIUDE, MATRIX_TEST) {
-    GTEST_SKIP();
     const std::string nodesFile = "/home/evgen/Education/MasterDegree/thesis/Electromagnetic-Waves-Scattering/meshes/"
                                   "lattice/8000_nodes.csv";
     const std::string cellsFile = "/home/evgen/Education/MasterDegree/thesis/Electromagnetic-Waves-Scattering/meshes/"

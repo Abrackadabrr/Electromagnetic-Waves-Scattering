@@ -61,13 +61,15 @@ TEST(MARTIX, MATRIX_COEFFICIENTS) {
 
     // Teст на расчет К1
     // Вот сюда бы тоже добавить аналитического значения, потому что тут оно тоже было посчитано в Wolfram Matematica
-    const auto k1_value = Matrix::DiscreteK::getFirstPartIntegral(0, 0, 1, mesh.getCells());
+    const auto k1_value = Matrix::DiscreteK::getFirstPartIntegral(0, 0, Types::complex_d{1, 0}, mesh.getCells());
     std::cout.precision(15);
     std::cout << "K1 value: " << k1_value << std::endl;
 }
 
-# if 0
+#if 0
+// Теория Вайника разработана для метода коллокаций. Это обобщенная теория Канторовича
 TEST(MARTIX, MATRIX) {
+    GTEST_SKIP();
     int N = 100;
     std::vector<Mesh::point_t> meshgrid;
     meshgrid.reserve(N * N);
