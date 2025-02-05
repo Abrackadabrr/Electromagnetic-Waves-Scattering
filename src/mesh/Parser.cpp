@@ -27,7 +27,8 @@ parseMesh(const std::string &csvNodes, const std::string &csvCells, int nNodes, 
     while (cellsF.read_row(f, s, t, fou)) {
         cells.push_back({f, s, t, fou});
     }
-
+    nodes.shrink_to_fit();
+    cells.shrink_to_fit();
     return {nodes, cells};
 }
 } // namespace EMW::Parser

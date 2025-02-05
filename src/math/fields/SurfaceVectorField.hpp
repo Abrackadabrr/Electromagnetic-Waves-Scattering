@@ -70,7 +70,7 @@ class SurfaceVectorField : public SurfaceFieldBase<Types::Vector3c> {
 
 // --- Operators --- //
 /*
- * Пока что эти функции не безопасные для использования, их можно успользовать
+ * Пока что эти функции не безопасные для использования, их можно использовать
  * только если поля заданы на одном и том же многообразии
  */
 SurfaceVectorField operator-(const SurfaceVectorField &lhs, const SurfaceVectorField &rhs);

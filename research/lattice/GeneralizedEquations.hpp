@@ -18,11 +18,13 @@
 using namespace EMW;
 
 namespace GeneralizedEquations {
+
+namespace detail {
 /**
  * Вычисляем матрицу для "самодействия"
  */
-inline EMW::Types::MatrixXc getMatrix(const Mesh::SurfaceMesh &mesh_all, const Mesh::SurfaceMesh &mesh_zero,
-                                      Types::scalar a, Types::complex_d k) {
+inline EMW::Types::MatrixXc diagonal(const Mesh::SurfaceMesh &mesh_all, const Mesh::SurfaceMesh &mesh_zero,
+                                     Types::scalar a, Types::complex_d k) {
     // описываем размеры итоговой матрицы
     const Types::index N = mesh_all.getCells().size();
     const Types::index K = mesh_zero.getCells().size();
@@ -140,6 +142,7 @@ inline Types::MatrixXc submatrix(const Mesh::SurfaceMesh &mest_to_integrate,
     // Готово
     return A;
 }
+} // namespace detail
 
 /**
  * Вычисляем матрицу для системы уравнений для периодической структуры втупую, без хранения и аппроксимации
@@ -147,15 +150,12 @@ inline Types::MatrixXc submatrix(const Mesh::SurfaceMesh &mest_to_integrate,
 template <Types::index N1, Types::index N2>
 EMW::Types::MatrixXc getMatrix(const Geometry::PeriodicStructure<N1, N2> &geometry, Types::scalar a,
                                Types::complex_d k) {
-
-    // 1) расчет всех диагональных блоков (они одинаковые)
-    // А его не будет, потому что тут мы специально считаем матрицу полностью честно, чтобы было в качестве теста
-
     // Создаем итоговый результат
     // Размер итоговой матрицы
     const Types::index size_of_block = 2 * (geometry.get_mesh_matrix()[0][0].getCells().size() +
         geometry.get_mesh_matrix()[0][0].getSubmesh(Mesh::IndexedCell::Tag::WAVEGUIDE_CROSS_SECTION).getCells().size());
     const Types::index size = size_of_block * geometry.size();
+    std::cout << size << std::endl;
     Types::MatrixXc A(size, size);
 
     // 2) Поэтапный расчет внедиагональных блоков без учета того, что какие-то из них одинаковые
@@ -164,14 +164,14 @@ EMW::Types::MatrixXc getMatrix(const Geometry::PeriodicStructure<N1, N2> &geomet
             if (i != j) {
                 // если у нас недиагональный блок, то считаем матрицу
                 // A_ij блок показывает как k сетка влияет на поле в точках коллокации на j сетке
-                const auto A_ij = submatrix(geometry.get(j), geometry.get(i), a, k);
+                const auto A_ij = detail::submatrix(geometry.get(j), geometry.get(i), a, k);
                 // рассчитывем место, где этот блок должен находится
                 const Types::index first_row = i * size_of_block;
                 const Types::index first_col = j * size_of_block;
                 A.block(first_row, first_col, size_of_block, size_of_block) = A_ij;
             }
-        A.block(i * size_of_block, i * size_of_block, size_of_block, size_of_block) = getMatrix(geometry.get_mesh_matrix()[i][i],
-        geometry.get_mesh_matrix()[i][i].getSubmesh(Mesh::IndexedCell::Tag::WAVEGUIDE_CROSS_SECTION), a, k);
+        A.block(i * size_of_block, i * size_of_block, size_of_block, size_of_block) = detail::diagonal(geometry.get(i),
+        geometry.get(i).getSubmesh(Mesh::IndexedCell::Tag::WAVEGUIDE_CROSS_SECTION), a, k);
     }
     return A;
 }

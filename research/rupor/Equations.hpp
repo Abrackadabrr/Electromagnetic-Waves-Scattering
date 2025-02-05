@@ -11,6 +11,8 @@
 
 #include "types/Types.hpp"
 
+#include "math/fields/SurfaceVectorField.hpp"
+
 #include <math/MathConstants.hpp>
 
 #include <iostream>

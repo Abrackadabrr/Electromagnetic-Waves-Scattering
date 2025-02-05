@@ -2,7 +2,6 @@
 // Created by evgen on 04.02.24.
 //
 
-
 #include <vector>
 #include <utility>
 #include <tuple>

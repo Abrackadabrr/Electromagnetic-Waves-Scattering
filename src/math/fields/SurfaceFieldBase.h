@@ -28,7 +28,7 @@ template <typename field> class SurfaceFieldBase {
      * Консткруктор "никакого" поля на поверхности
      * @param manifold_ref
      */
-    SurfaceFieldBase(const manifold_t &manifold_ref)
+    explicit SurfaceFieldBase(const manifold_t &manifold_ref)
         : manifold_(manifold_ref), field_data_(Containers::vector<field_t>{}),
           initialized(false) {}
 

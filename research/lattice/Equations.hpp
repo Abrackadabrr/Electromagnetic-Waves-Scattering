@@ -2,8 +2,8 @@
 // Created by evgen on 16.01.2025.
 //
 
-#ifndef LATTICE_EQUATIONS_HPP
-#define LATTICE_EQUATIONS_HPP
+#ifndef LATTICE_MANUAL_EQUATIONS_HPP
+#define LATTICE_MANUAL_EQUATIONS_HPP
 
 #include "mesh/SurfaceMesh.hpp"
 
@@ -17,7 +17,9 @@
 
 #include <iostream>
 
-namespace EMW::Lattice {
+namespace Lattice {
+
+using namespace EMW;
 
 inline void checkNan(const Types::MatrixXc &A, const std::string &msg) {
     const Types::complex_d sum = A.sum();
@@ -39,9 +41,11 @@ Types::MatrixXc submatrix(const Mesh::SurfaceMesh &mest_to_integrate,
     // описываем специфические части сеток
     // части с электрическими токами
     const Mesh::SurfaceMesh mesh_to_integrate_all = mest_to_integrate;
-    const Mesh::SurfaceMesh mesh_to_integrate_zero = mest_to_integrate.getSubmesh(Mesh::IndexedCell::Tag::WAVEGUIDE_CROSS_SECTION);
+    const Mesh::SurfaceMesh mesh_to_integrate_zero =
+        mest_to_integrate.getSubmesh(Mesh::IndexedCell::Tag::WAVEGUIDE_CROSS_SECTION);
     const Mesh::SurfaceMesh mesh_collocation_all = mest_with_collocation_points;
-    const Mesh::SurfaceMesh mesh_collocation_zero = mest_with_collocation_points.getSubmesh(Mesh::IndexedCell::Tag::WAVEGUIDE_CROSS_SECTION);
+    const Mesh::SurfaceMesh mesh_collocation_zero =
+        mest_with_collocation_points.getSubmesh(Mesh::IndexedCell::Tag::WAVEGUIDE_CROSS_SECTION);
 
     // Надо понять какие размеры будем иметь итоговая подматрица
     // Сейчас предполагаем, что сетки одинаковые, поэтому размеры остаются как и были раньше
@@ -97,16 +101,16 @@ Types::MatrixXc submatrix(const Mesh::SurfaceMesh &mest_to_integrate,
  * Вычисляем матрицу для системы уравнений двух одинаковых взаимодействующих антенн
  */
 inline EMW::Types::MatrixXc getSLAE(const Mesh::SurfaceMesh &mesh_1, const Mesh::SurfaceMesh &mesh_2, Types::scalar a,
-                                      Types::complex_d k) {
+                                    Types::complex_d k) {
     // Матрица будет состоять из четырёх блоков
     // | A_11 | A_12 |
     // |______|______|
     // | A_21 | A_22 |
 
-    // Уравнения формально остаются теми же, просто сначала мы опищем все уравнения, соответствующие точкам
+    // Уравнения формально остаются теми же, просто сначала мы опишем все уравнения, соответствующие точкам
     // коллокации для mesh_1, а потом уже для mesh_2
 
-    // Тут нам и понадобится возможность аппроксимировать операторы в слечаях, когда сетка с интегрированием отличается
+    // Тут нам и понадобится возможность аппроксимировать операторы в случаях, когда сетка с интегрированием отличается
     // от сетки с точками коллокации.
 
     // 1) Для начала рассчитаем матрицы взаимодействия "сам на себя" для обеих антенн
@@ -142,3 +146,5 @@ Types::VectorXc getRhs(const Mesh::SurfaceMesh &mesh_all, const Mesh::SurfaceMes
     return res;
 }
 }
+
+#endif

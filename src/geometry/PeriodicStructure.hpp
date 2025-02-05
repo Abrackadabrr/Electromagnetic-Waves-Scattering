@@ -33,16 +33,19 @@ template <Types::index N1, Types::index N2> class PeriodicStructure {
     // Selectors
     const structure_matrix_t<Types::Vector3d> &get_origin_matrix() const noexcept { return origin_matrix; }
     const structure_matrix_t<mesh_t> &get_mesh_matrix() const noexcept { return meshes_matrix; }
-    const mesh_t &get(Types::index index) const noexcept {
+    [[nodiscard]] const mesh_t &get(Types::index index) const noexcept {
         const auto double_index = linear_to_double(index);
+        // std::cout << double_index.first << " " << double_index.second << std::endl;
         return meshes_matrix[double_index.first][double_index.second];
+    }
+
+    [[nodiscard]] const mesh_t &get(Types::index i, Types::index j) const noexcept {
+        return meshes_matrix[i][j];
     }
 
     [[nodiscard]] static constexpr Types::index rows() noexcept { return N1; }
     [[nodiscard]] static constexpr Types::index cols() noexcept { return N2; }
     [[nodiscard]] static constexpr Types::index size() noexcept { return N1 * N2; }
-
-    // Подумать, нужны ли сюда методы, которые поддерживают тёплицевость
 };
 
 template <Types::index N1, Types::index N2>
@@ -55,10 +58,10 @@ PeriodicStructure<N1, N2>::calculate_origin_matrix(Types::scalar h1, Types::scal
     // Строчки == изменение координаты по x
     // Столбца == изменение координаты по y
     for (Types::index j = 0; j != N1; ++j) {
-        for (Types::index k = N2; k != N2; ++k) {
+        for (Types::index k = 0; k != N2; ++k) {
             result[j][k] =
-                Types::Vector3d{h1 * (static_cast<Types::scalar>(k) - static_cast<Types::scalar>(N1 / 2)),
-                                h2 * (static_cast<Types::scalar>(j) - static_cast<Types::scalar>(N2 / 2)), 0};
+                Types::Vector3d{h1 * (static_cast<Types::scalar>(k) - static_cast<Types::scalar>(N2 - 1) / 2),
+                                h2 * (static_cast<Types::scalar>(j) - static_cast<Types::scalar>(N1 - 1) / 2), 0};
         }
     }
     return result;
