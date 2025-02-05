@@ -23,8 +23,10 @@ namespace detail {
 /**
  * Вычисляем матрицу для "самодействия"
  */
-inline EMW::Types::MatrixXc diagonal(const Mesh::SurfaceMesh &mesh_all, const Mesh::SurfaceMesh &mesh_zero,
+inline EMW::Types::MatrixXc diagonal(const Mesh::SurfaceMesh &mesh_all,
                                      Types::scalar a, Types::complex_d k) {
+    // вытаскиваем сетку для магнитных токов
+    const auto mesh_zero = mesh_all.getSubmesh(Mesh::IndexedCell::Tag::WAVEGUIDE_CROSS_SECTION);
     // описываем размеры итоговой матрицы
     const Types::index N = mesh_all.getCells().size();
     const Types::index K = mesh_zero.getCells().size();
@@ -90,10 +92,10 @@ inline Types::MatrixXc submatrix(const Mesh::SurfaceMesh &mest_to_integrate,
     // описываем специфические части сеток
     // части с электрическими токами
     const Mesh::SurfaceMesh &mesh_to_integrate_all = mest_to_integrate;
-    const Mesh::SurfaceMesh mesh_to_integrate_zero =
+    const Mesh::SurfaceMesh &mesh_to_integrate_zero =
         mest_to_integrate.getSubmesh(Mesh::IndexedCell::Tag::WAVEGUIDE_CROSS_SECTION);
     const Mesh::SurfaceMesh &mesh_collocation_all = mest_with_collocation_points;
-    const Mesh::SurfaceMesh mesh_collocation_zero =
+    const Mesh::SurfaceMesh &mesh_collocation_zero =
         mest_with_collocation_points.getSubmesh(Mesh::IndexedCell::Tag::WAVEGUIDE_CROSS_SECTION);
 
     // Надо понять какие размеры будем иметь итоговая матрица
@@ -152,8 +154,8 @@ EMW::Types::MatrixXc getMatrix(const Geometry::PeriodicStructure<N1, N2> &geomet
                                Types::complex_d k) {
     // Создаем итоговый результат
     // Размер итоговой матрицы
-    const Types::index size_of_block = 2 * (geometry.get_mesh_matrix()[0][0].getCells().size() +
-        geometry.get_mesh_matrix()[0][0].getSubmesh(Mesh::IndexedCell::Tag::WAVEGUIDE_CROSS_SECTION).getCells().size());
+    const Types::index size_of_block = 2 * (geometry.get(0).getCells().size() +
+        geometry.get(0).getSubmesh(Mesh::IndexedCell::Tag::WAVEGUIDE_CROSS_SECTION).getCells().size());
     const Types::index size = size_of_block * geometry.size();
     std::cout << size << std::endl;
     Types::MatrixXc A(size, size);

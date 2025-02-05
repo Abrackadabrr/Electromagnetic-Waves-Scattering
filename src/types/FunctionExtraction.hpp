@@ -17,11 +17,9 @@
 namespace EMW::Types::TypeTraits {
 
 namespace detail {
-template <typename Function>
-struct unwrap_function_impl;
+template <typename Function> struct unwrap_function_impl;
 
-template <typename _RTy, typename... _ATy>
-struct unwrap_function_impl<_RTy(_ATy...)> {
+template <typename _RTy, typename... _ATy> struct unwrap_function_impl<_RTy(_ATy...)> {
     /// The return type of the function.
     typedef _RTy return_type;
 
@@ -69,37 +67,31 @@ template <typename Function>
 static auto select_best_unwrap_unary_arg(int) -> unwrap_function_impl<decltype(&Function::operator())>;
 
 /// Unwrap through plain type.
-template <typename Function>
-static auto select_best_unwrap_unary_arg(long) -> unwrap_function_impl<Function>;
+template <typename Function> static auto select_best_unwrap_unary_arg(long) -> unwrap_function_impl<Function>;
 
-template <typename... _FTy>
-struct select_best_unwrap;
+template <typename... _FTy> struct select_best_unwrap;
 
 /// Enable only if 1 template argument is given.
-template <typename _FTy>
-struct select_best_unwrap<_FTy> {
+template <typename _FTy> struct select_best_unwrap<_FTy> {
     typedef decltype(select_best_unwrap_unary_arg<_FTy>(0)) type;
 };
 
 // Enable if more then 1 template argument is given.
 // (Handles lazy typing)
-template <typename _RTy, typename... _ATy>
-struct select_best_unwrap<_RTy, _ATy...> {
+template <typename _RTy, typename... _ATy> struct select_best_unwrap<_RTy, _ATy...> {
     typedef unwrap_function_impl<_RTy(_ATy...)> type;
 };
 
-template <typename>
-struct to_true : std::true_type {};
+template <typename> struct to_true : std::true_type {};
 
 /// std::true_type if unwrappable
 template <typename... Function>
 static auto test_unwrappable(int) -> to_true<typename select_best_unwrap<Function...>::type::function_type>;
 
 /// std::false_type if not unwrappable
-template <typename... Function>
-static auto test_unwrappable(long) -> std::false_type;
+template <typename... Function> static auto test_unwrappable(long) -> std::false_type;
 
-}  // namespace detail
+} // namespace detail
 
 /// Trait to unwrap function parameters of various types:
 /// Function style definition: Result(Parameters...)
@@ -109,8 +101,7 @@ static auto test_unwrappable(long) -> std::false_type;
 /// C++ Class method pointers: `Result(Class::*)(Parameters...)`
 /// Lazy typed signatures: `Result, Parameters...`
 /// Also provides optimized unwrap of functors and functional objects.
-template <typename... Function>
-using unwrap_function = typename detail::select_best_unwrap<Function...>::type;
+template <typename... Function> using unwrap_function = typename detail::select_best_unwrap<Function...>::type;
 
 /// Trait which defines the return type of the function.
 template <typename... Function>
@@ -132,9 +123,8 @@ template <typename... Function>
 using function_ptr_of_t = typename detail::select_best_unwrap<Function...>::type::function_ptr;
 
 /// Trait which defines if the given function is unwrappable or not.
-template <typename... Function>
-struct is_unwrappable : decltype(detail::test_unwrappable<Function...>(0)) {};
+template <typename... Function> struct is_unwrappable : decltype(detail::test_unwrappable<Function...>(0)) {};
 
-}  // namespace SatelliteSystem::TypeTraits
+} // namespace EMW::Types::TypeTraits
 
-#endif  // SATELLITE_SYSTEM_FUNCTIONTRAITS_HPP
+#endif // SATELLITE_SYSTEM_FUNCTIONTRAITS_HPP

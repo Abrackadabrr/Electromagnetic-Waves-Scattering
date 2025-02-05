@@ -19,7 +19,7 @@ endif ()
 
 set(TARGET_LIBS eigen OpenMP::OpenMP_CXX visual)
 
-list(APPEND TASKS lattice_formation.cpp)
+list(APPEND TASKS lattice_formation_simple.cpp)
 
 foreach (TASK IN LISTS TASKS)
     get_filename_component(FILE_NAME ${TASK} NAME_WE)
