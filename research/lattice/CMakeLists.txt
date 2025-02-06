@@ -19,12 +19,13 @@ endif ()
 
 set(TARGET_LIBS eigen OpenMP::OpenMP_CXX visual)
 
-list(APPEND TASKS lattice_formation_simple.cpp)
+list(APPEND TASKS lattice_formation_simple.cpp lattice_formation_real.cpp)
 
 foreach (TASK IN LISTS TASKS)
     get_filename_component(FILE_NAME ${TASK} NAME_WE)
     set(EXE_NAME ${PROJECT_NAME}_${FILE_NAME})
-    add_executable(${EXE_NAME} ${TASK})
+    add_executable(${EXE_NAME} ${TASK}
+            FieldsFill.hpp)
     message("TASK: ${EXE_NAME}")
     target_link_libraries(${EXE_NAME} ${PROJECT_NAME} ${TARGET_LIBS})
     target_compile_options(${EXE_NAME} PRIVATE -Wconversion)

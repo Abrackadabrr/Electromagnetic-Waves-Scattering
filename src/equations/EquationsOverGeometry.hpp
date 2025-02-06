@@ -58,7 +58,7 @@ template <typename TopologicalStructure, typename SelfAffecting, typename OtherA
             2 * (geometry.get(0).getCells().size() +
                  geometry.get(0).getSubmesh(Mesh::IndexedCell::Tag::WAVEGUIDE_CROSS_SECTION).getCells().size());
         const Types::index size = size_of_block * geometry.size();
-        std::cout << size << std::endl;
+        // std::cout << size << std::endl;
         Types::MatrixXc A(size, size);
 
         // 2) Поэтапный расчет внедиагональных блоков без учета того, что какие-то из них одинаковые

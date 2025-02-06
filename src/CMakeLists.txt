@@ -7,7 +7,8 @@ file(GLOB_RECURSE SOURCES *.cpp)
 add_library(${PROJECT_NAME} STATIC ${SOURCES}
         math/fields/FiedsOverGeometry.hpp
         equations/EquationsOverGeometry.hpp
-        consepts/Consepts.hpp)
+        consepts/Consepts.hpp
+        geometry/field_over/FieldOverGeometry.hpp)
 
 set(TARGET_LIBS eigen)
 

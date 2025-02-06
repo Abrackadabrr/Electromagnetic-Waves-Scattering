@@ -14,6 +14,8 @@
 #include <vtkPointData.h>
 #include <vtkSmartPointer.h>
 #include <vtkUnstructuredGrid.h>
+#include <vtkMultiBlockDataSet.h>
+#include <vtkXMLMultiBlockDataWriter.h>
 
 namespace VTK {
 namespace detail {
@@ -63,6 +65,22 @@ void field_in_points_snapshot(const std::vector<std::vector<EMW::Types::Vector3c
                               const std::vector<EMW::Types::Vector3d> &points,
                               const std::string& mesh_name,
                               const std::string &path_to_file);
+
+template<typename TopologicalStructure>
+void geometry_snapshot(const TopologicalStructure& geometry, const std::string &part_to_file) {
+    vtkSmartPointer<vtkMultiBlockDataSet> multiBlockDataSet = vtkSmartPointer<vtkMultiBlockDataSet>::New();
+
+    // add each data set
+    for (int i = 0; i != geometry.size(); ++i) {
+        const auto pointer_to_mesh = detail::formUnstructuredGrid(geometry.get(i));
+        multiBlockDataSet->SetBlock(i, pointer_to_mesh);
+    }
+    // write the result
+    vtkSmartPointer<vtkXMLMultiBlockDataWriter> writer = vtkSmartPointer<vtkXMLMultiBlockDataWriter>::New();
+    writer->SetFileName(part_to_file.c_str());
+    writer->SetInputData(multiBlockDataSet);
+    writer->Write();
+}
 } // namespace VTK
 
 #endif //ELECTROMAGNETIC_WAVES_SCATTERING_VTKFUNCTIONS_HPP

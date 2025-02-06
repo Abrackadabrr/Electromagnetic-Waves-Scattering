@@ -44,7 +44,7 @@ inline Math::SurfaceVectorField operatorR(const Math::SurfaceVectorField &field,
     const auto analytical = [field, k](const Types::Vector3d &point) -> Types::Vector3c {
         return operatorR_in_point(field, k, point);
     };
-    return Math::SurfaceVectorField(targetMesh, analytical);
+    return {targetMesh, analytical};
 }
 
 inline Types::Vector3c getE_in_point(const Math::SurfaceVectorField &j_e, const Math::SurfaceVectorField &j_m,
@@ -52,6 +52,7 @@ inline Types::Vector3c getE_in_point(const Math::SurfaceVectorField &j_e, const 
     const Types::complex_d mul = Math::Constants::i / k;
     return mul * operatorK_in_point(j_e, k, point) - operatorR_in_point(j_m, k, point);
 }
+
 inline Math::SurfaceVectorField getE(const Math::SurfaceVectorField &j_e, const Math::SurfaceVectorField &j_m,
                                      const Types::complex_d k, const Mesh::SurfaceMesh &targetMesh) {
     const Types::complex_d mul = Math::Constants::i / k;

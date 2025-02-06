@@ -9,6 +9,8 @@
 #include "mesh/Utils.hpp"
 #include "types/Types.hpp"
 
+#include <iostream>
+
 namespace EMW::Geometry {
 /**
  * Периодическая структура с отсчетами в плоскости Oxy.
@@ -19,7 +21,7 @@ template <Types::index N1, Types::index N2> class PeriodicStructure {
     using mesh_t = Mesh::SurfaceMesh;
 
     structure_matrix_t<Types::Vector3d> origin_matrix;
-    structure_matrix_t<mesh_t> meshes_matrix;
+    Containers::vector<mesh_t> basic_meshes;
 
     structure_matrix_t<Types::Vector3d> calculate_origin_matrix(Types::scalar h1, Types::scalar h2) const;
 
@@ -32,16 +34,8 @@ template <Types::index N1, Types::index N2> class PeriodicStructure {
 
     // Selectors
     const structure_matrix_t<Types::Vector3d> &get_origin_matrix() const noexcept { return origin_matrix; }
-    const structure_matrix_t<mesh_t> &get_mesh_matrix() const noexcept { return meshes_matrix; }
-    [[nodiscard]] const mesh_t &get(Types::index index) const noexcept {
-        const auto double_index = linear_to_double(index);
-        // std::cout << double_index.first << " " << double_index.second << std::endl;
-        return meshes_matrix[double_index.first][double_index.second];
-    }
-
-    [[nodiscard]] const mesh_t &get(Types::index i, Types::index j) const noexcept {
-        return meshes_matrix[i][j];
-    }
+    const structure_matrix_t<mesh_t> &get_meshes() const noexcept { return basic_meshes; }
+    [[nodiscard]] const mesh_t &get(Types::index index) const noexcept { return basic_meshes[index]; }
 
     [[nodiscard]] static constexpr Types::index rows() noexcept { return N1; }
     [[nodiscard]] static constexpr Types::index cols() noexcept { return N2; }
@@ -68,13 +62,13 @@ PeriodicStructure<N1, N2>::calculate_origin_matrix(Types::scalar h1, Types::scal
 }
 
 template <Types::index N1, Types::index N2>
-PeriodicStructure<N1, N2>::PeriodicStructure(Types::scalar h1, Types::scalar h2, const Mesh::SurfaceMesh &base_mesh)
-    : origin_matrix(calculate_origin_matrix(h1, h2)) {
-
-    for (Types::index i = 0; i != N1; ++i) {
-        for (Types::index j = 0; j != N2; ++j) {
-            meshes_matrix[i][j] = Mesh::Utils::move_by_vector(base_mesh, origin_matrix[i][j]);
-        }
+PeriodicStructure<N1, N2>::PeriodicStructure(Types::scalar h1, Types::scalar h2, const Mesh::SurfaceMesh &base_mesh)  {
+    basic_meshes.resize(N1 * N2);
+    origin_matrix = calculate_origin_matrix(h1, h2);
+    for (Types::index i = 0; i != N1 * N2; ++i) {
+        const auto double_index = linear_to_double(i);
+        std::cout << origin_matrix[double_index.first][double_index.second] << std::endl;
+        basic_meshes[i] = std::move(Mesh::Utils::move_by_vector(base_mesh, origin_matrix[double_index.first][double_index.second]));
     }
 }
 

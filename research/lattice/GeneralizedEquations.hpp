@@ -13,16 +13,14 @@
 
 #include "math/MathConstants.hpp"
 
-#include "geometry/PeriodicStructure.hpp"
+namespace WaveGuideWithActiveSection {
 
 using namespace EMW;
 
-namespace WaveGuideWithActiveSection {
 /**
  * Вычисляем матрицу для "самодействия"
  */
-inline EMW::Types::MatrixXc diagonal(const Mesh::SurfaceMesh &mesh_all,
-                                     Types::scalar a, Types::complex_d k) {
+inline EMW::Types::MatrixXc diagonal(const Mesh::SurfaceMesh &mesh_all, Types::scalar a, Types::complex_d k) {
     // вытаскиваем сетку для магнитных токов
     const auto mesh_zero = mesh_all.getSubmesh(Mesh::IndexedCell::Tag::WAVEGUIDE_CROSS_SECTION);
     // описываем размеры итоговой матрицы
@@ -141,6 +139,44 @@ inline Types::MatrixXc submatrix(const Mesh::SurfaceMesh &mest_to_integrate,
 
     // Готово
     return A;
+}
+
+inline Types::VectorXc getRhsBase(const Mesh::SurfaceMesh &mesh_all, Types::scalar a, Types::complex_d k) {
+
+    // Собираем сабсетку с активным сечением
+    const auto mesh_zero = mesh_all.getSubmesh(Mesh::IndexedCell::Tag::WAVEGUIDE_CROSS_SECTION);
+    // Собираем функцию поля на активном сечении волновода
+    const Types::complex_d beta = std::sqrt(k * k - (EMW::Math::Constants::PI_square<Types::scalar>() / (a * a)));
+    const auto get_e_h10_mode = [&k, &a, &beta](const Mesh::point_t &x) {
+        const auto pi = Math::Constants::PI<Types::scalar>();
+        const Types::complex_d mult = Math::Constants::i * (a / pi) * k / Math::Constants::e_0_c;
+        const Types::complex_d exp = std::exp(Math::Constants::i * beta * (x.z() + 0.17));
+        const Types::scalar sin = std::cos(pi * x.x() / a);
+        return Types::Vector3c{Types::complex_d{0, 0}, mult * sin * exp, Types::complex_d{0, 0}};
+    };
+
+    const Types::index N = mesh_all.getCells().size();
+    const Types::index K = mesh_zero.getCells().size();
+
+    const Math::SurfaceVectorField direct_e_field{mesh_zero, get_e_h10_mode};
+    const Types::VectorXc non_zer0_rhs = -2 * direct_e_field.normalCrossField().asVector();
+
+    Types::VectorXc res = Types::VectorXc::Zero(2 * N + 2 * K);
+    res.block(2 * N, 0, 2 * K, 1) = non_zer0_rhs;
+    return res;
+}
+
+template<int N>
+Types::VectorXc getRhs(std::array<Types::complex_d, N> phases,
+    const Mesh::SurfaceMesh &mesh_all, Types::scalar a, Types::complex_d k) {
+    const auto base_rhs = getRhsBase(mesh_all, a, k);
+
+    const Types::VectorXc res{N * base_rhs.size()};
+
+    for (int i = 0; i < N; ++i) {
+        res.block(i * base_rhs.rows(), 0, base_rhs.rows(), 1) = phases[i] * base_rhs;
+    }
+    return res;
 }
 
 using diagonal_t = decltype(diagonal);

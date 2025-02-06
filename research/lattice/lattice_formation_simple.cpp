@@ -150,8 +150,6 @@ int main() {
     // собираем им матрицу
     const auto matrix = Lattice::getSLAE(mesh_all, mesh_2, a, k);
 
-    // Проверка на "симметричность"
-
     // собираем правую часть шаманским спобосом (очень шаманским)
     const auto rhs_1 = Lattice::getRhs(mesh_base, mesh_base.getSubmesh(Mesh::IndexedCell::Tag::WAVEGUIDE_CROSS_SECTION),
                                        get_e_h10_mode);

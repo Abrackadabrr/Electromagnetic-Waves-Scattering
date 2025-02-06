@@ -17,8 +17,6 @@ struct CellStructure {
     Types::Vector3d ort1; // B - A
     Types::Vector3d ort2; // D - A
     Types::Vector3d diff; // A + C - B - D
-
-    bool operator==(const CellStructure&) const = default;
 };
 
 struct IntegrationParameters {
