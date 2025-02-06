@@ -21,19 +21,25 @@ namespace EMW::Equations {
 template <typename TopologicalStructure, typename SelfAffecting, typename OtherAffecting> class MatrixFor {
     // Дальше нужно статически вытащить те аргументы, которые идут после сеток в обеих функциях
     using self_args = Types::TypeTraits::argument_type_of_t<SelfAffecting>;
+
+    static_assert(std::is_same_v<
+                  self_args, Types::TypeTraits::TypePack<const Mesh::SurfaceMesh &, Types::scalar, Types::complex_d>>);
+
     using other_args = Types::TypeTraits::argument_type_of_t<OtherAffecting>;
-    using matfold_pack = Types::TypeTraits::TypePack<Mesh::SurfaceMesh>;
+    using matfold_pack = Types::TypeTraits::TypePack<const Mesh::SurfaceMesh &>;
     // Убираем из первой стопки для первых аргумента, из второй -- первый
-    using self_additional_args = Types::TypeTraits::NotInTypePack<self_args, matfold_pack>;
-    using other_additional_args = Types::TypeTraits::NotInTypePack<other_args, matfold_pack>;
-    // Сравниваем пачки типов
+    using self_additional_args = Types::TypeTraits::RemoveFirst<self_args>;
+    using other_additional_args = Types::TypeTraits::RemoveFirstTwo<other_args>;
+    // Сравниваем пачки типов дополнительных аргмуентов
     static_assert(std::is_same_v<self_additional_args, other_additional_args>);
     // Собираем tuple из необходимых дополнительных аргументов
     using tuple_additional_args = typename self_additional_args::Substitute<std::tuple>;
-    using aux_args_extraction = std::index_sequence<self_additional_args::size>;
+
+    static_assert(std::is_same_v<tuple_additional_args, std::tuple<Types::scalar, Types::complex_d>>);
+
+    using aux_sequence = std::make_index_sequence<self_additional_args::size>;
 
     // И вот тут уже нормальные вычисления, а не на типах
-
     /**
      *
      * @param geometry геометрия
@@ -42,8 +48,10 @@ template <typename TopologicalStructure, typename SelfAffecting, typename OtherA
      * @param args дополнительные аргументы
      * @return
      */
+    template<Types::index ... IndexSequenceForAdditionalArgumentsExpansion>
     static Types::MatrixXc compute(const TopologicalStructure &geometry, SelfAffecting diagonal,
-                                   OtherAffecting submatrix, const tuple_additional_args &args) {
+                                   OtherAffecting submatrix, const tuple_additional_args &args,
+                                   const std::index_sequence<IndexSequenceForAdditionalArgumentsExpansion...>&) {
         // Создаем итоговый результат
         // Размер итоговой матрицы
         const Types::index size_of_block =
@@ -60,18 +68,26 @@ template <typename TopologicalStructure, typename SelfAffecting, typename OtherA
                     // если у нас недиагональный блок, то считаем матрицу
                     // A_ij блок показывает как k сетка влияет на поле в точках коллокации на j сетке
                     const auto A_ij =
-                        submatrix(geometry.get(j), geometry.get(i), std::get<aux_args_extraction>(args) ...);
+                        submatrix(geometry.get(j), geometry.get(i),
+                            std::get<IndexSequenceForAdditionalArgumentsExpansion>(args)...);
                     // рассчитывем место, где этот блок должен находится
                     const Types::index first_row = i * size_of_block;
                     const Types::index first_col = j * size_of_block;
                     A.block(first_row, first_col, size_of_block, size_of_block) = A_ij;
                 }
             A.block(i * size_of_block, i * size_of_block, size_of_block, size_of_block)=
-                diagonal(geometry.get(i), std::get<aux_args_extraction>(args) ...);
+                diagonal(geometry.get(i), std::get<IndexSequenceForAdditionalArgumentsExpansion>(args) ...);
         }
         return A;
     }
+
+public:
+    static Types::MatrixXc compute(const TopologicalStructure &geometry, SelfAffecting diagonal,
+                               OtherAffecting submatrix, const tuple_additional_args &args) {
+        return compute(geometry, diagonal, submatrix, args, aux_sequence{});
+    }
 };
+
 
 }
 

@@ -165,6 +165,16 @@ namespace EMW::Types::TypeTraits {
             return (Packs{} * ... * TypePack<>{});
         }
 
+        template<typename F, typename... Other>
+        constexpr auto remove_first(TypePack<F, Other...>) {
+            return TypePack<Other...>{};
+        }
+
+        template<typename F, typename S, typename... Other>
+        constexpr auto remove_first_two(TypePack<F, S, Other...>) {
+            return TypePack<Other...>{};
+        }
+
     }  // namespace Aux
 
 /**
@@ -206,6 +216,12 @@ namespace EMW::Types::TypeTraits {
  */
     template<typename... Packs>
     using CartesianProduct = decltype(Aux::cartesianProduct<Packs...>());
+
+template<typename Pack>
+using RemoveFirst = decltype(Aux::remove_first(Pack{}));
+
+template<typename Pack>
+using RemoveFirstTwo = decltype(Aux::remove_first_two(Pack{}));
 
 }
 

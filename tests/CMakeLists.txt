@@ -8,7 +8,8 @@ foreach (TEST IN LISTS TESTS)
     add_executable(${EXE_NAME} ${TEST}
             research/test_comparison_of_automatic_assembling_with_manual.cpp
             research/lattice_tests.hpp
-            ../research/lattice/lattice_formation_real.cpp)
+            ../research/lattice/lattice_formation_real.cpp
+            equations/test_matrix_for.cpp)
     message("TEST: ${EXE_NAME}")
     target_link_libraries(${EXE_NAME} ${PROJECT_NAME} gtest gtest_main visual)
     target_compile_options(${EXE_NAME} PRIVATE -Werror)

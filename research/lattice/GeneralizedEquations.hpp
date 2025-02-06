@@ -17,9 +17,7 @@
 
 using namespace EMW;
 
-namespace GeneralizedEquations {
-
-namespace detail {
+namespace WaveGuideWithActiveSection {
 /**
  * Вычисляем матрицу для "самодействия"
  */
@@ -144,38 +142,9 @@ inline Types::MatrixXc submatrix(const Mesh::SurfaceMesh &mest_to_integrate,
     // Готово
     return A;
 }
-} // namespace detail
 
-/**
- * Вычисляем матрицу для системы уравнений для периодической структуры втупую, без хранения и аппроксимации
- */
-template <Types::index N1, Types::index N2>
-EMW::Types::MatrixXc getMatrix(const Geometry::PeriodicStructure<N1, N2> &geometry, Types::scalar a,
-                               Types::complex_d k) {
-    // Создаем итоговый результат
-    // Размер итоговой матрицы
-    const Types::index size_of_block = 2 * (geometry.get(0).getCells().size() +
-        geometry.get(0).getSubmesh(Mesh::IndexedCell::Tag::WAVEGUIDE_CROSS_SECTION).getCells().size());
-    const Types::index size = size_of_block * geometry.size();
-    std::cout << size << std::endl;
-    Types::MatrixXc A(size, size);
+using diagonal_t = decltype(diagonal);
+using submatrix_t = decltype(submatrix);
+}
 
-    // 2) Поэтапный расчет внедиагональных блоков без учета того, что какие-то из них одинаковые
-    for (int i = 0; i < geometry.size(); i++) {
-        for (int j = 0; j < geometry.size(); j++)
-            if (i != j) {
-                // если у нас недиагональный блок, то считаем матрицу
-                // A_ij блок показывает как k сетка влияет на поле в точках коллокации на j сетке
-                const auto A_ij = detail::submatrix(geometry.get(j), geometry.get(i), a, k);
-                // рассчитывем место, где этот блок должен находится
-                const Types::index first_row = i * size_of_block;
-                const Types::index first_col = j * size_of_block;
-                A.block(first_row, first_col, size_of_block, size_of_block) = A_ij;
-            }
-        A.block(i * size_of_block, i * size_of_block, size_of_block, size_of_block) = detail::diagonal(geometry.get(i),
-        geometry.get(i).getSubmesh(Mesh::IndexedCell::Tag::WAVEGUIDE_CROSS_SECTION), a, k);
-    }
-    return A;
-}
-}
 #endif //GENERALIZEDEQUATIONS_HPP
