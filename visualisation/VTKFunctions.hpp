@@ -50,6 +50,7 @@ void dumpField(const vtkSmartPointer<vtkUnstructuredGrid> &unstructuredGrid, con
     unstructuredGrid->GetCellData()->AddArray(imag_field);
     std::cout << "Field " << field.getName() << " dumped" << std::endl;
 };
+
 } // namespace detail
 
 void surface_snapshot(const EMW::Mesh::SurfaceMesh &mesh, const std::string &part_to_file);

@@ -5,15 +5,23 @@
 #ifndef CONSEPTS_HPP
 #define CONSEPTS_HPP
 
-#include <type_traits>
-
 #include "types/Types.hpp"
+#include "mesh/SurfaceMesh.hpp"
 
-namespace EMW::Consepts {
-template<typename Topology>
+namespace EMW::Concepts {
+
+/** Концепт, генерализирующий сетку */
+template <typename Topology>
 concept manifold_like = requires(Topology topology) {
-    {topology.getCells()} -> Containers::vector<typename Topology::CellType>;
+    { topology.getCells() } -> Containers::vector<typename Topology::CellType>;
 };
-}
+/** Концепт, генерализирующий множество сеток (полную геометрию) */
+template <typename TopologicalStructure>
+concept GeomtricalStructure = requires(TopologicalStructure structure, Types::index index) {
+    { structure.get(index) } -> const Mesh::SurfaceMesh &;
+    { structure.size() } -> Types::index;
+};
 
-#endif //CONSEPTS_HPP
+} // namespace EMW::Consepts
+
+#endif // CONSEPTS_HPP

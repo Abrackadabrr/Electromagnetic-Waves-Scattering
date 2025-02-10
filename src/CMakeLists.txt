@@ -4,11 +4,7 @@ message("Building a library: " ${PROJECT_NAME})
 
 file(GLOB_RECURSE SOURCES *.cpp)
 
-add_library(${PROJECT_NAME} STATIC ${SOURCES}
-        math/fields/FiedsOverGeometry.hpp
-        equations/EquationsOverGeometry.hpp
-        consepts/Consepts.hpp
-        geometry/field_over/FieldOverGeometry.hpp)
+add_library(${PROJECT_NAME} STATIC ${SOURCES})
 
 set(TARGET_LIBS eigen)
 

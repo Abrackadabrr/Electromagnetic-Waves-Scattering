@@ -7,6 +7,7 @@
 
 #include "mesh/SurfaceMesh.hpp"
 #include "types/FunctionExtraction.hpp"
+#include "consepts/Consepts.hpp"
 
 namespace EMW::Equations {
 /**
@@ -18,7 +19,7 @@ namespace EMW::Equations {
  * @tparam SelfAffecting
  * @tparam OtherAffecting
  */
-template <typename TopologicalStructure, typename SelfAffecting, typename OtherAffecting> class MatrixFor {
+template <Concepts::GeomtricalStructure TopologicalStructure, typename SelfAffecting, typename OtherAffecting> class MatrixFor {
     // Дальше нужно статически вытащить те аргументы, которые идут после сеток в обеих функциях
     using self_args = Types::TypeTraits::argument_type_of_t<SelfAffecting>;
 
@@ -82,12 +83,19 @@ template <typename TopologicalStructure, typename SelfAffecting, typename OtherA
     }
 
 public:
+    /**
+     * Функция, рассчитывающая дискретизованную систему уравнений поверх произвольной топологической структуры
+     * @param geometry геометрия
+     * @param diagonal функиця для расчета самодействия
+     * @param submatrix функция для расчета взаимодействия
+     * @param args дополнительные аргументы
+     * @return
+     */
     static Types::MatrixXc compute(const TopologicalStructure &geometry, SelfAffecting diagonal,
                                OtherAffecting submatrix, const tuple_additional_args &args) {
         return compute(geometry, diagonal, submatrix, args, aux_sequence{});
     }
 };
-
 
 }
 
