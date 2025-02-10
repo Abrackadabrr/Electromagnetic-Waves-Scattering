@@ -47,8 +47,8 @@ template <typename data_type> class ToeplitzContainer {
 
 template<typename data_type>
 ToeplitzContainer<data_type>::ToeplitzContainer(Types::index rows, Types::index cols,
-    const std::function<data_type(Types::index row, Types::index col)>& function) : ToeplitzContainer<data_type>(rows, cols) {
-    values.resize(rows_ + cols_ - 1);
+    const std::function<data_type(Types::index row, Types::index col)>& function) : ToeplitzContainer(rows, cols) {
+    values.reserve(rows_ + cols_ - 1);
     for (Types::index index = 0; index < cols_; ++index) {
         values.push_back(function(0, index));
     }

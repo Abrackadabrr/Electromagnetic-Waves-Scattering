@@ -5,26 +5,34 @@
 #include "toeplitz_matrix_tests.hpp"
 #include "math/matrix/ToeplitzContainer.hpp"
 
-auto gilbert_matrix(Types::index i, Types::index j)->Types::scalar { return 1. / (i + j + 1); };
+auto simple_toeplitz_matrix(Types::index i, Types::index j)->Types::scalar { return static_cast<integer>(i) - j; };
 
-TEST_F(TOEPLITZ_MATRIX_TESTS, EIGEN_COMPARISON) {
+TEST_F(TOEPLITZ_MATRIX_TESTS, TOEPLITZ_CONTAINER_1) {
     constexpr Types::index N = 50;
     constexpr Types::index M = 60;
-    const Math::LinAgl::Matrix::ToeplitzContainer<Types::scalar> toeplitz(50, 60, gilbert_matrix);
+    const Math::LinAgl::Matrix::ToeplitzContainer<Types::scalar> toeplitz(N, M, simple_toeplitz_matrix);
     // Проверка на правильность заполнения чисел
     for (int i = 0; i < N; i++) {
         for (int j = 0; j < M; j++) {
-            ASSERT_EQ(toeplitz(i, j), gilbert_matrix(i, j));
+            ASSERT_EQ(toeplitz(i, j), simple_toeplitz_matrix(i, j));
         }
     }
-    // Проверка на правильность хранения чисел (свойство теплицевости)
-    for (int i = 0; i < N + M - 1; i++) {
-        const Types::scalar reference_element = (i >= N ? toeplitz(0, i) : toeplitz(0, i - N + 1));
-        for (int row = 0; row < M; row++) {
-            for (int col = 0; col < N; col++) {
-                if (row - col == i) {}
-                ASSERT_EQ(toeplitz(row, col), reference_element);
+}
+
+TEST_F(TOEPLITZ_MATRIX_TESTS, TOEPLITZ_CONTAINER_2) {
+    constexpr Types::index N = 5000;
+    constexpr Types::index M = 23454;
+    const Math::LinAgl::Matrix::ToeplitzContainer<Types::scalar> toeplitz(N, M, simple_toeplitz_matrix);
+    // Проверка на свойство тёплицевости
+    for (Types::integer i = -static_cast<integer>(M) + 1; i < N; i++) {
+        // i -- это номер диагонали
+        const scalar ref_el= (i + M - 1) < N ? toeplitz(i + M - 1, M - 1) : toeplitz(i + M - 1 - N, 0);
+        for (integer c = M - 1; c >= 0; c--) {
+            // c -- номер столбца
+            integer r = c + i;  // r -- это номер строки
+            if (r >= 0 && r < N) {
+                ASSERT_EQ(toeplitz(r, c), ref_el);
             }
-        }
+         }
     }
 }
