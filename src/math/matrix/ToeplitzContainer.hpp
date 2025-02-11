@@ -28,13 +28,23 @@ template <typename data_type> class ToeplitzContainer {
     // 8  7  6  1  2
     Containers::vector<data_type> values;
 
+    // Инвариант класса: rows_ + cols_ - 1 == values.size();
+
   public:
     ToeplitzContainer() = default;
-    ToeplitzContainer(Types::index rows, Types::index cols): rows_(rows), cols_(cols) {};
-    ToeplitzContainer(Types::index rows, Types::index cols, data_type value): rows_(rows), cols_(cols), values(rows_ + cols_ - 1, value) {};
-    ToeplitzContainer(Types::index rows, Types::index cols, const std::function<data_type(Types::index row, Types::index col)>& function);
+    ToeplitzContainer(Types::index rows, Types::index cols, data_type value = data_type{})
+        : rows_(rows), cols_(cols), values(rows_ + cols_ - 1, value){};
+    ToeplitzContainer(Types::index rows, Types::index cols,
+                      const std::function<data_type(Types::index row, Types::index col)> &function);
 
     // --- Selectors --- //
+    [[nodiscard]] Types::index rows() const noexcept { return rows_; }
+    [[nodiscard]] Types::index cols() const noexcept { return cols_; }
+
+    [[nodiscard]] const data_type& get_block(Types::index row_index, Types::index col_index) const noexcept {
+        return col_index >= row_index ? values[col_index - row_index] : values[row_index - col_index + cols_ - 1];
+    }
+
     /** Доступ к элементу матрицы по заданным координатам */
     data_type operator[](Types::index row, Types::index col) const noexcept;
     /** Доступ к элементу матрицы по заданным координатам */
@@ -45,9 +55,10 @@ template <typename data_type> class ToeplitzContainer {
     data_type &operator()(Types::index row, Types::index col) noexcept;
 };
 
-template<typename data_type>
-ToeplitzContainer<data_type>::ToeplitzContainer(Types::index rows, Types::index cols,
-    const std::function<data_type(Types::index row, Types::index col)>& function) : ToeplitzContainer(rows, cols) {
+template <typename data_type>
+ToeplitzContainer<data_type>::ToeplitzContainer(
+    Types::index rows, Types::index cols, const std::function<data_type(Types::index row, Types::index col)> &function)
+    : ToeplitzContainer(rows, cols) {
     values.reserve(rows_ + cols_ - 1);
     for (Types::index index = 0; index < cols_; ++index) {
         values.push_back(function(0, index));

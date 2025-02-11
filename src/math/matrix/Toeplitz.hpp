@@ -5,69 +5,71 @@
 #ifndef TOEPLITZ_HPP
 #define TOEPLITZ_HPP
 
+#include "math/matrix/ToeplitzContainer.hpp"
 #include "types/Types.hpp"
 
 namespace EMW::Math::LinAgl::Matrix {
 
+template <typename T> class BlockToeplitz {
 
+    ToeplitzContainer<Types::MatrixX<T>> blocks;
+    // Характеристика одного блока
+    // Эти поля нужны для удобства
+    Types::index rows_in_block_;
+    Types::index cols_in_block_;
 
-template <typename scalar_t>
-const typename ToeplitzMatrix<scalar_t>::block_t &ToeplitzMatrix<scalar_t>::getBlock(Types::index row, Types::index col) const {
+  public:
+    using block_t = Types::MatrixX<T>;
 
-}
+    BlockToeplitz() = default;
+    // Консистентность состояния поддерживается, если функция возвращает блоки
+    // одного и того же размера
+    /**
+     * @param block_rows -- количество блоков в матрице
+     * @param block_cols -- количество блоков в матрице
+     * @param get_block -- функция, которая возвращает квадратную матрицу, размеры одинаковы для любых пар (i, j)
+     */
+    BlockToeplitz(Types::index block_rows, Types::index block_cols,
+                  const std::function<block_t(Types::index i, Types::index j)> &get_block)
+        : blocks(block_rows, block_cols, get_block), rows_in_block_(blocks(0, 0).rows()),
+          cols_in_block_(blocks(0, 0).cols()) {}
 
+    [[nodiscard]] Types::VectorX<T> matvec(Types::VectorX<T> vec);
 
-template <typename scalar_t>
-Types::VectorX<scalar_t> operator*(const ToeplitzMatrix<scalar_t> &matrix, const Types::VectorX<scalar_t> &vector) {
+    // --- Selectors --- //
+    [[nodiscard]] const block_t &get_block(Types::index row, Types::index col) const {
+        return blocks.get_block(row, col);
+    }
+    [[nodiscard]] Types::index rows_in_block() const { return rows_in_block_; }
+    [[nodiscard]] Types::index cols_in_block() const { return cols_in_block_; }
+    [[nodiscard]] Types::index total_rows() const { return rows_in_block_ * blocks.rows(); }
+    [[nodiscard]] Types::index total_cols() const { return cols_in_block_ * blocks.cols(); }
+};
+
+template <typename scalar_t> Types::VectorX<scalar_t> BlockToeplitz<scalar_t>::matvec(Types::VectorX<scalar_t> vec) {
     // создаем нулевой вектор результата, в который будем записывать ответ
-    typename ToeplitzMatrix<scalar_t>::col_t result;
+    auto result = Types::VectorX<scalar_t>::Zero(total_rows());
 
-    DataType *sub_vec = static_cast<DataType *>(std::malloc(msub_col * sizeof(DataType)));
-    DataType *local_res = static_cast<DataType *>(std::malloc(msub_row * sizeof(DataType)));
+    // Вектор для результата локального блочного умножения
+    auto local_res = Types::VectorX<scalar_t>::Zero(rows_in_block_);
 
-    for (uint64_t i = 0; i < mblock_row; ++i) {
-        for (uint64_t j = 0; j < mblock_col; ++j) {
-
-            BLAS::copy(msub_col, x + j * msub_col, 1, sub_vec, 1);
-            int block_id = get_block(i, j);
-
-            // std::cout << "res for block " << i << " " << j << " : #" << get_block(i, j) << std::endl;
-            // mblock[block_id].print_mat();
-
-            // std::cout << "sub_vector of x :" << std::endl;
-            // for (uint64_t k = 0; k < msub_col; ++k) {
-            // std::cout << sub_vec[k] << "  ";
-            // }
-            // std::cout << std::endl;
-
-            mblock[block_id].matvec(sub_vec, local_res, Option::N);
-
-            // std::cout << "local result of matvec : " << std::endl;
-            // for (uint64_t k = 0; k < msub_row; ++k) {
-            // std::cout << local_res[k] << "  ";
-            // }
-            // std::cout << std::endl;
-
-            // std::cout << "y before axpy : " << std::endl;
-            // for (uint64_t k = 0; k < total_row(); ++k) {
-            // std::cout << y[k] << "  ";
-            // }
-            // std::cout << std::endl;
-
-            BLAS::axpy(msub_row, DataType(1.0), local_res, 1, y + i * msub_row, 1);
-
-            // std::cout << "y after axpy : " << std::endl;
-            // for (uint64_t k = 0; k < total_row(); ++k) {
-            // std::cout << y[k] << "  ";
-            // }
-            // std::cout << std::endl;
-            // std::cout << "-------------------------------- " << std::endl;
+    // Далее итерируемся по всем блокам (потому что обычное умножение, а не потому что бесструктурная матрица!)
+    for (Types::index i = 0; i < blocks.rows(); ++i) {
+        for (Types::index j = 0; j < blocks.cols(); ++j) {
+            // Достаем ссылку на текущий блок
+            const block_t &current_block = blocks.get_block(i, j);
+            // Теперь умножаем на соответствующий подвектор
+            local_res = current_block * vec.block(j * cols_in_block_, 0, cols_in_block_, 1);;
+            // Складываем результат
+            result.block(i * rows_in_block_, 0, rows_in_block_, 1) += local_res;
         }
-        }
-
-        std::free(sub_vec);
-        std::free(local_res);
     }
 }
+
+template <typename scalar_t>
+Types::VectorX<scalar_t> operator*(const BlockToeplitz<scalar_t> &matrix, const Types::VectorX<scalar_t> &vector) {
+    return matrix.matvec(vector);
 }
+}
+
 #endif //TOEPLITZ_HPP
