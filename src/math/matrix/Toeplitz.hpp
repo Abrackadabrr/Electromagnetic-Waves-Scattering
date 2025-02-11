@@ -34,7 +34,7 @@ template <typename T> class BlockToeplitz {
         : blocks(block_rows, block_cols, get_block), rows_in_block_(blocks(0, 0).rows()),
           cols_in_block_(blocks(0, 0).cols()) {}
 
-    [[nodiscard]] Types::VectorX<T> matvec(Types::VectorX<T> vec);
+    [[nodiscard]] Types::VectorX<T> matvec(Types::VectorX<T> vec) const;
 
     // --- Selectors --- //
     [[nodiscard]] const block_t &get_block(Types::index row, Types::index col) const {
@@ -46,12 +46,13 @@ template <typename T> class BlockToeplitz {
     [[nodiscard]] Types::index total_cols() const { return cols_in_block_ * blocks.cols(); }
 };
 
-template <typename scalar_t> Types::VectorX<scalar_t> BlockToeplitz<scalar_t>::matvec(Types::VectorX<scalar_t> vec) {
+template <typename scalar_t>
+Types::VectorX<scalar_t> BlockToeplitz<scalar_t>::matvec(Types::VectorX<scalar_t> vec) const {
     // создаем нулевой вектор результата, в который будем записывать ответ
-    auto result = Types::VectorX<scalar_t>::Zero(total_rows());
+    Types::VectorX<scalar_t> result = Types::VectorX<scalar_t>::Zero(total_rows());
 
     // Вектор для результата локального блочного умножения
-    auto local_res = Types::VectorX<scalar_t>::Zero(rows_in_block_);
+    Types::VectorX<scalar_t> local_res = Types::VectorX<scalar_t>::Zero(rows_in_block_);
 
     // Далее итерируемся по всем блокам (потому что обычное умножение, а не потому что бесструктурная матрица!)
     for (Types::index i = 0; i < blocks.rows(); ++i) {
@@ -64,6 +65,7 @@ template <typename scalar_t> Types::VectorX<scalar_t> BlockToeplitz<scalar_t>::m
             result.block(i * rows_in_block_, 0, rows_in_block_, 1) += local_res;
         }
     }
+    return result;
 }
 
 template <typename scalar_t>

@@ -7,6 +7,8 @@
 
 #include "types/Types.hpp"
 
+#include <iostream>
+
 namespace EMW::Math::LinAgl::Matrix {
 /**
  * Тёплицева матрица со специальным форматом хранения
@@ -61,10 +63,10 @@ ToeplitzContainer<data_type>::ToeplitzContainer(
     : ToeplitzContainer(rows, cols) {
     values.reserve(rows_ + cols_ - 1);
     for (Types::index index = 0; index < cols_; ++index) {
-        values.push_back(function(0, index));
+        values[index] = function(0, index);
     }
     for (Types::index index = 1; index < rows_; ++index) {
-        values.push_back(function(index, 0));
+        values[index + cols_ - 1] = function(index, 0);
     }
     assert(values.size() == rows_ + cols_ - 1);
 }
