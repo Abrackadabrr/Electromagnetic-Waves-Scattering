@@ -2,12 +2,18 @@ message("TESTS BUILDING STARTS\n")
 
 file(GLOB_RECURSE TESTS test_*.cpp)
 
+find_package(OpenMP)
+if (OPENMP_FOUND)
+    message("OpenMP Found")
+endif()
+
 foreach (TEST IN LISTS TESTS)
     get_filename_component(FILE_NAME ${TEST} NAME_WE)
     set(EXE_NAME run_${FILE_NAME})
     add_executable(${EXE_NAME} ${TEST})
     message("TEST: ${EXE_NAME}")
     target_link_libraries(${EXE_NAME} ${PROJECT_NAME} gtest gtest_main visual)
+    target_link_libraries(${EXE_NAME} OpenMP::OpenMP_CXX)
     target_compile_options(${EXE_NAME} PRIVATE -Werror)
     # target_link_options(${EXE_NAME} PRIVATE -fsanitize=address)
     # target_compile_options(${EXE_NAME} PUBLIC -fsanitize=undefined)

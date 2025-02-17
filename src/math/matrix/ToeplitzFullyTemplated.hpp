@@ -8,6 +8,7 @@
 #include "types/Types.hpp"
 
 #include "ToeplitzContainer.hpp"
+#include <omp.h>
 
 #include <cassert>
 #include <iostream>
@@ -46,7 +47,7 @@ template <typename scalar_t, typename block_t> class ToeplitzStructure {
     /** Умножение матрицы на число с возвращением копии */
     [[nodiscard]] ToeplitzStructure mull(scalar_t value) const;
     /** Умножение себя на число */
-    const ToeplitzStructure & mull_inplace(scalar_t value);
+    const ToeplitzStructure &mull_inplace(scalar_t value);
 
     // --- Selectors --- //
     [[nodiscard]] const block_t &get_block(Types::index row, Types::index col) const {
@@ -72,16 +73,12 @@ ToeplitzStructure<scalar_t, block_t>::ToeplitzStructure(
 template <typename scalar_t, typename block_t>
 typename ToeplitzStructure<scalar_t, block_t>::vector_t
 ToeplitzStructure<scalar_t, block_t>::matvec(const vector_t &vec) const {
-
     assert(vec.size() == cols());
-
     // создаем нулевой вектор результата, в который будем записывать ответ
     vector_t result = vector_t::Zero(rows());
 
-    // Вектор для результата локального блочного умножения
-    vector_t local_res = vector_t::Zero(rows_in_block_);
-
     // Далее итерируемся по всем блокам (потому что обычное умножение, а не потому что бесструктурная матрица!)
+#pragma omp parallel for schedule(dynamic) collapse(2)
     for (Types::index i = 0; i < blocks.rows(); ++i) {
         for (Types::index j = 0; j < blocks.cols(); ++j) {
             // Достаем ссылку на текущий блок (тут как раз проявляется тёплицевость)
@@ -89,9 +86,12 @@ ToeplitzStructure<scalar_t, block_t>::matvec(const vector_t &vec) const {
             // Теперь умножаем на соответствующий подвектор
             const vector_t &sub_vector = vec.block(j * cols_in_block_, 0, cols_in_block_, 1);
             // тут пришлось скопировать, потому что block -- это не вектор, а block-expression внутри Eigen
-            local_res = current_block * sub_vector;
+            vector_t local_res = current_block * sub_vector;
             // Складываем результат
-            result.block(i * rows_in_block_, 0, rows_in_block_, 1) += local_res;
+#pragma omp critical
+            {
+                result.block(i * rows_in_block_, 0, rows_in_block_, 1) += local_res;
+            }
         }
     }
     return result;

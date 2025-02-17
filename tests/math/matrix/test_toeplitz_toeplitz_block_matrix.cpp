@@ -3,9 +3,7 @@
 //
 
 #include "toeplitz_matrix_tests.hpp"
-
 #include "types/Types.hpp"
-
 #include "math/matrix/Matrix.hpp"
 
 Types::scalar simple_toeplitz_matrix_1(Types::index i, Types::index j) {
@@ -132,7 +130,8 @@ Types::MatrixX<scalar> get_full_matrix(Types::index s_r, Types::index s_c, Types
     return result;
 }
 
-TEST_F(TOEPLITZ_MATRIX_TESTS, TWICE_TOEPLITZ_REAL_1) {
+TEST_F(TOEPLITZ_MATRIX_TESTS, TWICE_TOEPLITZ_REAL_1_NO_PARALLEL) {
+    Eigen::setNbThreads(1);
     // Описываем структуру матрицы
     const Types::index internal_block_rows = 10;
     const Types::index internal_block_cols = 20;
@@ -174,7 +173,9 @@ TEST_F(TOEPLITZ_MATRIX_TESTS, TWICE_TOEPLITZ_REAL_1) {
     final_check_for_vectors(full_matrix, test_matrix, vec);
 }
 
-TEST_F(TOEPLITZ_MATRIX_TESTS, TWICE_TOEPLITZ_REAL_2) {
+TEST_F(TOEPLITZ_MATRIX_TESTS, TWICE_TOEPLITZ_REAL_2_NO_PARALLEL) {
+    Eigen::setNbThreads(1);
+
     // Описываем структуру матрицы
     const Types::index internal_block_rows = 440;
     const Types::index internal_block_cols = 440;
@@ -224,4 +225,55 @@ TEST_F(TOEPLITZ_MATRIX_TESTS, TWICE_TOEPLITZ_REAL_2) {
     final_check_for_vectors(full_matrix, test_matrix, vec);
 }
 
+/**
+ * Параллельная версия предыдущего теста
+ */
+TEST_F(TOEPLITZ_MATRIX_TESTS, TWICE_TOEPLITZ_REAL_3_PARALLEL) {
+    // Описываем структуру матрицы
+    const Types::index internal_block_rows = 2500;
+    const Types::index internal_block_cols = 2500;
 
+    const Types::index first_layer_rows = 3;
+    const Types::index first_layer_cols = 3;
+
+    const Types::index second_layer_rows = 4;
+    const Types::index second_layer_cols = 4;
+
+    const Types::index total_rows = internal_block_rows * first_layer_rows * second_layer_rows;
+    const Types::index total_cols = internal_block_cols * first_layer_cols * second_layer_cols;
+
+    const Types::scalar element_in_gb = 16. / (1024 * 1024 * 1024);
+    const Types::scalar memory_for_full_matrix = total_cols * total_rows * element_in_gb;
+    const Types::scalar memory_for_toeplitz_matrix = internal_block_cols * internal_block_rows *
+                                                     (2 * second_layer_rows - 1) * (2 * second_layer_cols - 1) *
+                                                     element_in_gb;
+
+    std::cout << "Количество памяти для полной матрицы: " << memory_for_full_matrix << " Gb" << std::endl;
+    std::cout << "Количество памяти для новой матрицы: " << memory_for_toeplitz_matrix << " Gb" << std::endl;
+
+    // Строим обычнцую матрицу, без специального хранения элементов
+    const Types::MatrixX<scalar> full_matrix =
+        get_full_matrix(second_layer_rows, second_layer_cols, first_layer_rows, first_layer_cols, internal_block_rows,
+                        internal_block_cols);
+
+    // Собираем дважды тёплицеву матрицу
+    const auto get_toeplitz_block_by_indexes =
+        [&internal_block_rows, &internal_block_cols, &first_layer_rows, &first_layer_cols](Types::index i,
+                                                                                           Types::index j) {
+            const auto get_internal_block_by_indexes = [&internal_block_rows, &internal_block_cols, &i,
+                                                        &j](Types::index k, Types::index l) {
+                return get_internal_block(internal_block_rows, internal_block_cols, i, j, k, l);
+            };
+            return Math::LinAgl::Matrix::ToeplitzBlock<scalar>{first_layer_rows, first_layer_cols, get_internal_block_by_indexes};
+    };
+    const auto test_matrix =
+        Math::LinAgl::Matrix::ToeplitzToeplitzBlock<scalar>{second_layer_rows, second_layer_cols, get_toeplitz_block_by_indexes};
+
+    // Собираем вектор для тестового умножения
+    Types::VectorX<scalar> vec = Types::VectorX<scalar>::Zero(total_cols);
+    for (Types::index i = 0; i < total_cols; i++)
+        vec(i) = static_cast<scalar>(i);
+
+    // Проверка умножения с измерением времени
+    final_check_for_vectors(full_matrix, test_matrix, vec);
+}
