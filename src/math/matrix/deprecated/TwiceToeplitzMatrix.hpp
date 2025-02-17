@@ -11,6 +11,7 @@
 #include "ToeplitzContainer.hpp"
 
 namespace EMW::Math::LinAgl::Matrix {
+#if 0
 
 /**
 * Матрица со структурой тёплиц-тёплиц-общий_вид
@@ -26,7 +27,7 @@ template<typename T> class TwiceToeplitzBlock {
 public:
     using block_t = Types::MatrixX<T>;
 
-    TwiceToeplitzBlock() = default;
+    TwiceToeplitzBlock() = delete;
     // Консистентность состояния поддерживается, если функция возвращает блоки
     // одного и того же размера
     /**
@@ -81,7 +82,6 @@ template <typename scalar_t>
 Types::VectorX<scalar_t> operator*(const TwiceToeplitzBlock<scalar_t> &matrix, const Types::VectorX<scalar_t> &vector) {
     return matrix.matvec(vector);
 }
-
+#endif
 }
-
 #endif //TWICETOEPLITZMATRIX_HPP

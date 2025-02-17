@@ -5,7 +5,8 @@ message("Building a library: " ${PROJECT_NAME})
 file(GLOB_RECURSE SOURCES *.cpp)
 
 add_library(${PROJECT_NAME} STATIC ${SOURCES}
-        math/matrix/ToeplitzFullyTemplated.hpp)
+        math/matrix/ToeplitzFullyTemplated.hpp
+        math/matrix/Matrix.hpp)
 
 set(TARGET_LIBS eigen)
 

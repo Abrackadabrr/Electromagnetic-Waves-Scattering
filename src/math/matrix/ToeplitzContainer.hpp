@@ -7,12 +7,12 @@
 
 #include "types/Types.hpp"
 
-#include <iostream>
+#include <cassert>
 
 namespace EMW::Math::LinAgl::Matrix {
 /**
- * Тёплицева матрица со специальным форматом хранения
- * Элементы матрицы -- это блоки общего вида
+ * Тёплицев контейнер для данных со специальным форматом хранения
+ * Элементы контейнера -- это что угодно, хоть май классы
  *
  * @tparam data_type -- тип чисел, которые будут храниться в матрице
  */
@@ -27,7 +27,6 @@ template <typename data_type> class ToeplitzContainer {
     // 1  2  3  4  5
     // 6  1  2  3  4
     // 7  6  1  2  3
-    // 8  7  6  1  2
     Containers::vector<data_type> values;
 
     // Инвариант класса: rows_ + cols_ - 1 == values.size();
@@ -43,25 +42,33 @@ template <typename data_type> class ToeplitzContainer {
     [[nodiscard]] Types::index rows() const noexcept { return rows_; }
     [[nodiscard]] Types::index cols() const noexcept { return cols_; }
 
-    [[nodiscard]] const data_type& get_block(Types::index row_index, Types::index col_index) const noexcept {
-        return col_index >= row_index ? values[col_index - row_index] : values[row_index - col_index + cols_ - 1];
+    [[nodiscard]] Types::index get_linear_index(Types::index row_index, Types::index col_index) const noexcept {
+        return (col_index >= row_index) ? (col_index - row_index) : (row_index - col_index + cols_ - 1);
     }
 
-    /** Доступ к элементу матрицы по заданным координатам */
-    data_type operator[](Types::index row, Types::index col) const noexcept;
-    /** Доступ к элементу матрицы по заданным координатам */
+    [[nodiscard]] Types::index get_actual_size() const noexcept { return values.size(); }
+
+    /** Доступ к элементу контейнера по заданным координатам */
+    const data_type &operator[](Types::index row, Types::index col) const noexcept;
+    /** Доступ к элементу контейнера по заданным координатам */
     data_type &operator[](Types::index row, Types::index col) noexcept;
-    /** Доступ к элементу матрицы по заданным координатам. Определен для обратной совместимости */
-    data_type operator()(Types::index row, Types::index col) const noexcept;
-    /** Доступ к элементу матрицы по заданным координатам. Определен для обратной совместимости */
+    /** Доступ к элементу контейнера по заданным координатам. Определен для обратной совместимости */
+    const data_type &operator()(Types::index row, Types::index col) const noexcept;
+    /** Доступ к элементу контейнера по заданным координатам. Определен для обратной совместимости */
     data_type &operator()(Types::index row, Types::index col) noexcept;
+
+
+    /** Далее идут служебные функции, не для пользовательского использования */
+    /** Доступ к элементу контейнера по линейному индексу */
+    const data_type &operator()(Types::index index) const noexcept;
+    /** Доступ к элементу контейнера по заданным координатам. Определен для обратной совместимости */
+    data_type &operator()(Types::index index) noexcept;
 };
 
 template <typename data_type>
 ToeplitzContainer<data_type>::ToeplitzContainer(
     Types::index rows, Types::index cols, const std::function<data_type(Types::index row, Types::index col)> &function)
     : ToeplitzContainer(rows, cols) {
-    values.reserve(rows_ + cols_ - 1);
     for (Types::index index = 0; index < cols_; ++index) {
         values[index] = function(0, index);
     }
@@ -72,7 +79,8 @@ ToeplitzContainer<data_type>::ToeplitzContainer(
 }
 
 template <typename data_type>
-data_type ToeplitzContainer<data_type>::operator[](Types::index row_index, Types::index col_index) const noexcept {
+const data_type &ToeplitzContainer<data_type>::operator[](Types::index row_index,
+                                                          Types::index col_index) const noexcept {
     return col_index >= row_index ? values[col_index - row_index] : values[row_index - col_index + cols_ - 1];
 }
 
@@ -82,13 +90,23 @@ data_type &ToeplitzContainer<data_type>::operator[](Types::index row_index, Type
 }
 
 template <typename data_type>
-data_type ToeplitzContainer<data_type>::operator()(Types::index row, Types::index col) const noexcept{
+const data_type &ToeplitzContainer<data_type>::operator()(Types::index row, Types::index col) const noexcept{
     return operator[](row, col);
 }
 
 template <typename data_type>
 data_type& ToeplitzContainer<data_type>::operator()(Types::index row, Types::index col) noexcept {
     return operator[](row, col);
+}
+
+template <typename data_type>
+const data_type &ToeplitzContainer<data_type>::operator()(Types::index index) const noexcept{
+    return values[index];
+}
+
+template <typename data_type>
+data_type& ToeplitzContainer<data_type>::operator()(Types::index index) noexcept {
+    return values[index];
 }
 
 }

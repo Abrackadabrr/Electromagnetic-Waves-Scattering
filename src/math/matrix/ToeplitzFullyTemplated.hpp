@@ -9,6 +9,9 @@
 
 #include "ToeplitzContainer.hpp"
 
+#include <cassert>
+#include <iostream>
+
 namespace EMW::Math::LinAgl::Matrix {
 
 /**
@@ -21,29 +24,35 @@ template <typename scalar_t, typename block_t> class ToeplitzStructure {
     ToeplitzContainer<block_t> blocks;
     // Характеристика одного блока
     // Эти поля нужны для удобства
-    Types::index rows_in_block_;
-    Types::index cols_in_block_;
+    Types::index rows_in_block_ = 0;
+    Types::index cols_in_block_ = 0;
 
   public:
     ToeplitzStructure() = default;
     // Консистентность состояния поддерживается, если функция возвращает блоки
     // одного и того же размера
     /**
+     * Конструктор сейчас работает при условии, что в типе данных есть методы rows() и cols()
+     *
      * @param block_rows -- количество блоков в матрице
      * @param block_cols -- количество блоков в матрице
      * @param get_block -- функция, которая возвращает квадратную матрицу, размеры одинаковы для любых пар (i, j)
      */
     ToeplitzStructure(Types::index block_rows, Types::index block_cols,
-                       const std::function<block_t(Types::index i, Types::index j)> &get_block)
-        : blocks(block_rows, block_cols, get_block), rows_in_block_(blocks(0, 0).rows()),
-          cols_in_block_(blocks(0, 0).cols()) {}
+                      const std::function<block_t(Types::index i, Types::index j)> &get_block);
 
+    /** Умножение матрицы на вектор */
     [[nodiscard]] vector_t matvec(const vector_t &vec) const;
+    /** Умножение матрицы на число с возвращением копии */
+    [[nodiscard]] ToeplitzStructure mull(scalar_t value) const;
+    /** Умножение себя на число */
+    const ToeplitzStructure & mull_inplace(scalar_t value);
 
     // --- Selectors --- //
     [[nodiscard]] const block_t &get_block(Types::index row, Types::index col) const {
         return blocks.get_block(row, col);
     }
+    [[nodiscard]] block_t &get_block(Types::index row, Types::index col) { return blocks.get_block(row, col); }
 
     // Возвращают значения строк и столбцов в каждом блоке
     [[nodiscard]] Types::index rows_in_block() const { return rows_in_block_; }
@@ -54,27 +63,71 @@ template <typename scalar_t, typename block_t> class ToeplitzStructure {
 };
 
 template <typename scalar_t, typename block_t>
+ToeplitzStructure<scalar_t, block_t>::ToeplitzStructure(
+    Types::index block_rows, Types::index block_cols,
+    const std::function<block_t(Types::index i, Types::index j)> &get_block)
+    : blocks(block_rows, block_cols, get_block), rows_in_block_(blocks(0, 0).rows()),
+      cols_in_block_(blocks(0, 0).cols()) {}
+
+template <typename scalar_t, typename block_t>
 typename ToeplitzStructure<scalar_t, block_t>::vector_t
 ToeplitzStructure<scalar_t, block_t>::matvec(const vector_t &vec) const {
+
     assert(vec.size() == cols());
+
     // создаем нулевой вектор результата, в который будем записывать ответ
-    vector_t result = Types::VectorX<scalar_t>::Zero(rows());
+    vector_t result = vector_t::Zero(rows());
 
     // Вектор для результата локального блочного умножения
-    vector_t local_res = Types::VectorX<scalar_t>::Zero(rows_in_block_);
+    vector_t local_res = vector_t::Zero(rows_in_block_);
 
     // Далее итерируемся по всем блокам (потому что обычное умножение, а не потому что бесструктурная матрица!)
     for (Types::index i = 0; i < blocks.rows(); ++i) {
         for (Types::index j = 0; j < blocks.cols(); ++j) {
-            // Достаем ссылку на текущий блок
-            const block_t &current_block = blocks.get_block(i, j);
+            // Достаем ссылку на текущий блок (тут как раз проявляется тёплицевость)
+            const block_t &current_block = blocks(i, j);
             // Теперь умножаем на соответствующий подвектор
-            local_res = current_block * vec.block(j * cols_in_block_, 0, cols_in_block_, 1);
+            const vector_t &sub_vector = vec.block(j * cols_in_block_, 0, cols_in_block_, 1);
+            // тут пришлось скопировать, потому что block -- это не вектор, а block-expression внутри Eigen
+            local_res = current_block * sub_vector;
             // Складываем результат
             result.block(i * rows_in_block_, 0, rows_in_block_, 1) += local_res;
         }
     }
     return result;
+}
+
+template <typename scalar_t, typename block_t>
+ToeplitzStructure<scalar_t, block_t> ToeplitzStructure<scalar_t, block_t>::mull(scalar_t value) const {
+    std::cout << "Mul with one copy" << std::endl;
+    return ToeplitzStructure(*this).mull_inplace(value);
+}
+
+template <typename scalar_t, typename block_t>
+const ToeplitzStructure<scalar_t, block_t> &ToeplitzStructure<scalar_t, block_t>::mull_inplace(scalar_t value) {
+    std::cout << "Mull inplace" << std::endl;
+    for (Types::index index = 0, total = blocks.get_actual_size(); index != total; ++index) {
+        blocks(index) *= value;
+    }
+    return *this;
+}
+
+// --- Defined binary operators --- //
+
+template<typename scalar_t, typename block_t>
+ToeplitzStructure<scalar_t, block_t> operator*(const ToeplitzStructure<scalar_t, block_t> &matrix, scalar_t value) {
+    return matrix.mull(value);
+}
+
+template<typename scalar_t, typename block_t>
+ToeplitzStructure<scalar_t, block_t> operator*(scalar_t value, const ToeplitzStructure<scalar_t, block_t> &matrix) {
+    return matrix.mull(value);
+}
+
+template<typename scalar_t, typename block_t>
+ToeplitzStructure<scalar_t, block_t> & operator*=(ToeplitzStructure<scalar_t, block_t>& matrix, scalar_t value) {
+    matrix.mull_inplace(value);
+    return matrix;
 }
 
 template <typename scalar_t, typename block_t>
