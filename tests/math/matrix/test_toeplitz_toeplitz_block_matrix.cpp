@@ -226,9 +226,14 @@ TEST_F(TOEPLITZ_MATRIX_TESTS, TWICE_TOEPLITZ_REAL_2_NO_PARALLEL) {
 }
 
 /**
- * Параллельная версия предыдущего теста
+ * Попробуем в этих тестах собрать матрицу по-другому
+ * то есть через конструктор, который принимает вектор значений сразу
  */
-TEST_F(TOEPLITZ_MATRIX_TESTS, TWICE_TOEPLITZ_REAL_3_PARALLEL) {
+
+using block_t = Math::LinAgl::Matrix::ToeplitzBlock<scalar>::block_t;
+using toeplitz_block_t = Math::LinAgl::Matrix::ToeplitzToeplitzBlock<block_t>::block_t;
+
+TEST_F(TOEPLITZ_MATRIX_TESTS, TWICE_TOEPLITZ_REAL_4_PARALLEL) {
     // Описываем структуру матрицы
     const Types::index internal_block_rows = 2500;
     const Types::index internal_block_cols = 2500;
@@ -257,15 +262,7 @@ TEST_F(TOEPLITZ_MATRIX_TESTS, TWICE_TOEPLITZ_REAL_3_PARALLEL) {
                         internal_block_cols);
 
     // Собираем дважды тёплицеву матрицу
-    const auto get_toeplitz_block_by_indexes =
-        [&internal_block_rows, &internal_block_cols, &first_layer_rows, &first_layer_cols](Types::index i,
-                                                                                           Types::index j) {
-            const auto get_internal_block_by_indexes = [&internal_block_rows, &internal_block_cols, &i,
-                                                        &j](Types::index k, Types::index l) {
-                return get_internal_block(internal_block_rows, internal_block_cols, i, j, k, l);
-            };
-            return Math::LinAgl::Matrix::ToeplitzBlock<scalar>{first_layer_rows, first_layer_cols, get_internal_block_by_indexes};
-    };
+    Containers::vector<block_t> internat_blocks
     const auto test_matrix =
         Math::LinAgl::Matrix::ToeplitzToeplitzBlock<scalar>{second_layer_rows, second_layer_cols, get_toeplitz_block_by_indexes};
 

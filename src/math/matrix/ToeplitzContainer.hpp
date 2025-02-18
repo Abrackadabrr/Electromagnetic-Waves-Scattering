@@ -8,6 +8,7 @@
 #include "types/Types.hpp"
 
 #include <cassert>
+#include <span>
 
 namespace EMW::Math::LinAgl::Matrix {
 /**
@@ -37,6 +38,11 @@ template <typename data_type> class ToeplitzContainer {
         : rows_(rows), cols_(cols), values(rows_ + cols_ - 1, value){};
     ToeplitzContainer(Types::index rows, Types::index cols,
                       const std::function<data_type(Types::index row, Types::index col)> &function);
+    ToeplitzContainer(Types::index rows, Types::index cols,
+                      const std::function<data_type(Types::index index)> &row_function,
+                      const std::function<data_type(Types::index index)> &col_function);
+    ToeplitzContainer(const Containers::vector<data_type> &row, const Containers::vector<data_type> &col);
+    ToeplitzContainer(Types::index rows, Types::index cols, Containers::vector<data_type> &&values);
 
     // --- Selectors --- //
     [[nodiscard]] Types::index rows() const noexcept { return rows_; }
@@ -57,7 +63,6 @@ template <typename data_type> class ToeplitzContainer {
     /** Доступ к элементу контейнера по заданным координатам. Определен для обратной совместимости */
     data_type &operator()(Types::index row, Types::index col) noexcept;
 
-
     /** Далее идут служебные функции, не для пользовательского использования */
     /** Доступ к элементу контейнера по линейному индексу */
     const data_type &operator()(Types::index index) const noexcept;
@@ -77,6 +82,33 @@ ToeplitzContainer<data_type>::ToeplitzContainer(
     }
     assert(values.size() == rows_ + cols_ - 1);
 }
+
+template <typename data_type>
+ToeplitzContainer<data_type>::ToeplitzContainer(Types::index rows, Types::index cols,
+                                                const std::function<data_type(Types::index index)> &row_function,
+                                                const std::function<data_type(Types::index index)> &col_function)
+    : ToeplitzContainer(rows, cols) {
+    for (Types::index index = 0; index < cols_; ++index) {
+        values[index] = row_function(index);
+    }
+    for (Types::index index = 1; index < rows_; ++index) {
+        values[index + cols_ - 1] = col_function(index);
+    }
+    assert(values.size() == rows_ + cols_ - 1);
+}
+
+template <typename data_type>
+ToeplitzContainer<data_type>::ToeplitzContainer(const Containers::vector<data_type> &row,
+                                                const Containers::vector<data_type> &col)
+    : rows_(row.size()), cols_(col.size()) {
+    values.insert(values.end(), row.begin(), row.end());
+    values.insert(values.end(), col.begin() + 1, col.end());
+}
+
+template <typename data_type>
+ToeplitzContainer<data_type>::ToeplitzContainer(Types::index rows, Types::index cols,
+                                                Containers::vector<data_type> &&values_)
+    : rows_(rows), cols_(cols), values(std::move(values_)){}
 
 template <typename data_type>
 const data_type &ToeplitzContainer<data_type>::operator[](Types::index row_index,

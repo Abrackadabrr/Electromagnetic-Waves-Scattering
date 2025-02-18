@@ -19,9 +19,12 @@ namespace EMW::Math::LinAgl::Matrix {
  * Матрица со структурой тёплиц-тёплиц-общий_вид
  */
 template <typename scalar_t, typename block_t> class ToeplitzStructure {
-
+  public:
     using vector_t = Types::VectorX<scalar_t>;
+    using block_type = block_t;
+    using scalar_type = scalar_t;
 
+  private:
     ToeplitzContainer<block_t> blocks;
     // Характеристика одного блока
     // Эти поля нужны для удобства
@@ -30,17 +33,21 @@ template <typename scalar_t, typename block_t> class ToeplitzStructure {
 
   public:
     ToeplitzStructure() = default;
-    // Консистентность состояния поддерживается, если функция возвращает блоки
-    // одного и того же размера
+
     /**
-     * Конструктор сейчас работает при условии, что в типе данных есть методы rows() и cols()
+     * Конструктор сейчас работает при условии, что в типе block_t есть методы rows() и cols()
      *
-     * @param block_rows -- количество блоков в матрице
-     * @param block_cols -- количество блоков в матрице
+     * @param block_rows -- количество строк матрицы, считая в блоках
+     * @param block_cols -- количество столбцов матрицы, считая в блоках
      * @param get_block -- функция, которая возвращает квадратную матрицу, размеры одинаковы для любых пар (i, j)
+     *
+     * Консистентность состояния поддерживается, если функция get_block возвращает блоки
+     * одного и того же размера
      */
     ToeplitzStructure(Types::index block_rows, Types::index block_cols,
                       const std::function<block_t(Types::index i, Types::index j)> &get_block);
+
+    ToeplitzStructure(Types::index block_rows, Types::index block_cols, Containers::vector<block_t> &&blocks_);
 
     /** Умножение матрицы на вектор */
     [[nodiscard]] vector_t matvec(const vector_t &vec) const;
@@ -61,6 +68,12 @@ template <typename scalar_t, typename block_t> class ToeplitzStructure {
     // Возвращают значение строк и столбцов во всей матрице
     [[nodiscard]] Types::index rows() const { return rows_in_block_ * blocks.rows(); }
     [[nodiscard]] Types::index cols() const { return cols_in_block_ * blocks.cols(); }
+
+    // ---- Static methods --- //
+    inline static Types::index get_size_of_container(Types::index rows, Types::index cols) noexcept
+        __attribute__((always_inline)) {
+        return rows + cols - 1;
+    };
 };
 
 template <typename scalar_t, typename block_t>
@@ -71,8 +84,14 @@ ToeplitzStructure<scalar_t, block_t>::ToeplitzStructure(
       cols_in_block_(blocks(0, 0).cols()) {}
 
 template <typename scalar_t, typename block_t>
+ToeplitzStructure<scalar_t, block_t>::ToeplitzStructure(Types::index block_rows, Types::index block_cols,
+                                                        Containers::vector<block_t> &&blocks_)
+    : blocks(block_rows, block_cols, std::move(blocks_)), rows_in_block_(blocks(0, 0).rows()), cols_in_block_(blocks(0, 0).cols()) {}
+
+template <typename scalar_t, typename block_t>
 typename ToeplitzStructure<scalar_t, block_t>::vector_t
 ToeplitzStructure<scalar_t, block_t>::matvec(const vector_t &vec) const {
+
     assert(vec.size() == cols());
     // создаем нулевой вектор результата, в который будем записывать ответ
     vector_t result = vector_t::Zero(rows());
@@ -89,9 +108,7 @@ ToeplitzStructure<scalar_t, block_t>::matvec(const vector_t &vec) const {
             vector_t local_res = current_block * sub_vector;
             // Складываем результат
 #pragma omp critical
-            {
-                result.block(i * rows_in_block_, 0, rows_in_block_, 1) += local_res;
-            }
+            { result.block(i * rows_in_block_, 0, rows_in_block_, 1) += local_res; }
         }
     }
     return result;
@@ -114,7 +131,7 @@ const ToeplitzStructure<scalar_t, block_t> &ToeplitzStructure<scalar_t, block_t>
 
 // --- Defined binary operators --- //
 
-template<typename scalar_t, typename block_t>
+template <typename scalar_t, typename block_t>
 ToeplitzStructure<scalar_t, block_t> operator*(const ToeplitzStructure<scalar_t, block_t> &matrix, scalar_t value) {
     return matrix.mull(value);
 }
