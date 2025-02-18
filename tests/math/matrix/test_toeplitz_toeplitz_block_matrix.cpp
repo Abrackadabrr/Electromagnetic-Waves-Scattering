@@ -2,9 +2,9 @@
 // Created by evgen on 12.02.2025.
 //
 
+#include "math/matrix/Matrix.hpp"
 #include "toeplitz_matrix_tests.hpp"
 #include "types/Types.hpp"
-#include "math/matrix/Matrix.hpp"
 
 Types::scalar simple_toeplitz_matrix_1(Types::index i, Types::index j) {
     return (static_cast<scalar>(i) - static_cast<scalar>(j) + 10);
@@ -204,17 +204,17 @@ TEST_F(TOEPLITZ_MATRIX_TESTS, TWICE_TOEPLITZ_REAL_2_NO_PARALLEL) {
                         internal_block_cols);
 
     // Собираем дважды тёплицеву матрицу
-    const auto get_toeplitz_block_by_indexes =
-        [&internal_block_rows, &internal_block_cols, &first_layer_rows, &first_layer_cols](Types::index i,
-                                                                                           Types::index j) {
-            const auto get_internal_block_by_indexes = [&internal_block_rows, &internal_block_cols, &i,
-                                                        &j](Types::index k, Types::index l) {
-                return get_internal_block(internal_block_rows, internal_block_cols, i, j, k, l);
-            };
-            return Math::LinAgl::Matrix::ToeplitzBlock<scalar>{first_layer_rows, first_layer_cols, get_internal_block_by_indexes};
+    const auto get_toeplitz_block_by_indexes = [&internal_block_rows, &internal_block_cols, &first_layer_rows,
+                                                &first_layer_cols](Types::index i, Types::index j) {
+        const auto get_internal_block_by_indexes = [&internal_block_rows, &internal_block_cols, &i,
+                                                    &j](Types::index k, Types::index l) {
+            return get_internal_block(internal_block_rows, internal_block_cols, i, j, k, l);
+        };
+        return Math::LinAgl::Matrix::ToeplitzBlock<scalar>{first_layer_rows, first_layer_cols,
+                                                           get_internal_block_by_indexes};
     };
-    const auto test_matrix =
-        Math::LinAgl::Matrix::ToeplitzToeplitzBlock<scalar>{second_layer_rows, second_layer_cols, get_toeplitz_block_by_indexes};
+    const auto test_matrix = Math::LinAgl::Matrix::ToeplitzToeplitzBlock<scalar>{second_layer_rows, second_layer_cols,
+                                                                                 get_toeplitz_block_by_indexes};
 
     // Собираем вектор для тестового умножения
     Types::VectorX<scalar> vec = Types::VectorX<scalar>::Zero(total_cols);
@@ -229,20 +229,20 @@ TEST_F(TOEPLITZ_MATRIX_TESTS, TWICE_TOEPLITZ_REAL_2_NO_PARALLEL) {
  * Попробуем в этих тестах собрать матрицу по-другому
  * то есть через конструктор, который принимает вектор значений сразу
  */
+using ToeplitzBlock = Math::LinAgl::Matrix::ToeplitzBlock<scalar>;
+using block_t = Math::LinAgl::Matrix::ToeplitzBlock<scalar>::block_type;
 
-using block_t = Math::LinAgl::Matrix::ToeplitzBlock<scalar>::block_t;
-using toeplitz_block_t = Math::LinAgl::Matrix::ToeplitzToeplitzBlock<block_t>::block_t;
-
-TEST_F(TOEPLITZ_MATRIX_TESTS, TWICE_TOEPLITZ_REAL_4_PARALLEL) {
+TEST_F(TOEPLITZ_MATRIX_TESTS, TWICE_TOEPLITZ_NEW_CONSTRUCT) {
+    // Eigen::setNbThreads(14);
     // Описываем структуру матрицы
-    const Types::index internal_block_rows = 2500;
-    const Types::index internal_block_cols = 2500;
+    const Types::index internal_block_rows = 2400;
+    const Types::index internal_block_cols = 2400;
 
     const Types::index first_layer_rows = 3;
-    const Types::index first_layer_cols = 3;
+    const Types::index first_layer_cols = first_layer_rows;
 
     const Types::index second_layer_rows = 4;
-    const Types::index second_layer_cols = 4;
+    const Types::index second_layer_cols = second_layer_rows;
 
     const Types::index total_rows = internal_block_rows * first_layer_rows * second_layer_rows;
     const Types::index total_cols = internal_block_cols * first_layer_cols * second_layer_cols;
@@ -262,9 +262,40 @@ TEST_F(TOEPLITZ_MATRIX_TESTS, TWICE_TOEPLITZ_REAL_4_PARALLEL) {
                         internal_block_cols);
 
     // Собираем дважды тёплицеву матрицу
-    Containers::vector<block_t> internat_blocks
-    const auto test_matrix =
-        Math::LinAgl::Matrix::ToeplitzToeplitzBlock<scalar>{second_layer_rows, second_layer_cols, get_toeplitz_block_by_indexes};
+    Containers::vector<ToeplitzBlock> internal_blocks;
+    internal_blocks.reserve(ToeplitzBlock::get_size_of_container(second_layer_rows, second_layer_cols));
+    // Собираем большой вектор из тёплицевых блоков
+    for (int i = 0; i < second_layer_rows; i++) {
+        Containers::vector<block_t> blocks;
+        Types::index first_layer_size = ToeplitzBlock::get_size_of_container(first_layer_cols, first_layer_cols);
+        blocks.reserve(first_layer_size);
+        for (int k = 0; k < first_layer_rows; k++) {
+            blocks.emplace_back(get_internal_block(internal_block_rows, internal_block_cols, 0, i, 0, k));
+        }
+        for (int k = 1; k < first_layer_cols; k++) {
+            blocks.emplace_back(get_internal_block(internal_block_rows, internal_block_cols, 0, i, k, 0));
+        }
+        internal_blocks.emplace_back(first_layer_rows, first_layer_cols, std::move(blocks));
+        ASSERT_EQ(blocks.size(), 0);
+    }
+    for (int i = 1; i < second_layer_cols; i++) {
+        Containers::vector<block_t> blocks;
+        Types::index first_layer_size = ToeplitzBlock::get_size_of_container(first_layer_cols, first_layer_cols);
+        blocks.reserve(first_layer_size);
+        for (int k = 0; k < first_layer_rows; k++) {
+            blocks.emplace_back(get_internal_block(internal_block_rows, internal_block_cols, i, 0, 0, k));
+        }
+        for (int k = 1; k < first_layer_cols; k++) {
+            blocks.emplace_back(get_internal_block(internal_block_rows, internal_block_cols, i, 0, k, 0));
+        }
+        internal_blocks.emplace_back(first_layer_rows, first_layer_cols, std::move(blocks));
+        ASSERT_EQ(blocks.size(), 0);
+    }
+
+    const Math::LinAgl::Matrix::ToeplitzToeplitzBlock test_matrix
+                            {second_layer_rows, second_layer_cols, std::move(internal_blocks)};
+
+    ASSERT_EQ(internal_blocks.size(), 0);
 
     // Собираем вектор для тестового умножения
     Types::VectorX<scalar> vec = Types::VectorX<scalar>::Zero(total_cols);
