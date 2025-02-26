@@ -58,9 +58,9 @@ template <typename scalar_t, typename block_t> class ToeplitzStructure {
 
     // --- Selectors --- //
     [[nodiscard]] const block_t &get_block(Types::index row, Types::index col) const {
-        return blocks.get_block(row, col);
+        return blocks(row, col);
     }
-    [[nodiscard]] block_t &get_block(Types::index row, Types::index col) { return blocks.get_block(row, col); }
+    [[nodiscard]] block_t &get_block(Types::index row, Types::index col) { return blocks(row, col); }
 
     // Возвращают значения строк и столбцов в каждом блоке
     [[nodiscard]] Types::index rows_in_block() const { return rows_in_block_; }

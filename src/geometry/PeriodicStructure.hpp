@@ -36,6 +36,9 @@ template <Types::index N1, Types::index N2> class PeriodicStructure {
     const structure_matrix_t<Types::Vector3d> &get_origin_matrix() const noexcept { return origin_matrix; }
     const structure_matrix_t<mesh_t> &get_meshes() const noexcept { return basic_meshes; }
     [[nodiscard]] const mesh_t &get(Types::index index) const noexcept { return basic_meshes[index]; }
+    [[nodiscard]] const mesh_t &get(Types::index i, Types::index j) const noexcept {
+        return basic_meshes[i * N2 + j];
+    }
 
     [[nodiscard]] static constexpr Types::index rows() noexcept { return N1; }
     [[nodiscard]] static constexpr Types::index cols() noexcept { return N2; }
@@ -67,7 +70,7 @@ PeriodicStructure<N1, N2>::PeriodicStructure(Types::scalar h1, Types::scalar h2,
     origin_matrix = calculate_origin_matrix(h1, h2);
     for (Types::index i = 0; i != N1 * N2; ++i) {
         const auto double_index = linear_to_double(i);
-        std::cout << origin_matrix[double_index.first][double_index.second] << std::endl;
+        // std::cout << origin_matrix[double_index.first][double_index.second] << std::endl;
         basic_meshes[i] = std::move(Mesh::Utils::move_by_vector(base_mesh, origin_matrix[double_index.first][double_index.second]));
     }
 }

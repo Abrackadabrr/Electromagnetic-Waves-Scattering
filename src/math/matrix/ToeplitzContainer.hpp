@@ -7,9 +7,6 @@
 
 #include "types/Types.hpp"
 
-#include <cassert>
-#include <span>
-
 namespace EMW::Math::LinAgl::Matrix {
 /**
  * Тёплицев контейнер для данных со специальным форматом хранения
@@ -66,7 +63,7 @@ template <typename data_type> class ToeplitzContainer {
     /** Далее идут служебные функции, не для пользовательского использования */
     /** Доступ к элементу контейнера по линейному индексу */
     const data_type &operator()(Types::index index) const noexcept;
-    /** Доступ к элементу контейнера по заданным координатам. Определен для обратной совместимости */
+    /** Доступ к элементу контейнера по линейному индексу */
     data_type &operator()(Types::index index) noexcept;
 };
 
@@ -80,7 +77,8 @@ ToeplitzContainer<data_type>::ToeplitzContainer(
     for (Types::index index = 1; index < rows_; ++index) {
         values[index + cols_ - 1] = function(index, 0);
     }
-    assert(values.size() == rows_ + cols_ - 1);
+    if (!(values.size() == rows_ + cols_ - 1))
+        throw std::invalid_argument("ToeplitzContainer constructor with one function failed");
 }
 
 template <typename data_type>
@@ -94,7 +92,8 @@ ToeplitzContainer<data_type>::ToeplitzContainer(Types::index rows, Types::index 
     for (Types::index index = 1; index < rows_; ++index) {
         values[index + cols_ - 1] = col_function(index);
     }
-    assert(values.size() == rows_ + cols_ - 1);
+    if (!(values.size() == rows_ + cols_ - 1))
+        throw std::invalid_argument("ToeplitzContainer constructor with two functions failed");
 }
 
 template <typename data_type>
@@ -103,12 +102,17 @@ ToeplitzContainer<data_type>::ToeplitzContainer(const Containers::vector<data_ty
     : rows_(row.size()), cols_(col.size()) {
     values.insert(values.end(), row.begin(), row.end());
     values.insert(values.end(), col.begin() + 1, col.end());
+    if (!(values.size() == rows_ + cols_ - 1))
+        throw std::invalid_argument("ToeplitzContainer constructor with &row and &col failed");
 }
 
 template <typename data_type>
 ToeplitzContainer<data_type>::ToeplitzContainer(Types::index rows, Types::index cols,
                                                 Containers::vector<data_type> &&values_)
-    : rows_(rows), cols_(cols), values(std::move(values_)){}
+    : rows_(rows), cols_(cols), values(std::move(values_)) {
+    if (!(values.size() == rows_ + cols_ - 1))
+        throw std::invalid_argument("ToeplitzContainer constructor with &&vector failed");
+}
 
 template <typename data_type>
 const data_type &ToeplitzContainer<data_type>::operator[](Types::index row_index,

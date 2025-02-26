@@ -12,6 +12,7 @@
 #include "types/Types.hpp"
 
 #include "math/MathConstants.hpp"
+#include "math/fields/SurfaceVectorField.hpp"
 
 namespace WaveGuideWithActiveSection {
 
@@ -144,7 +145,7 @@ inline Types::MatrixXc submatrix(const Mesh::SurfaceMesh &mest_to_integrate,
 inline Types::VectorXc getRhsBase(const Mesh::SurfaceMesh &mesh_all, Types::scalar a, Types::complex_d k) {
 
     // Собираем сабсетку с активным сечением
-    const auto mesh_zero = mesh_all.getSubmesh(Mesh::IndexedCell::Tag::WAVEGUIDE_CROSS_SECTION);
+    const auto &mesh_zero = mesh_all.getSubmesh(Mesh::IndexedCell::Tag::WAVEGUIDE_CROSS_SECTION);
     // Собираем функцию поля на активном сечении волновода
     const Types::complex_d beta = std::sqrt(k * k - (EMW::Math::Constants::PI_square<Types::scalar>() / (a * a)));
     const auto get_e_h10_mode = [&k, &a, &beta](const Mesh::point_t &x) {
@@ -166,12 +167,12 @@ inline Types::VectorXc getRhsBase(const Mesh::SurfaceMesh &mesh_all, Types::scal
     return res;
 }
 
-template<int N>
+template<Types::index N>
 Types::VectorXc getRhs(std::array<Types::complex_d, N> phases,
     const Mesh::SurfaceMesh &mesh_all, Types::scalar a, Types::complex_d k) {
     const auto base_rhs = getRhsBase(mesh_all, a, k);
 
-    const Types::VectorXc res{N * base_rhs.size()};
+    Types::VectorXc res{N * base_rhs.size()};
 
     for (int i = 0; i < N; ++i) {
         res.block(i * base_rhs.rows(), 0, base_rhs.rows(), 1) = phases[i] * base_rhs;

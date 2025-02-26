@@ -13,13 +13,13 @@ namespace EMW::Concepts {
 /** Концепт, генерализирующий сетку */
 template <typename Topology>
 concept manifold_like = requires(Topology topology) {
-    { topology.getCells() } -> Containers::vector<typename Topology::CellType>;
+    { topology.getCells() } -> std::same_as<Containers::vector<typename Topology::CellType>>;
 };
 /** Концепт, генерализирующий множество сеток (полную геометрию) */
 template <typename TopologicalStructure>
 concept GeomtricalStructure = requires(TopologicalStructure structure, Types::index index) {
-    { structure.get(index) } -> const Mesh::SurfaceMesh &;
-    { structure.size() } -> Types::index;
+    { structure.get(index) } -> std::same_as<const Mesh::SurfaceMesh &>;
+    { structure.size() } -> std::same_as<Types::index>;
 };
 
 } // namespace EMW::Consepts

@@ -5,6 +5,7 @@
 
 #include "equations/EquationsOverGeometry.hpp"
 #include "experiment/PhysicalCondition.hpp"
+#include "geometry/PeriodicStructure.hpp"
 #include "math/MathConstants.hpp"
 #include "math/fields/SurfaceVectorField.hpp"
 #include "mesh/Parser.hpp"
@@ -20,8 +21,8 @@ constexpr Types::index N1 = 2;
 constexpr Types::index N2 = 2;
 constexpr Types::index N1_x_N2 = N1 * N2;
 
-using slae_matrix = Equations::MatrixFor<Geometry::PeriodicStructure<N1, N2>, GeneralizedEquations::detail::diagonal_t,
-                                         GeneralizedEquations::detail::submatrix_t>;
+using slae_matrix = Equations::MatrixFor<Geometry::PeriodicStructure<N1, N2>, WaveGuideWithActiveSection::diagonal_t,
+                                         WaveGuideWithActiveSection::submatrix_t>;
 
 TEST(AutomaticalAssembling, Generalized_MATRIX_TEST) {
     const std::string nodesFile = "/home/evgen/Education/MasterDegree/thesis/Electromagnetic-Waves-Scattering/tests/"
@@ -38,13 +39,8 @@ TEST(AutomaticalAssembling, Generalized_MATRIX_TEST) {
     const Geometry::PeriodicStructure<N1, N2> geometry{0.1, 0.1, mesh_base};
 
     // собираем матрицу для расчета волновода
-    const Types::scalar a = 0.07;
-    const Types::scalar freq = Math::Constants::c / 1e8;
-    const Types::complex_d k{Physics::get_k_on_frquency(freq), 0};
-    const Types::complex_d beta = std::sqrt(k * k - (EMW::Math::Constants::PI_square<Types::scalar>() / (a * a)));
-
-    const auto matrix = slae_matrix::compute(geometry, GeneralizedEquations::detail::diagonal,
-                                             GeneralizedEquations::detail::submatrix, {a, k});
+    const auto matrix = slae_matrix::compute(geometry, WaveGuideWithActiveSection::diagonal,
+                                             WaveGuideWithActiveSection::submatrix, {a, k});
 
     std::cout << "matrix" << std::endl;
     // далее проверяем матрицу по блокам
@@ -75,20 +71,14 @@ TEST(AutomaticalAssembling, Generalized_MATRIX_TEST) {
     ASSERT_NEAR((matrix_31 - matrix_42).norm(), 0, 1e-12);
 }
 
-
 TEST_F(AssemblingTests, GENERAL_REAL_MATRIX_TEST) {
 
     // Задаем геометрию
     const Geometry::PeriodicStructure<N1, N2> geometry{0.1, 0.1, mesh_base};
 
     // собираем матрицу для расчета волновода
-    const Types::scalar a = 0.07;
-    const Types::scalar freq = Math::Constants::c / 1e8;
-    const Types::complex_d k{Physics::get_k_on_frquency(freq), 0};
-    const Types::complex_d beta = std::sqrt(k * k - (EMW::Math::Constants::PI_square<Types::scalar>() / (a * a)));
-
-    const auto matrix = slae_matrix::compute(geometry, GeneralizedEquations::detail::diagonal,
-                                             GeneralizedEquations::detail::submatrix, {a, k});
+    const auto matrix = slae_matrix::compute(geometry, WaveGuideWithActiveSection::diagonal,
+                                             WaveGuideWithActiveSection::submatrix, {a, k});
     std::cout << "matrix" << std::endl;
     // далее проверяем матрицу по блокам
     const Types::index block_size = matrix.rows() / N1_x_N2;

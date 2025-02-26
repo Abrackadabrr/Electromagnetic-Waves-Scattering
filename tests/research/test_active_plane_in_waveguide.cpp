@@ -9,7 +9,6 @@
 #include "math/fields/SurfaceVectorField.hpp"
 #include "mesh/Parser.hpp"
 #include "mesh/SurfaceMesh.hpp"
-#include "research/lattice/GeneralizedEquations.hpp"
 #include "types/Types.hpp"
 
 #include "lattice_tests.hpp"

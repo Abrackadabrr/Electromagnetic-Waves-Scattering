@@ -10,7 +10,9 @@ endif()
 foreach (TEST IN LISTS TESTS)
     get_filename_component(FILE_NAME ${TEST} NAME_WE)
     set(EXE_NAME run_${FILE_NAME})
-    add_executable(${EXE_NAME} ${TEST})
+    add_executable(${EXE_NAME} ${TEST}
+            small_examples_of_real_tests/test_double_toeplitz_over_homogenous_structure.cpp
+            math/matrix/test_eigen_solvers.cpp)
     message("TEST: ${EXE_NAME}")
     target_link_libraries(${EXE_NAME} ${PROJECT_NAME} gtest gtest_main visual)
     target_link_libraries(${EXE_NAME} OpenMP::OpenMP_CXX)

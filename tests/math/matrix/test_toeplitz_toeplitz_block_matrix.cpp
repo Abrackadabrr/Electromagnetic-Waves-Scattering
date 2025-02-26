@@ -6,6 +6,8 @@
 #include "toeplitz_matrix_tests.hpp"
 #include "types/Types.hpp"
 
+#include <Utils.hpp>
+
 Types::scalar simple_toeplitz_matrix_1(Types::index i, Types::index j) {
     return (static_cast<scalar>(i) - static_cast<scalar>(j) + 10);
 };
@@ -38,7 +40,7 @@ Types::MatrixX<scalar> get_internal_block(Types::index i, Types::index j) {
 }
 
 template <typename matrix_t>
-void final_check_for_vectors(const Types::MatrixX<scalar> matrix, const matrix_t &toeplitz,
+void final_check_for_vectors(const Types::MatrixX<scalar>& matrix, const matrix_t &toeplitz,
                              const Types::VectorX<scalar> &vec) {
     auto start = std::chrono::system_clock::now();
 
@@ -247,15 +249,6 @@ TEST_F(TOEPLITZ_MATRIX_TESTS, TWICE_TOEPLITZ_NEW_CONSTRUCT) {
     const Types::index total_rows = internal_block_rows * first_layer_rows * second_layer_rows;
     const Types::index total_cols = internal_block_cols * first_layer_cols * second_layer_cols;
 
-    const Types::scalar element_in_gb = 16. / (1024 * 1024 * 1024);
-    const Types::scalar memory_for_full_matrix = total_cols * total_rows * element_in_gb;
-    const Types::scalar memory_for_toeplitz_matrix = internal_block_cols * internal_block_rows *
-                                                     (2 * second_layer_rows - 1) * (2 * second_layer_cols - 1) *
-                                                     element_in_gb;
-
-    std::cout << "Количество памяти для полной матрицы: " << memory_for_full_matrix << " Gb" << std::endl;
-    std::cout << "Количество памяти для новой матрицы: " << memory_for_toeplitz_matrix << " Gb" << std::endl;
-
     // Строим обычнцую матрицу, без специального хранения элементов
     const Types::MatrixX<scalar> full_matrix =
         get_full_matrix(second_layer_rows, second_layer_cols, first_layer_rows, first_layer_cols, internal_block_rows,
@@ -265,27 +258,31 @@ TEST_F(TOEPLITZ_MATRIX_TESTS, TWICE_TOEPLITZ_NEW_CONSTRUCT) {
     Containers::vector<ToeplitzBlock> internal_blocks;
     internal_blocks.reserve(ToeplitzBlock::get_size_of_container(second_layer_rows, second_layer_cols));
     // Собираем большой вектор из тёплицевых блоков
-    for (int i = 0; i < second_layer_rows; i++) {
+    // Этот сбор опирается на то, как именно хранится вектор,
+    // который задает тёплицеву матрицу (сначала хранится --, затем |)
+    for (int i = 0; i < second_layer_cols; i++) {
         Containers::vector<block_t> blocks;
         Types::index first_layer_size = ToeplitzBlock::get_size_of_container(first_layer_cols, first_layer_cols);
         blocks.reserve(first_layer_size);
-        for (int k = 0; k < first_layer_rows; k++) {
+        for (int k = 0; k < first_layer_cols; k++) {
+            // а тут обычный расчет
             blocks.emplace_back(get_internal_block(internal_block_rows, internal_block_cols, 0, i, 0, k));
         }
-        for (int k = 1; k < first_layer_cols; k++) {
+        for (int k = 1; k < first_layer_rows; k++) {
+            // тут снова обычный расчет
             blocks.emplace_back(get_internal_block(internal_block_rows, internal_block_cols, 0, i, k, 0));
         }
         internal_blocks.emplace_back(first_layer_rows, first_layer_cols, std::move(blocks));
         ASSERT_EQ(blocks.size(), 0);
     }
-    for (int i = 1; i < second_layer_cols; i++) {
+    for (int i = 1; i < second_layer_rows; i++) {
         Containers::vector<block_t> blocks;
         Types::index first_layer_size = ToeplitzBlock::get_size_of_container(first_layer_cols, first_layer_cols);
         blocks.reserve(first_layer_size);
-        for (int k = 0; k < first_layer_rows; k++) {
+        for (int k = 0; k < first_layer_cols; k++) {
             blocks.emplace_back(get_internal_block(internal_block_rows, internal_block_cols, i, 0, 0, k));
         }
-        for (int k = 1; k < first_layer_cols; k++) {
+        for (int k = 1; k < first_layer_rows; k++) {
             blocks.emplace_back(get_internal_block(internal_block_rows, internal_block_cols, i, 0, k, 0));
         }
         internal_blocks.emplace_back(first_layer_rows, first_layer_cols, std::move(blocks));
@@ -304,4 +301,13 @@ TEST_F(TOEPLITZ_MATRIX_TESTS, TWICE_TOEPLITZ_NEW_CONSTRUCT) {
 
     // Проверка умножения с измерением времени
     final_check_for_vectors(full_matrix, test_matrix, vec);
+
+    // Проверка методов rows_in_block и rows()
+    ASSERT_EQ(test_matrix.cols(), total_cols);
+    ASSERT_EQ(test_matrix.rows(), total_rows);
+    ASSERT_EQ(test_matrix.cols_in_block(), internal_block_rows * first_layer_rows);
+    ASSERT_EQ(test_matrix.rows_in_block(), internal_block_cols * first_layer_cols);
+
+    std::cout << "Количество памяти для полной матрицы: " << Utils::get_memory_usage(test_matrix).full_matrix << " Gb" << std::endl;
+    std::cout << "Количество памяти для новой матрицы: " << Utils::get_memory_usage(test_matrix).toeplitz_matrix << " Gb" << std::endl;
 }
