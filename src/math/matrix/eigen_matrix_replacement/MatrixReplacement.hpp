@@ -32,7 +32,7 @@ template <typename MatrixType> class MatrixReplacement : public Eigen::EigenBase
 
     // Custom API:
     MatrixReplacement() = default;
-
+    explicit MatrixReplacement(const MatrixType & matrix) : mp_mat(&matrix) {}
     void attachMyMatrix(const MatrixType &mat) { mp_mat = &mat; }
     const MatrixType &my_matrix() const { return *mp_mat; }
 
@@ -64,7 +64,7 @@ struct generic_product_impl<matrix_replacement<MatrixType>, Rhs, SparseShape, De
 #endif
         // Here we could simply call dst.noalias() += lhs.my_matrix() * rhs,
         // but let's do something fancier (and less efficient):
-        dst.noalias() += lhs.my_matrix() * rhs;
+        dst.noalias() += alpha * (lhs.my_matrix() * rhs);
     }
 };
 }

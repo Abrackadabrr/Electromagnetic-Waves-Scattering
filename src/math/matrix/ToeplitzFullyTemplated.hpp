@@ -50,24 +50,24 @@ template <typename scalar_t, typename block_t> class ToeplitzStructure {
     ToeplitzStructure(Types::index block_rows, Types::index block_cols, Containers::vector<block_t> &&blocks_);
 
     /** Умножение матрицы на вектор */
-    [[nodiscard]] vector_t matvec(const vector_t &vec) const;
+    [[nodiscard]] vector_t matvec(const vector_t &vec) const noexcept;
     /** Умножение матрицы на число с возвращением копии */
-    [[nodiscard]] ToeplitzStructure mull(scalar_t value) const;
+    [[nodiscard]] ToeplitzStructure mull(scalar_t value) const noexcept;
     /** Умножение себя на число */
-    const ToeplitzStructure &mull_inplace(scalar_t value);
+    const ToeplitzStructure &mull_inplace(scalar_t value) noexcept;
 
     // --- Selectors --- //
-    [[nodiscard]] const block_t &get_block(Types::index row, Types::index col) const {
+    [[nodiscard]] const block_t &get_block(Types::index row, Types::index col) const noexcept {
         return blocks(row, col);
     }
-    [[nodiscard]] block_t &get_block(Types::index row, Types::index col) { return blocks(row, col); }
+    [[nodiscard]] block_t &get_block(Types::index row, Types::index col) noexcept { return blocks(row, col); }
 
     // Возвращают значения строк и столбцов в каждом блоке
-    [[nodiscard]] Types::index rows_in_block() const { return rows_in_block_; }
-    [[nodiscard]] Types::index cols_in_block() const { return cols_in_block_; }
+    [[nodiscard]] Types::index rows_in_block() const noexcept { return rows_in_block_; }
+    [[nodiscard]] Types::index cols_in_block() const noexcept { return cols_in_block_; }
     // Возвращают значение строк и столбцов во всей матрице
-    [[nodiscard]] Types::index rows() const { return rows_in_block_ * blocks.rows(); }
-    [[nodiscard]] Types::index cols() const { return cols_in_block_ * blocks.cols(); }
+    [[nodiscard]] Types::index rows() const noexcept { return rows_in_block_ * blocks.rows(); }
+    [[nodiscard]] Types::index cols() const noexcept { return cols_in_block_ * blocks.cols(); }
 
     // ---- Static methods --- //
     inline static Types::index get_size_of_container(Types::index rows, Types::index cols) noexcept
@@ -86,11 +86,12 @@ ToeplitzStructure<scalar_t, block_t>::ToeplitzStructure(
 template <typename scalar_t, typename block_t>
 ToeplitzStructure<scalar_t, block_t>::ToeplitzStructure(Types::index block_rows, Types::index block_cols,
                                                         Containers::vector<block_t> &&blocks_)
-    : blocks(block_rows, block_cols, std::move(blocks_)), rows_in_block_(blocks(0, 0).rows()), cols_in_block_(blocks(0, 0).cols()) {}
+    : blocks(block_rows, block_cols, std::move(blocks_)), rows_in_block_(blocks(0, 0).rows()),
+      cols_in_block_(blocks(0, 0).cols()) {}
 
 template <typename scalar_t, typename block_t>
 typename ToeplitzStructure<scalar_t, block_t>::vector_t
-ToeplitzStructure<scalar_t, block_t>::matvec(const vector_t &vec) const {
+ToeplitzStructure<scalar_t, block_t>::matvec(const vector_t &vec) const noexcept {
 
     assert(vec.size() == cols());
     // создаем нулевой вектор результата, в который будем записывать ответ
@@ -115,13 +116,14 @@ ToeplitzStructure<scalar_t, block_t>::matvec(const vector_t &vec) const {
 }
 
 template <typename scalar_t, typename block_t>
-ToeplitzStructure<scalar_t, block_t> ToeplitzStructure<scalar_t, block_t>::mull(scalar_t value) const {
+ToeplitzStructure<scalar_t, block_t> ToeplitzStructure<scalar_t, block_t>::mull(scalar_t value) const noexcept {
     std::cout << "Mul with one copy" << std::endl;
     return ToeplitzStructure(*this).mull_inplace(value);
 }
 
 template <typename scalar_t, typename block_t>
-const ToeplitzStructure<scalar_t, block_t> &ToeplitzStructure<scalar_t, block_t>::mull_inplace(scalar_t value) {
+const ToeplitzStructure<scalar_t, block_t> &
+ToeplitzStructure<scalar_t, block_t>::mull_inplace(scalar_t value) noexcept {
     std::cout << "Mull inplace" << std::endl;
     for (Types::index index = 0, total = blocks.get_actual_size(); index != total; ++index) {
         blocks(index) *= value;
@@ -148,7 +150,7 @@ ToeplitzStructure<scalar_t, block_t> & operator*=(ToeplitzStructure<scalar_t, bl
 }
 
 template <typename scalar_t, typename block_t>
-Types::VectorX<scalar_t> operator*(const ToeplitzStructure<scalar_t, block_t> &matrix, const Types::VectorX<scalar_t> &vector) {
+Types::VectorX<scalar_t> operator*(const ToeplitzStructure<scalar_t, block_t> &matrix, const Types::VectorX<scalar_t> &vector) noexcept {
     return matrix.matvec(vector);
 }
 

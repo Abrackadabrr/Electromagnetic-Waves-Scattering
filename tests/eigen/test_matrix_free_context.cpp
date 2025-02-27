@@ -26,7 +26,7 @@ Types::scalar simple_toeplitz_matrix(Types::index i, Types::index j) {
 };
 
 Types::MatrixX<scalar> get_block(Types::index i, Types::index j) {
-    return Types::MatrixX<scalar>{{{1, 2}, {2, 3}}} * simple_toeplitz_matrix(i, j);
+    return Types::MatrixX<scalar>{{{1, 2}, {2, 3}}} * (simple_toeplitz_matrix(i, j) + (i == j ? 100 : 0));
 }
 
 Types::MatrixX<complex_d> get_toeplitz_matrix(Types::index rows, Types::index cols) {
@@ -40,7 +40,7 @@ Types::MatrixX<complex_d> get_toeplitz_matrix(Types::index rows, Types::index co
 
 TEST(MATRIX_FREE_COMTEXT, TEST_TO_CHECK_IT_WORKS) {
     int n = 1000;
-    MatrixXc S = get_toeplitz_matrix(n, n) + 0.002 * n * MatrixXc::Identity(2 * n, 2 * n);
+    MatrixXc S = get_toeplitz_matrix(n, n);
     MatrixXc Jacobi = S.diagonal().cwiseInverse().asDiagonal();
     S = S * Jacobi;
     std::cout << "Считаем число обусловленности" << std::endl;
@@ -71,9 +71,9 @@ TEST(MATRIX_FREE_COMTEXT, TEST_TO_CHECK_IT_WORKS) {
 }
 
 
-TEST(MATRIX_FREE_COMTEXT, BENCHMARK_1) {
-    int n = 8000;
-    MatrixXc S = get_toeplitz_matrix(n, n) + 0.002 * n * MatrixXc::Identity(2 * n, 2 * n);
+TEST(MATRIX_FREE_CONTEXT, BENCHMARK_1) {
+    int n = 10000;
+    MatrixXc S = get_toeplitz_matrix(n, n);
     // MatrixXc Jacobi = S.diagonal().cwiseInverse().asDiagonal();
     // S = S * Jacobi;
     // std::cout << "Считаем число обусловленности" << std::endl;
