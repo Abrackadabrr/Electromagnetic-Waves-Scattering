@@ -6,7 +6,6 @@
 
 #include "toeplitz_matrix_tests.hpp"
 #include "gtest/gtest.h"
-#include <bits/fs_fwd.h>
 
 Types::scalar simple_toeplitz_matrix(Types::index i, Types::index j) {
     return static_cast<integer>(i) - static_cast<integer>(j);

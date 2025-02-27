@@ -6,7 +6,9 @@ file(GLOB_RECURSE SOURCES *.cpp)
 
 add_library(${PROJECT_NAME} STATIC ${SOURCES}
         math/matrix/ToeplitzFullyTemplated.hpp
-        math/matrix/Matrix.hpp)
+        math/matrix/Matrix.hpp
+        math/matrix/eigen_matrix_replacement/MatrixReplacement.hpp
+        math/matrix/eigen_matrix_replacement/MatrixTraits.hpp)
 
 set(TARGET_LIBS eigen)
 
