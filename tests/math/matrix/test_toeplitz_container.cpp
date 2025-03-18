@@ -5,12 +5,12 @@
 #include "toeplitz_matrix_tests.hpp"
 #include "math/matrix/ToeplitzContainer.hpp"
 
-auto simple_toeplitz_matrix(Types::index i, Types::index j)->Types::scalar { return static_cast<integer>(i) - j; };
+auto ssimple_toeplitz_matrix(Types::index i, Types::index j)->Types::scalar { return static_cast<integer>(i) - j; };
 
 TEST_F(TOEPLITZ_MATRIX_TESTS, TOEPLITZ_CONTAINER_1) {
     constexpr Types::index N = 50;
     constexpr Types::index M = 60;
-    const Math::LinAgl::Matrix::ToeplitzContainer<Types::scalar> toeplitz(N, M, simple_toeplitz_matrix);
+    const Math::LinAgl::Matrix::ToeplitzContainer<Types::scalar> toeplitz(N, M, ssimple_toeplitz_matrix);
     // Проверка на правильность заполнения чисел
     for (int i = 0; i < N; i++) {
         for (int j = 0; j < M; j++) {
@@ -22,7 +22,7 @@ TEST_F(TOEPLITZ_MATRIX_TESTS, TOEPLITZ_CONTAINER_1) {
 TEST_F(TOEPLITZ_MATRIX_TESTS, TOEPLITZ_CONTAINER_2) {
     constexpr Types::index N = 5000;
     constexpr Types::index M = 23454;
-    const Math::LinAgl::Matrix::ToeplitzContainer<Types::scalar> toeplitz(N, M, simple_toeplitz_matrix);
+    const Math::LinAgl::Matrix::ToeplitzContainer<Types::scalar> toeplitz(N, M, ssimple_toeplitz_matrix);
     // Проверка на свойство тёплицевости
     for (Types::integer i = -static_cast<integer>(M) + 1; i < N; i++) {
         // i -- это номер диагонали

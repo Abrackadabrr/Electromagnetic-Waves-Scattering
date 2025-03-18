@@ -41,6 +41,9 @@ namespace EMW::Containers {
     using vector_d = std::vector<Types::scalar>;
     template<typename type>
     using vector = std::vector<type>;
+    template<typename ... types>
+    using tuple = std::tuple<types...>;
+
 };
 
 #endif //ELECTROMAGNETIC_WAVES_SCATTERING_TYPES_H

@@ -82,6 +82,29 @@ void geometry_snapshot(const TopologicalStructure& geometry, const std::string &
     writer->SetInputData(multiBlockDataSet);
     writer->Write();
 }
+
+template<typename field_set_t>
+void set_of_fields_snapshot(const field_set_t& fields, const std::string &part_to_file) {
+    vtkSmartPointer<vtkMultiBlockDataSet> multiBlockDataSet = vtkSmartPointer<vtkMultiBlockDataSet>::New();
+    // дампим сначала все сетки и соответвующие поля
+    // электрические
+    for (int i = 0; i != fields.get_electric_fields().size(); ++i) {
+        const auto pointer_to_mesh = detail::formUnstructuredGrid(fields.get_electric_fields()[i].getManifold());
+        detail::dumpField(pointer_to_mesh, fields.get_electric_fields()[i]);
+        multiBlockDataSet->SetBlock(i, pointer_to_mesh);
+    }
+    // магнитные
+    for (int i = 0; i != fields.get_magnetic_fields().size(); ++i) {
+        const auto pointer_to_mesh = detail::formUnstructuredGrid(fields.get_magnetic_fields()[i].getManifold());
+        detail::dumpField(pointer_to_mesh,fields.get_magnetic_fields()[i]);
+        multiBlockDataSet->SetBlock(i + fields.get_electric_fields().size(), pointer_to_mesh);
+    }
+    // write the result
+    vtkSmartPointer<vtkXMLMultiBlockDataWriter> writer = vtkSmartPointer<vtkXMLMultiBlockDataWriter>::New();
+    writer->SetFileName(part_to_file.c_str());
+    writer->SetInputData(multiBlockDataSet);
+    writer->Write();
+}
 } // namespace VTK
 
 #endif //ELECTROMAGNETIC_WAVES_SCATTERING_VTKFUNCTIONS_HPP

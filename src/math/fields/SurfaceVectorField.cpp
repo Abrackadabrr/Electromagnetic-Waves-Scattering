@@ -41,8 +41,10 @@ EMW::Math::SurfaceVectorField::fieldNorm(const std::string name = "delfault_fiel
 
 EMW::Math::SurfaceVectorField
 EMW::Math::SurfaceVectorField::TangentField(const EMW::Math::SurfaceVectorField::manifold_t &manifold,
-                                            const EMW::Types::VectorXc &fieldProjections) {
+                                            const EMW::Types::VectorXc &fieldProjections,
+                                            std::string name) {
     SurfaceVectorField result(manifold);
+    result.setName(name);
     const long N = static_cast<long>(manifold.getCells().size());
     for (auto [i, cell] : manifold.getCells() | std::views::enumerate) {
         result.field_data_.emplace_back(fieldProjections(i) * cell.tau[0] + fieldProjections(i + N) * cell.tau[1]);
@@ -156,7 +158,7 @@ EMW::Math::SurfaceVectorField EMW::Math::operator+(const EMW::Math::SurfaceVecto
 EMW::Math::SurfaceVectorField EMW::Math::operator-(const EMW::Math::SurfaceVectorField &lhs) {
     Containers::vector<Types::Vector3c> field_data{};
     field_data.reserve(lhs.getField().size());
-    for (const auto & i : lhs.getField()) {
+    for (const auto &i : lhs.getField()) {
         field_data.emplace_back(-i);
     }
     return {lhs.getManifold(), field_data};

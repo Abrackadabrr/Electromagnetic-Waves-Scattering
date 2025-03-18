@@ -13,6 +13,13 @@ namespace EMW::Mesh {
  * Класс расчетной поверхностной сетки, дискретный аналог поверхности
  */
 class SurfaceMesh {
+
+    struct mesh_info_t {
+       Types::index nodes_size;
+       Types::index cells_size;
+       std::string name;
+    };
+
     Containers::vector<point_t> nodes_;
     Containers::vector<IndexedCell> cells_;
     std::string name = "default_mesh_name";
@@ -64,6 +71,8 @@ class SurfaceMesh {
      * Вернуть часть сетки, которая помечана специальным тэгом
      */
     SurfaceMesh getSubmesh(IndexedCell::Tag tag) const;
+
+    mesh_info_t getSubmeshInfo(IndexedCell::Tag tag) const;
 
     };
 }

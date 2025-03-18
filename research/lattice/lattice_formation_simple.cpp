@@ -12,7 +12,7 @@
 
 #include "experiment/ESA.hpp"
 
-#include "Equations.hpp"
+#include "deprecated/Equations.hpp"
 
 #include "VTKFunctions.hpp"
 
@@ -26,37 +26,13 @@
 
 #include "experiment/PhysicalCondition.hpp"
 
+#include "research/Solve.hpp"
+
 #include "Utils.hpp"
 
-#include <chrono>
 #include <iostream>
 
 using namespace EMW;
-
-Types::VectorXc solve(const Types::MatrixXc &A, const Types::VectorXc &b, Types::scalar tolerance) {
-    auto method = Eigen::GMRES<Types::MatrixXc>{};
-
-    Types::index max_iterations = 1000;
-
-    method.setMaxIterations(max_iterations);
-    std::cout << method.maxIterations() << std::endl;
-    method.setTolerance(tolerance);
-    method.set_restart(max_iterations);
-
-    std::chrono::time_point<std::chrono::system_clock> start = std::chrono::system_clock::now();
-
-    method.compute(A);
-    auto j_vec = Types::VectorXc{method.solve(b)};
-
-    std::chrono::time_point<std::chrono::system_clock> end = std::chrono::system_clock::now();
-    std::chrono::duration<double, std::ratio<1, 1>> elapsed_seconds = end - start;
-    std::cout << "Время решения GMRES: " << elapsed_seconds.count() << std::endl;
-    std::cout << "total iterations: " << method.iterations() << std::endl;
-    std::cout << "tolerance: " << method.tolerance() << std::endl;
-    std::cout << "total error: " << method.error() << std::endl;
-    std::cout << "Info: " << static_cast<int>(method.info()) << std::endl;
-    return j_vec;
-}
 
 Containers::vector<Types::Vector3c>
 calculateField(const Math::SurfaceVectorField &e_c_1, const Math::SurfaceVectorField &e_c_2,
@@ -70,12 +46,6 @@ calculateField(const Math::SurfaceVectorField &e_c_1, const Math::SurfaceVectorF
             Lattice::getE_in_point(e_c_1, m_c_1, k, points[i]) + Lattice::getE_in_point(e_c_2, m_c_2, k, points[i]);
     }
     return field;
-}
-
-// попробуем затестировать
-Types::VectorXc operator*(const Types::MatrixXc& A, const Types::VectorXc& b) {
-    std::cout << 'f' << std::endl;
-    return Types::VectorXc::Zero(A.rows());
 }
 
 void getSigmaValuesXZ(const Types::complex_d k, const Math::SurfaceVectorField &j_e_1, const Math::SurfaceVectorField &j_e_2,
@@ -104,8 +74,8 @@ int main() {
                                   "lattice/8000_nodes.csv";
     const std::string cellsFile = "/home/evgen/Education/MasterDegree/thesis/Electromagnetic-Waves-Scattering/meshes/"
                                   "lattice/2000_cells.csv";
-    const EMW::Types::index nNodes = 15200;
-    const EMW::Types::index nCells = 3800;
+    const EMW::Types::index nNodes = 8000;
+    const EMW::Types::index nCells = 2000;
 
     // собираем сетки
     const auto parser_out = EMW::Parser::parseMesh(nodesFile, cellsFile, nNodes, nCells);
@@ -162,7 +132,7 @@ int main() {
 
     std::cout << "Matrix assembled, size: " << matrix.rows() << std::endl;
 
-    const auto result = solve(matrix, rhs, 1e-2);
+    const auto result = Research::solve<Eigen::GMRES>(matrix, rhs, 1000, 1e-2);
 
     // Разбиваем на токи и рисуем на разных многообразиях
     const Types::VectorXc electric_current_1 = result.block(0, 0, 2 * mesh_all.getCells().size(), 1);

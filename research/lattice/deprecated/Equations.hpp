@@ -13,7 +13,7 @@
 
 #include <math/MathConstants.hpp>
 
-#include "../rupor/Equations.hpp"
+#include "research/rupor/Equations.hpp"
 
 #include <iostream>
 

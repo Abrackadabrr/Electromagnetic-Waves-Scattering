@@ -73,6 +73,7 @@ Types::scalar calculateESA(const Types::Vector3d &tau, Types::complex_d k,
     return Math::Constants::inverse_4PI<Types::scalar>() * result.squaredNorm();
 }
 
+
 Types::scalar calculateESA(const Types::Vector3d &tau, Types::complex_d k, const Math::SurfaceVectorField &j_e) {
     const auto &cells_e = j_e.getManifold().getCells();
     const auto &field_e = j_e.getField();

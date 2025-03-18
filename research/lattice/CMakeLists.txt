@@ -12,20 +12,19 @@ if (OPENMP_FOUND)
     message("OpenMP Found")
 endif ()
 
-find_package (Eigen3 REQUIRED NO_MODULE)
+find_package(Eigen3 REQUIRED NO_MODULE)
 if (EIGEN3_FOUND)
     message("Eigen Found")
 endif ()
 
-set(TARGET_LIBS eigen OpenMP::OpenMP_CXX visual)
+set(TARGET_LIBS eigen visual OpenMP::OpenMP_CXX)  #  + OpenMP::OpenMP_CXX
 
-list(APPEND TASKS lattice_formation_simple.cpp lattice_formation_real.cpp)
+list(APPEND TASKS lattice_formation_simple.cpp lattice_formation_real.cpp lattice_formation_scientific.cpp lattice_formation_analysis_of_blocks.cpp)
 
 foreach (TASK IN LISTS TASKS)
     get_filename_component(FILE_NAME ${TASK} NAME_WE)
     set(EXE_NAME ${PROJECT_NAME}_${FILE_NAME})
-    add_executable(${EXE_NAME} ${TASK}
-            FieldsFill.hpp)
+    add_executable(${EXE_NAME} ${TASK})
     message("TASK: ${EXE_NAME}")
     target_link_libraries(${EXE_NAME} ${PROJECT_NAME} ${TARGET_LIBS})
     target_compile_options(${EXE_NAME} PRIVATE -Wconversion)

@@ -5,15 +5,18 @@
 #ifndef MATRIXREPLACEMENT_HPP
 #define MATRIXREPLACEMENT_HPP
 
+#include "IdentityPreconditioner.hpp"
 #include "types/Types.hpp"
 #include <Eigen/Core>
 
-namespace EMW::Wrappers {
+namespace EMW::Math::LinAgl::Matrix::Wrappers {
 /**
  * Класс-обёртка комплекной матрицы для работы с солверами внутри Eigen
  * @tparam MatrixType -- собственно та самая матрица
  */
-template <typename MatrixType> class MatrixReplacement : public Eigen::EigenBase<MatrixReplacement<MatrixType>> {
+template <typename MatrixType,
+          typename PreconditionerType = Preconditioning::IdentityPreconditioner<Types::complex_d, MatrixType>>
+class MatrixReplacement : public Eigen::EigenBase<MatrixReplacement<MatrixType, PreconditionerType>> {
   public:
     // Required typedefs, constants, and method:
     typedef Types::complex_d Scalar;
@@ -32,29 +35,35 @@ template <typename MatrixType> class MatrixReplacement : public Eigen::EigenBase
 
     // Custom API:
     MatrixReplacement() = default;
-    explicit MatrixReplacement(const MatrixType & matrix) : mp_mat(&matrix) {}
-    void attachMyMatrix(const MatrixType &mat) { mp_mat = &mat; }
+    MatrixReplacement(const MatrixType &matrix) : mp_mat(&matrix), precond(matrix) {}
+    void attachMyMatrix(const MatrixType &mat) {
+        mp_mat = &mat;
+        precond = PreconditionerType(mat);
+    }
     const MatrixType &my_matrix() const { return *mp_mat; }
+    const PreconditionerType &get_preconditioner() const { return precond; }
 
   private:
     const MatrixType *mp_mat;
+    const PreconditionerType precond;
 };
-} // namespace EMW::Wrappers
+} // namespace EMW::EMW::Math::LinAgl::Matrix::Wrappers
 
 // Написание обёртки для умножения матрицы на вектор через специальную структуру внутри Eigen:
 // MatrixReplacement * Eigen::DenseVector though a specialization of internal::generic_product_impl:
 namespace Eigen::internal {
-template <typename MatrixType> using matrix_replacement = EMW::Wrappers::MatrixReplacement<MatrixType>;
+template <typename MatrixType, typename PreconditionerType>
+using matrix_replacement = EMW::Math::LinAgl::Matrix::Wrappers::MatrixReplacement<MatrixType, PreconditionerType>;
 
-template <typename MatrixType, typename Rhs>
-struct generic_product_impl<matrix_replacement<MatrixType>, Rhs, SparseShape, DenseShape,
+template <typename MatrixType, typename PreconditionerType, typename Rhs>
+struct generic_product_impl<matrix_replacement<MatrixType, PreconditionerType>, Rhs, SparseShape, DenseShape,
                             GemvProduct> // GEMV stands for matrix-vector
-    : generic_product_impl_base<matrix_replacement<MatrixType>, Rhs,
-                                generic_product_impl<matrix_replacement<MatrixType>, Rhs>> {
-    typedef typename Product<matrix_replacement<MatrixType>, Rhs>::Scalar Scalar;
+    : generic_product_impl_base<matrix_replacement<MatrixType, PreconditionerType>, Rhs,
+                                generic_product_impl<matrix_replacement<MatrixType, PreconditionerType>, Rhs>> {
+    typedef typename Product<matrix_replacement<MatrixType, PreconditionerType>, Rhs>::Scalar Scalar;
 
     template <typename Dest>
-    static void scaleAndAddTo(Dest &dst, const matrix_replacement<MatrixType> &lhs, const Rhs &rhs,
+    static void scaleAndAddTo(Dest &dst, const matrix_replacement<MatrixType, PreconditionerType> &lhs, const Rhs &rhs,
                               const Scalar &alpha) {
         // This method should implement "dst += alpha * lhs * rhs" inplace,
         // however, for iterative solvers, alpha is always equal to 1, so let's not bother about it.
@@ -62,9 +71,7 @@ struct generic_product_impl<matrix_replacement<MatrixType>, Rhs, SparseShape, De
         assert(alpha == Scalar(1) && "scaling is not implemented");
         EIGEN_ONLY_USED_FOR_DEBUG(alpha);
 #endif
-        // Here we could simply call dst.noalias() += lhs.my_matrix() * rhs,
-        // but let's do something fancier (and less efficient):
-        dst.noalias() += alpha * (lhs.my_matrix() * rhs);
+        dst.noalias() += alpha * (lhs.my_matrix() * (lhs.get_preconditioner().solve(rhs)));
     }
 };
 }

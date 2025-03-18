@@ -5,10 +5,9 @@
 #ifndef TOEPLITZFULLYTEMPLATED_HPP
 #define TOEPLITZFULLYTEMPLATED_HPP
 
-#include "types/Types.hpp"
 
 #include "ToeplitzContainer.hpp"
-#include <omp.h>
+#include "types/Types.hpp"
 
 #include <cassert>
 #include <iostream>
@@ -55,6 +54,7 @@ template <typename scalar_t, typename block_t> class ToeplitzStructure {
     [[nodiscard]] ToeplitzStructure mull(scalar_t value) const noexcept;
     /** Умножение себя на число */
     const ToeplitzStructure &mull_inplace(scalar_t value) noexcept;
+    /** Взятие диагонали */
 
     // --- Selectors --- //
     [[nodiscard]] const block_t &get_block(Types::index row, Types::index col) const noexcept {
@@ -65,9 +65,24 @@ template <typename scalar_t, typename block_t> class ToeplitzStructure {
     // Возвращают значения строк и столбцов в каждом блоке
     [[nodiscard]] Types::index rows_in_block() const noexcept { return rows_in_block_; }
     [[nodiscard]] Types::index cols_in_block() const noexcept { return cols_in_block_; }
-    // Возвращают значение строк и столбцов во всей матрице
+    // Возвращают количество строк и столбцов во всей матрице (то есть в большой матрице, которая тут удобно хранится)
+    // имеется ввиду что-то типа outerSize в терминологии Eigen
     [[nodiscard]] Types::index rows() const noexcept { return rows_in_block_ * blocks.rows(); }
     [[nodiscard]] Types::index cols() const noexcept { return cols_in_block_ * blocks.cols(); }
+
+    // --- Доступ к элементам на чтение --- //
+
+    /**
+     * Доступ к настоящим элементам в матрице, а не к блокам!
+     */
+    [[nodiscard]] const scalar_t &operator()(Types::index i, Types::index j) const noexcept {
+        // сначала поймем в каком из "верхних блоков" мы находимся
+        const Types::index row_on_current_level = i / rows_in_block_;
+        const Types::index col_on_current_level = j / cols_in_block_;
+        const Types::index i_new = i % rows_in_block_;
+        const Types::index j_new = j % cols_in_block_;
+        return blocks(row_on_current_level, col_on_current_level)(i_new, j_new);
+    }
 
     // ---- Static methods --- //
     inline static Types::index get_size_of_container(Types::index rows, Types::index cols) noexcept
@@ -98,7 +113,7 @@ ToeplitzStructure<scalar_t, block_t>::matvec(const vector_t &vec) const noexcept
     vector_t result = vector_t::Zero(rows());
 
     // Далее итерируемся по всем блокам (потому что обычное умножение, а не потому что бесструктурная матрица!)
-#pragma omp parallel for schedule(dynamic) collapse(2)
+#pragma omp parallel for schedule(static) collapse(2) num_threads(14)
     for (Types::index i = 0; i < blocks.rows(); ++i) {
         for (Types::index j = 0; j < blocks.cols(); ++j) {
             // Достаем ссылку на текущий блок (тут как раз проявляется тёплицевость)

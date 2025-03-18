@@ -60,7 +60,8 @@ class SurfaceVectorField : public SurfaceFieldBase<Types::Vector3c> {
     // --- Fabric --- //
     static SurfaceVectorField ZeroField(const manifold_t &manifold);
 
-    static SurfaceVectorField TangentField(const manifold_t &manifold, const Types::VectorXc &fieldProjections);
+    static SurfaceVectorField TangentField(const manifold_t &manifold, const Types::VectorXc &fieldProjections,
+                                           std::string name = "tangent_field");
 
     static SurfaceVectorField NormalField(const manifold_t &manifold);
 
