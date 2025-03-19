@@ -31,6 +31,9 @@ namespace EMW::Types {
     using MatrixXd = Eigen::MatrixX<Types::scalar>;
     using Matrix3d = Eigen::Matrix3<scalar>;
     using Matrix3c = Eigen::Matrix3<complex_d>;
+    template<typename t> using DiagonalMatrixX = Eigen::DiagonalMatrix<t, Eigen::Dynamic>;
+    using DiagonalMatrixXd = DiagonalMatrixX<Types::scalar>;
+    using DiagonalMatrixXc = DiagonalMatrixX<Types::complex_d>;
 };
 
 namespace EMW::Containers {

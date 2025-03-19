@@ -8,6 +8,8 @@
 #include "types/TypeTraits.hpp"
 #include "types/Types.hpp"
 
+#include <iostream>
+
 namespace EMW::Math::Matrix {
 
 template <typename... factors_t> class FactoredMatrix {
@@ -16,15 +18,19 @@ template <typename... factors_t> class FactoredMatrix {
     Containers::tuple<factors_t...> factors_;
 
     template <typename vector_t, Types::index... Idx>
-    vector_t matvec_impl(const vector_t &vector, const std::index_sequence<Idx...>& /*noname*/) const {
+    vector_t matvec_impl(const vector_t &vector, const std::index_sequence<Idx...> & /*noname*/) const {
         return (std::get<Idx>(factors_) * ... * vector);
+    }
+
+    template <Types::index... Idx> decltype(auto) compute_impl(const std::index_sequence<Idx...> & /*noname*/) const {
+        return (std::get<Idx>(factors_) * ...);
     }
 
   public:
     /** Warning: it could be universal references with ref collapsing */
     FactoredMatrix(factors_t &&...factors) : factors_(std::forward<factors_t>(factors)...){};
 
-    FactoredMatrix(factors_t &...factors) : factors_(factors...) {
+    FactoredMatrix(const factors_t &...factors) : factors_(factors...) {
         std::cout << "FactoredMatrix constructor with copying" << std::endl;
     };
 
@@ -32,16 +38,21 @@ template <typename... factors_t> class FactoredMatrix {
         return matvec_impl(vector, std::make_index_sequence<sizeof...(factors_t)>());
     }
 
+    /**
+     * Returns multiplied factors
+     *
+     * Potentially too long operation
+     */
+    decltype(auto) compute() const { return compute_impl(std::make_index_sequence<sizeof...(factors_t)>()); }
+
     template <Types::index I> decltype(auto) get() { return std::get<I>(factors_); }
 };
 
-template<typename ... factors_t, typename vector_t>
-vector_t operator*(const FactoredMatrix<factors_t...>& mat, const vector_t &vector) {
+template <typename... factors_t, typename vector_t>
+vector_t operator*(const FactoredMatrix<factors_t...> &mat, const vector_t &vector) {
     return mat.matvec(vector);
 }
 
 } // namespace EMW::Math::Matrix
-
-
 
 #endif // FACTOREDMATRIX_HPP
