@@ -7,13 +7,18 @@
 
 #include "types/Types.hpp"
 
+#include "FactoredMatrix.hpp"
 #include "ToeplitzFullyTemplated.hpp"
 
 namespace EMW::Math::LinAgl::Matrix {
 
 /** Алиасы для удобной работы с матрицами */
+
 template <typename T> using ToeplitzBlock = ToeplitzStructure<T, Types::MatrixX<T>>;
 template <typename T> using ToeplitzToeplitzBlock = ToeplitzStructure<T, ToeplitzBlock<T>>;
+
+// template <typename T> using ToeplitzDynFactoredBlock = ToeplitzStructure<T, DynamicFactoredMatrix<Types::MatrixX<T>>>;
+// template <typename T> using ToeplitzToeplitzDynFactoredBlock = ToeplitzStructure<T, ToeplitzDynFactoredBlock<T>>;
 
 } // namespace EMW::Math::LinAgl::Matrix
 

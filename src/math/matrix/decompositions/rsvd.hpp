@@ -9,9 +9,10 @@
 
 #include <Eigen/Dense>
 
-namespace EMW::Math::Matrix::Decompositions {
+namespace EMW::Math::LinAgl::Decompositions {
 
-template <typename matrix_t, typename vector_t, typename value_t> class RSVD {
+template <typename matrix_t, typename vector_t, typename value_t>
+class RSVD {
     static vector_t get_ith_vector(Types::index i, Types::index N) {
         vector_t result = vector_t::Zero(N);
         result(i) = static_cast<value_t>(1);
@@ -66,11 +67,13 @@ template <typename matrix_t, typename vector_t, typename value_t> class RSVD {
         return result; // recover skinny Q matrix
     }
 
-    static decltype(auto) compute(const matrix_t &A, int rank, int oversamples, int iter = 0) {
+    static Matrix::DynamicFactoredMatrix<matrix_t> compute(const matrix_t &A, int rank, int oversamples, int iter = 0) {
 
         using diag_t = Types::DiagonalMatrixX<value_t>;
 
-        matrix_t Q = FindRandomizedRange(A, rank + oversamples, iter);
+        Containers::vector<matrix_t> factors; factors.reserve(3);
+
+        factors.emplace_back(FindRandomizedRange(A, rank + oversamples, iter));
 
         // If matrix is too small for desired rank/oversamples
         if ((rank + oversamples) > std::min(A.rows(), A.cols())) {
@@ -78,17 +81,17 @@ template <typename matrix_t, typename vector_t, typename value_t> class RSVD {
             oversamples = 0;
         }
 
-        matrix_t B = Q.adjoint() * A;
+        matrix_t B = factors[0].adjoint() * A;
 
         // 4) Compute the SVD on the thin matrix (much cheaper than SVD on original)
         Eigen::BDCSVD<matrix_t> svd(B, Eigen::ComputeThinU | Eigen::ComputeThinV);
 
         // 5) Remove oversampled eigenvalues
-        matrix_t US = svd.matrixU().block(0, 0, B.rows(), rank) * diag_t(svd.singularValues().head(rank));
-        matrix_t Vh = svd.matrixV().block(0, 0, A.cols(), rank).adjoint();
+        factors.push_back(svd.matrixU().block(0, 0, B.rows(), rank) * diag_t(svd.singularValues().head(rank)));
+        factors.push_back(svd.matrixV().block(0, 0, A.cols(), rank).adjoint());
 
         // 6) Construct factored matrix and return
-        return FactoredMatrix(std::move(Q), std::move(US), std::move(Vh));
+        return Matrix::DynamicFactoredMatrix(std::move(factors));
     }
 };
 

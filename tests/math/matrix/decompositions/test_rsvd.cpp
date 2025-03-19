@@ -105,7 +105,7 @@ TEST_F(RSVD_TESTS, REAL_CASE_TEST) {
     // А теперь делаем рандомизированное svd для внедиагонального блока
     start = std::chrono::system_clock::now();
 
-    const Types::index rank = 50 * (a / between);
+    const Types::index rank = 80 * (a / between);
     std::cout << "RSVD with rank = " << rank << std::endl;
     const auto out_factored_matrix = Math::Matrix::Decompositions::ComplexRSVD::compute(out_diagonal_block, rank, rank, 2);
 

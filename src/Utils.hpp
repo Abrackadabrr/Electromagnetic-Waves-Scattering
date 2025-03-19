@@ -11,6 +11,15 @@
 
 namespace EMW::Utils {
 
+template<typename T>
+class reverse {
+    T& iterable_;
+public:
+    explicit reverse(T& iterable) : iterable_{iterable} {}
+    decltype(auto) begin() const { return std::rbegin(iterable_); }
+    decltype(auto) end() const { return std::rend(iterable_); }
+};
+
 template <typename Container1, typename Container2>
 void to_csv(const Container1 &cont1, const Container2 &cont2, const std::string &name1, const std::string &name2,
             std::ostream &str) {
