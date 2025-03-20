@@ -3,8 +3,8 @@
 //
 
 #include "math/matrix/Matrix.hpp"
-#include "math/matrix/eigen_matrix_replacement/MatrixReplacement.hpp"
-#include "math/matrix/eigen_matrix_replacement/MatrixTraits.hpp"
+#include "math/matrix/iterative_solvers_coverage//MatrixReplacement.hpp"
+#include "math/matrix/iterative_solvers_coverage/MatrixTraits.hpp"
 
 #include "toeplitz_matrix_tests.hpp"
 

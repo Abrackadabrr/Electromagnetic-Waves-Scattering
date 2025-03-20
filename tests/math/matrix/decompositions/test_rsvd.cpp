@@ -30,7 +30,7 @@ TEST_F(RSVD_TESTS, TEST_SINUS_MATRIX) {
     const Types::index N = 1000;
     const auto mat = get_sinus_mat(N);
 
-    const auto rsvd = Math::Matrix::Decompositions::RealRSVD::compute(mat, 2, 2);
+    const auto rsvd = Math::LinAgl::Decompositions::RealRSVD::compute(mat, 2, 2);
 
 #if 0
     std::cout << rsvd.matrixQ() * rsvd.matrixU() << std::endl;
@@ -107,7 +107,7 @@ TEST_F(RSVD_TESTS, REAL_CASE_TEST) {
 
     const Types::index rank = 80 * (a / between);
     std::cout << "RSVD with rank = " << rank << std::endl;
-    const auto out_factored_matrix = Math::Matrix::Decompositions::ComplexRSVD::compute(out_diagonal_block, rank, rank, 2);
+    const auto out_factored_matrix = Math::LinAgl::Decompositions::ComplexRSVD::compute(out_diagonal_block, rank, rank, 2);
 
     end = std::chrono::system_clock::now();
     elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(end - start);

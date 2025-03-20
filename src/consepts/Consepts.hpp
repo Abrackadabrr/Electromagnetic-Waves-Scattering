@@ -15,11 +15,25 @@ template <typename Topology>
 concept manifold_like = requires(Topology topology) {
     { topology.getCells() } -> std::same_as<Containers::vector<typename Topology::CellType>>;
 };
+
 /** Концепт, генерализирующий множество сеток (полную геометрию) */
 template <typename TopologicalStructure>
 concept GeomtricalStructure = requires(TopologicalStructure structure, Types::index index) {
     { structure.get(index) } -> std::same_as<const Mesh::SurfaceMesh &>;
     { structure.size() } -> std::same_as<Types::index>;
+};
+
+/** Концепт, описывающий, что такое блок в больших структурных матрицах */
+template<typename vector_t, typename block_t>
+concept GenericMatrixBlock = requires(block_t block, Types::index i, Types::index j, vector_t vector)
+{
+    // Наличие оператора с круглыми скобочками
+    block(i, j);
+    std::is_scalar_v<decltype(block(i, j))> || std::is_same_v<decltype(block(i, j)), Types::complex_d>;
+    // Наличие методов rows() и cols()
+    { block.rows() } -> std::convertible_to<Types::index>;
+    { block.cols() } -> std::convertible_to<Types::index>;
+    block * vector;
 };
 
 } // namespace EMW::Consepts

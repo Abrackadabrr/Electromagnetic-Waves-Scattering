@@ -13,7 +13,7 @@
 namespace EMW::Types {
     using scalar = double;
     using index = std::size_t;
-    using integer = std::int_fast32_t;
+    using integer = long int;
     using complex_d = std::complex<scalar>;
 
     template<typename t>

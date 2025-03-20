@@ -9,7 +9,7 @@
 
 using namespace EMW;
 
-class FACTORED_MATRIX_TEST : public ::testing::Test {
+class DYNAMIC_FACTORED_MATRIX_TEST : public ::testing::Test {
   protected:
     using f_mat = Types::MatrixXd;
     using c_mat = Types::MatrixXc;
@@ -20,9 +20,9 @@ TEST_F(FACTORED_MATRIX_TEST, CREATION) {
     const f_mat identity = f_mat::Identity(n, n);
     const f_mat ones = f_mat::Ones(n, n);
     const Types::VectorXd vector = Types::VectorXd::Random(n);
-    Math::Matrix::FactoredMatrix matrix1{f_mat::Identity(n, n), f_mat::Identity(n, n), f_mat::Identity(n, n)};
-    Math::Matrix::FactoredMatrix matrix2{f_mat::Identity(n, n), 2 * f_mat::Identity(n, n), 4 * f_mat::Identity(n, n)};
-    Math::Matrix::FactoredMatrix matrix3{f_mat::Ones(n, n), f_mat::Identity(n, n), 7 * f_mat::Identity(n, n)};
+    Math::LinAgl::Matrix::FactoredMatrix matrix1{f_mat::Identity(n, n), f_mat::Identity(n, n), f_mat::Identity(n, n)};
+    Math::LinAgl::Matrix::FactoredMatrix matrix2{f_mat::Identity(n, n), 2 * f_mat::Identity(n, n), 4 * f_mat::Identity(n, n)};
+    Math::LinAgl::Matrix::FactoredMatrix matrix3{f_mat::Ones(n, n), f_mat::Identity(n, n), 7 * f_mat::Identity(n, n)};
 
     ASSERT_EQ(identity, matrix1.get<0>());
     ASSERT_EQ(identity, matrix1.get<1>());
@@ -42,9 +42,9 @@ TEST_F(FACTORED_MATRIX_TEST, MULTIPLICATION) {
     const f_mat identity = f_mat::Identity(n, n);
     const f_mat ones = f_mat::Ones(n, n);
     const Types::VectorXd vector = Types::VectorXd::Random(n);
-    Math::Matrix::FactoredMatrix matrix1{identity, identity};
-    Math::Matrix::FactoredMatrix matrix2{identity, 2 * identity, 4 * identity};
-    Math::Matrix::FactoredMatrix matrix3{ones, identity, 7 * identity};
+    Math::LinAgl::Matrix::FactoredMatrix matrix1{identity, identity};
+    Math::LinAgl::Matrix::FactoredMatrix matrix2{identity, 2 * identity, 4 * identity};
+    Math::LinAgl::Matrix::FactoredMatrix matrix3{ones, identity, 7 * identity};
 
     const auto res1 = matrix1 * vector;
     const auto res2 = matrix2 * vector;

@@ -5,9 +5,8 @@
 #ifndef UTILS_HPP
 #define UTILS_HPP
 
-#include "types/Types.hpp"
-
 #include "math/matrix/Matrix.hpp"
+#include "types/Types.hpp"
 
 namespace EMW::Utils {
 

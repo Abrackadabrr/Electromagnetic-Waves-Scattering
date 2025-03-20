@@ -13,13 +13,16 @@ using namespace EMW::Types;
 
 class TOEPLITZ_MATRIX_TESTS : public testing::Test {
   protected:
-    Types::scalar simple_toeplitz_matrix(Types::index i, Types::index j) {
-        return static_cast<integer>(i) - static_cast<integer>(j);
+    Types::scalar static simple_toeplitz_matrix(Types::index i, Types::index j) {
+        return static_cast<scalar>(i) - static_cast<scalar>(j);
     };
 
-    Types::MatrixX<complex_d> get_block(Types::index i, Types::index j, Types::index size) {
+    Types::MatrixX<complex_d> static get_block(Types::index i, Types::index j, Types::index size) {
         MatrixX<scalar> block(size, size);
-        for (Types::index k = 0; k < size * size; ++k) block << (k/100.0);
+        for (Types::index k = 0; k < size; ++k)
+            for (Types::index l = 0; l < size; ++l)
+            block(k, l) = static_cast<scalar>(k + l)/100.0;
+
         return complex_d{1, 1} * block * (simple_toeplitz_matrix(i, j) + (i == j ? 100 : 0));
     }
 

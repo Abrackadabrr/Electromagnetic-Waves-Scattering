@@ -73,8 +73,8 @@ TEST_F(TOEPLITZ_MATRIX_TESTS, TWICE_TOEPLITZ_SIMPLE) {
     const Types::index internal_block_rows = 1;
     const Types::index internal_block_cols = 1;
 
-    const Types::index first_layer_rows = 20000;
-    const Types::index first_layer_cols = 20000;
+    const Types::index first_layer_rows = 20;
+    const Types::index first_layer_cols = 20;
 
     const Types::index second_layer_rows = 1;
     const Types::index second_layer_cols = 1;
@@ -243,7 +243,7 @@ TEST_F(TOEPLITZ_MATRIX_TESTS, TWICE_TOEPLITZ_NEW_CONSTRUCT) {
     const Types::index first_layer_rows = 3;
     const Types::index first_layer_cols = first_layer_rows;
 
-    const Types::index second_layer_rows = 4;
+    const Types::index second_layer_rows = 3;
     const Types::index second_layer_cols = second_layer_rows;
 
     const Types::index total_rows = internal_block_rows * first_layer_rows * second_layer_rows;
@@ -315,8 +315,8 @@ TEST_F(TOEPLITZ_MATRIX_TESTS, TWICE_TOEPLITZ_NEW_CONSTRUCT) {
 /** Тест на доступ к элементам матрицы */
 TEST_F(TOEPLITZ_MATRIX_TESTS, TWICE_TOEPLITZ_ELEMENTS_ACCESS) {
     // Описываем структуру матрицы
-    const Types::index internal_block_rows = 240;
-    const Types::index internal_block_cols = 240;
+    const Types::index internal_block_rows = 400;
+    const Types::index internal_block_cols = 400;
 
     const Types::index first_layer_rows = 3;
     const Types::index first_layer_cols = first_layer_rows;

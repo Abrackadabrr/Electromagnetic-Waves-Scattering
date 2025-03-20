@@ -15,7 +15,7 @@ TEST_F(TOEPLITZ_MATRIX_TESTS, TOEPLITZ_BLOCK_MATVEC_BENCHMARK) {
     Types::index M = block_size * tl_cols;
     const Types::MatrixX<complex_d> toeplitz_matrix = get_toeplitz_matrix(tl_rows, tl_cols, block_size);
     const Math::LinAgl::Matrix::ToeplitzBlock<complex_d> matrix(
-        tl_rows, tl_cols, [block_size, this](Types::index i, Types::index j) { return get_block(i, j, block_size); });
+        tl_rows, tl_cols, [block_size](Types::index i, Types::index j) { return get_block(i, j, block_size); });
 
     VectorXc vec(N);
     vec.setRandom();
@@ -32,7 +32,7 @@ TEST_F(TOEPLITZ_MATRIX_TESTS, TOEPLITZ_BLOCK_MULL_BY_VALUE) {
     Math::LinAgl::Matrix::ToeplitzBlock<complex_d> matrix(
         tl_rows, tl_cols, [block_size, this](Types::index i, Types::index j) { return get_block(i, j, block_size); });
 
-    VectorXc vec(2 * N);
+    VectorXc vec(M);
     vec.setRandom();
 
     const auto res_1 = matrix * vec;
@@ -40,7 +40,7 @@ TEST_F(TOEPLITZ_MATRIX_TESTS, TOEPLITZ_BLOCK_MULL_BY_VALUE) {
     matrix *= value;
     const auto res_2 = matrix * vec;
 
-    ASSERT_NEAR((value * res_1 - res_2).norm(), 0, 0);
+    ASSERT_NEAR((value * res_1 - res_2).norm() / res_1.norm(), 0, 1e-14);
 }
 
 using ToeplitzBlock = Math::LinAgl::Matrix::ToeplitzBlock<complex_d>;

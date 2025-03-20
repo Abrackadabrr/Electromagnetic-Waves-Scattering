@@ -8,7 +8,7 @@
 #include "rsvd.hpp"
 #include "types/Types.hpp"
 
-namespace EMW::Math::Matrix::Decompositions {
+namespace EMW::Math::LinAgl::Decompositions {
 
 using ComplexRSVD = RSVD<Types::MatrixXc, Types::VectorXc, Types::complex_d>;
 using RealRSVD = RSVD<Types::MatrixXd, Types::VectorXd, Types::scalar>;
