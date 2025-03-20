@@ -328,13 +328,13 @@ TEST_F(TOEPLITZ_MATRIX_TESTS, TWICE_TOEPLITZ_FACTOR_NEW_CONSTRUCT) {
 TEST_F(TOEPLITZ_MATRIX_TESTS, TWICE_TOEPLITZ_FACTOR_NEW_CONSTRUCT_WITH_RSVD) {
     // Eigen::setNbThreads(14);
     // Описываем структуру матрицы
-    const Types::index internal_block_rows = 2400;
-    const Types::index internal_block_cols = 2400;
+    const Types::index internal_block_rows = 1500;
+    const Types::index internal_block_cols = 1500;
 
     const Types::index first_layer_rows = 3;
     const Types::index first_layer_cols = first_layer_rows;
 
-    const Types::index second_layer_rows = 2;
+    const Types::index second_layer_rows = 4;
     const Types::index second_layer_cols = second_layer_rows;
 
     const Types::index total_rows = internal_block_rows * first_layer_rows * second_layer_rows;
@@ -345,6 +345,7 @@ TEST_F(TOEPLITZ_MATRIX_TESTS, TWICE_TOEPLITZ_FACTOR_NEW_CONSTRUCT_WITH_RSVD) {
         get_full_matrix(second_layer_rows, second_layer_cols, first_layer_rows, first_layer_cols, internal_block_rows,
                         internal_block_cols);
 
+    // Я знаю, что каждый блок двухранговый
     const Types::index rank = 2;
 
     // Собираем дважды тёплицеву матрицу
@@ -358,22 +359,12 @@ TEST_F(TOEPLITZ_MATRIX_TESTS, TWICE_TOEPLITZ_FACTOR_NEW_CONSTRUCT_WITH_RSVD) {
         Types::index first_layer_size = ToeplitzBlock::get_size_of_container(first_layer_cols, first_layer_cols);
         blocks.reserve(first_layer_size);
         for (int k = 0; k < first_layer_cols; k++) {
-            // а тут обычный расчет
             blocks.emplace_back(Math::LinAgl::Decompositions::ComplexRSVD::compute(
                 get_internal_block(internal_block_rows, internal_block_cols, 0, i, 0, k), rank, rank));
-            // std::cout << (blocks.back().compute() -
-            //                  get_internal_block(internal_block_rows, internal_block_cols, 0, i, 0, k)).norm()
-            //           << std::endl
-            //           << std::endl;
         }
         for (int k = 1; k < first_layer_rows; k++) {
-            // тут снова обычный расчет
             blocks.emplace_back(Math::LinAgl::Decompositions::ComplexRSVD::compute(
                 get_internal_block(internal_block_rows, internal_block_cols, 0, i, k, 0), rank, rank));
-            // std::cout << (blocks.back().compute() -
-            //                  get_internal_block(internal_block_rows, internal_block_cols, 0, i, 0, k)).norm()
-            //           << std::endl
-            //           << std::endl;
         }
         internal_blocks.emplace_back(first_layer_rows, first_layer_cols, std::move(blocks));
         ASSERT_EQ(blocks.size(), 0);

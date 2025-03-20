@@ -67,7 +67,7 @@ class RSVD {
         return result;
     }
 
-    static Matrix::DynamicFactoredMatrix<matrix_t> compute(const matrix_t &A, int rank, int oversamples, int iter = 0) {
+    static LinAgl::Matrix::DynamicFactoredMatrix<matrix_t> compute(const matrix_t &A, int rank, int oversamples, int iter = 0) {
 
         using diag_t = Types::DiagonalMatrixX<value_t>;
 
@@ -91,7 +91,7 @@ class RSVD {
         factors.push_back(svd.matrixV().block(0, 0, A.cols(), rank).adjoint());
 
         // 6) Construct factored matrix and return
-        return Matrix::DynamicFactoredMatrix(std::move(factors));
+        return LinAgl::Matrix::DynamicFactoredMatrix(std::move(factors));
     }
 };
 

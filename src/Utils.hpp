@@ -37,7 +37,11 @@ struct MemoryUsage {
 inline std::ostream &operator<<(std::ostream &str, const MemoryUsage &usage) {
     str << "Full matrix memory usage: " << usage.full_matrix << " Gb \n";
     str << "Toeplitz matrix memory usage: " << usage.toeplitz_matrix << " Gb \n";
-    str << "Profit: " << usage.full_matrix / usage.toeplitz_matrix;
+    if (usage.toeplitz_and_factored_matrix > 0)
+        str << "Toeplitz and compressed matrix memory usage: " << usage.toeplitz_and_factored_matrix << " Gb \n";
+    str << "Profit with toeplitz: " << usage.full_matrix / usage.toeplitz_matrix << "\n";
+    if (usage.toeplitz_and_factored_matrix > 0)
+        str << "Profit with toeplitz and compressed: " << usage.full_matrix / usage.toeplitz_and_factored_matrix;
     return str;
 }
 

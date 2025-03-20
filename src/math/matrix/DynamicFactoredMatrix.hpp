@@ -46,6 +46,13 @@ public:
 
     // --- Aux methods --- //
     decltype(auto) to_dense() const noexcept { return compute(); };
+
+    // --- Доступ к элементам матрицы --- //
+    [[nodiscard]] decltype(auto) operator()(Types::index i, Types::index j) const noexcept {
+        if (factor_number() > 1)
+            std::cout << "You have probably done smth extremely wrong" << std::endl;
+        return factors_.front()(i, j);
+    }
 };
 
 template <typename factor_t>
