@@ -5,7 +5,7 @@
 #ifndef RSVD_HPP
 #define RSVD_HPP
 
-#include "math/matrix/FactoredMatrix.hpp"
+#include "math/matrix/DynamicFactoredMatrix.hpp"
 
 #include <Eigen/Dense>
 

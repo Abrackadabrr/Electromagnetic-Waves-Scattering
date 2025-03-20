@@ -84,6 +84,8 @@ template <typename scalar_t, typename block_t> class ToeplitzStructure {
         return blocks(row_on_current_level, col_on_current_level)(i_new, j_new);
     }
 
+    const ToeplitzContainer<block_t> &get_blocks() const noexcept { return blocks; }
+
     // ---- Static methods --- //
     inline static Types::index get_size_of_container(Types::index rows, Types::index cols) noexcept
         __attribute__((always_inline)) {

@@ -9,11 +9,9 @@
 
 using namespace EMW;
 
-class RSVD_TESTS: public ::testing::Test {
-protected:
-    Types::scalar sin_mat_el(Types::index i, Types::index j) {
-        return std::sin(i + j);
-    }
+class RSVD_TESTS : public ::testing::Test {
+  protected:
+    Types::scalar sin_mat_el(Types::index i, Types::index j) { return std::sin(i + j); }
 
     Types::MatrixXd get_sinus_mat(Types::index N) {
         Types::MatrixXd sin_mat = Types::MatrixXd::Zero(N, N);
@@ -40,8 +38,8 @@ TEST_F(RSVD_TESTS, TEST_SINUS_MATRIX) {
     std::cout << rsvd.matrixQ() * rsvd.matrixU() * Types::DiagonalMatrixXd(rsvd.singularValues()) * rsvd.matrixVh() << std::endl;
 #endif
 
-    const auto& factored_matrix = rsvd;
-    const Types::scalar err =  (factored_matrix.compute() - mat).norm() / mat.norm();
+    const auto &factored_matrix = rsvd;
+    const Types::scalar err = (factored_matrix.compute() - mat).norm() / mat.norm();
     ASSERT_NEAR(err, 0, 1e-13);
     std::cout << err << std::endl;
 }
@@ -103,11 +101,12 @@ TEST_F(RSVD_TESTS, REAL_CASE_TEST) {
     std::cout << "Matrix assembling: " << elapsed.count() << " ms" << std::endl;
 
     // А теперь делаем рандомизированное svd для внедиагонального блока
-    start = std::chrono::system_clock::now();
-
     const Types::index rank = 80 * (a / between);
     std::cout << "RSVD with rank = " << rank << std::endl;
-    const auto out_factored_matrix = Math::LinAgl::Decompositions::ComplexRSVD::compute(out_diagonal_block, rank, rank, 2);
+
+    start = std::chrono::system_clock::now();
+
+    const auto out_factored_matrix = Math::LinAgl::Decompositions::ComplexRSVD::compute(out_diagonal_block, rank, rank);
 
     end = std::chrono::system_clock::now();
     elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(end - start);
@@ -115,5 +114,21 @@ TEST_F(RSVD_TESTS, REAL_CASE_TEST) {
     std::cout << "Elapsed time: " << elapsed.count() << " ms" << std::endl;
 
     const Types::scalar err = (out_diagonal_block - out_factored_matrix.compute()).norm();
-    std::cout << err << std::endl;
+    std::cout << "Ошибка приближения: " << err << std::endl;
+
+    std::cout << "Память для хранения общего блока: " << out_diagonal_block.size() * 16. / (1024 * 1024 * 1024)
+              << std::endl;
+    std::cout << "Память для хранения фактора: " << out_factored_matrix.memory_usage() << std::endl;
+
+    // Проверка всего что можно проверить у матрицы с факторами
+    ASSERT_EQ(out_factored_matrix.rows(), out_diagonal_block.rows());
+    ASSERT_EQ(out_factored_matrix.cols(), out_diagonal_block.cols());
+    ASSERT_EQ(out_factored_matrix.factor_number(), 3);
+
+    // В том числе умножение
+    const Types::VectorXc vec = Types::VectorXc::Random(out_diagonal_block.rows());
+    const Types::VectorXc res1 = out_diagonal_block * vec;
+    const Types::VectorXc res2 = out_factored_matrix * vec;
+
+    ASSERT_NEAR((res1 - res2).norm() / vec.norm(), 0.0, err);
 }

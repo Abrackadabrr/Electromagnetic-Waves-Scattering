@@ -65,6 +65,8 @@ template <typename data_type> class ToeplitzContainer {
     const data_type &operator()(Types::index index) const noexcept;
     /** Доступ к элементу контейнера по линейному индексу */
     data_type &operator()(Types::index index) noexcept;
+    /** Доступ на чтение к внутренней структуре */
+    Containers::vector<data_type> get_values() const noexcept { return values; }
 };
 
 template <typename data_type>

@@ -5,10 +5,8 @@
 #ifndef DYMANICFACTOREDMATRIX_HPP
 #define DYMANICFACTOREDMATRIX_HPP
 
-#include "types/TypeTraits.hpp"
 #include "types/Types.hpp"
-
-#include "Utils.hpp"
+#include <iostream>
 
 namespace EMW::Math::LinAgl::Matrix {
 
@@ -17,6 +15,8 @@ template <typename factor_t> class DynamicFactoredMatrix {
     Containers::vector<factor_t> factors_;
 
 public:
+    DynamicFactoredMatrix() = default;
+
     DynamicFactoredMatrix(Containers::vector<factor_t> &&factors) : factors_(factors){};
 
     DynamicFactoredMatrix(const Containers::vector<factor_t> &factors) : factors_(factors) {
@@ -40,7 +40,7 @@ public:
 
     // ---- Selectors ---- //
     Types::index factor_number() const { return factors_.size(); };
-    Types::index memory_usage() const;
+    Types::scalar memory_usage() const;
     Types::index rows() const { return factors_.front().rows(); };
     Types::index cols() const { return factors_.back().cols(); };
 };
@@ -71,10 +71,10 @@ decltype(auto) DynamicFactoredMatrix<factor_t>::get() const {
 
 // --- Selectors --- //
 template<typename factor_t>
-Types::index DynamicFactoredMatrix<factor_t>::memory_usage() const {
+Types::scalar DynamicFactoredMatrix<factor_t>::memory_usage() const {
     Types::index result = 0;
     for (auto &factor : factors_) {
-        result += factor.rows() * factor.cols() * 16;
+        result += factor.size();
     }
     return result;
 }
