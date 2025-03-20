@@ -5,7 +5,6 @@
 #ifndef TOEPLITZFULLYTEMPLATED_HPP
 #define TOEPLITZFULLYTEMPLATED_HPP
 
-
 #include "ToeplitzContainer.hpp"
 #include "types/Types.hpp"
 
@@ -91,6 +90,9 @@ template <typename scalar_t, typename block_t> class ToeplitzStructure {
         __attribute__((always_inline)) {
         return rows + cols - 1;
     };
+
+    // Приведение к плотной матрице
+    Types::MatrixX<scalar_t> to_dense() const noexcept;
 };
 
 template <typename scalar_t, typename block_t>
@@ -148,6 +150,22 @@ ToeplitzStructure<scalar_t, block_t>::mull_inplace(scalar_t value) noexcept {
     return *this;
 }
 
+template <typename scalar_t, typename block_t>
+Types::MatrixX<scalar_t> ToeplitzStructure<scalar_t, block_t>::to_dense() const noexcept {
+    Types::MatrixX<scalar_t> result(rows(), cols());
+    for (Types::index i = 0; i < blocks.rows(); ++i) {
+        for (Types::index j = 0; j < blocks.cols(); ++j) {
+            if constexpr (std::is_same_v<block_t, Types::MatrixX<scalar_t>>) {
+                result.block(i * rows_in_block_, j * cols_in_block_, rows_in_block_, cols_in_block_) = blocks(i, j);
+            } else {
+                result.block(i * rows_in_block_, j * cols_in_block_, rows_in_block_, cols_in_block_) = blocks(i, j).to_dense();
+            }
+        }
+    }
+    return result;
+}
+
+
 // --- Defined binary operators --- //
 
 template <typename scalar_t, typename block_t>
@@ -170,6 +188,8 @@ template <typename scalar_t, typename block_t>
 Types::VectorX<scalar_t> operator*(const ToeplitzStructure<scalar_t, block_t> &matrix, const Types::VectorX<scalar_t> &vector) noexcept {
     return matrix.matvec(vector);
 }
+
+
 
 }
 

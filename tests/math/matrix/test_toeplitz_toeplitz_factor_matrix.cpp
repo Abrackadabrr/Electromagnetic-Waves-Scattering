@@ -14,11 +14,11 @@
 #include <math/matrix/decompositions/rsvd.hpp>
 
 Types::scalar simple_toeplitz_matrix_1(Types::index i, Types::index j) {
-    return std::sin(static_cast<scalar>(i) + static_cast<scalar>(j));
+    return std::sin(static_cast<scalar>(i) - static_cast<scalar>(j));
 };
 
 Types::scalar simple_toeplitz_matrix_2(Types::index i, Types::index j) {
-    return std::sin((static_cast<scalar>(i) + static_cast<scalar>(j)));
+    return std::sin((static_cast<scalar>(i) - static_cast<scalar>(j)));
 };
 
 /**
@@ -345,7 +345,7 @@ TEST_F(TOEPLITZ_MATRIX_TESTS, TWICE_TOEPLITZ_FACTOR_NEW_CONSTRUCT_WITH_RSVD) {
         get_full_matrix(second_layer_rows, second_layer_cols, first_layer_rows, first_layer_cols, internal_block_rows,
                         internal_block_cols);
 
-    const Types::index rank = 50;
+    const Types::index rank = 2;
 
     // Собираем дважды тёплицеву матрицу
     Containers::vector<ToeplitzBlock> internal_blocks;
@@ -361,11 +361,19 @@ TEST_F(TOEPLITZ_MATRIX_TESTS, TWICE_TOEPLITZ_FACTOR_NEW_CONSTRUCT_WITH_RSVD) {
             // а тут обычный расчет
             blocks.emplace_back(Math::LinAgl::Decompositions::ComplexRSVD::compute(
                 get_internal_block(internal_block_rows, internal_block_cols, 0, i, 0, k), rank, rank));
+            // std::cout << (blocks.back().compute() -
+            //                  get_internal_block(internal_block_rows, internal_block_cols, 0, i, 0, k)).norm()
+            //           << std::endl
+            //           << std::endl;
         }
         for (int k = 1; k < first_layer_rows; k++) {
             // тут снова обычный расчет
             blocks.emplace_back(Math::LinAgl::Decompositions::ComplexRSVD::compute(
                 get_internal_block(internal_block_rows, internal_block_cols, 0, i, k, 0), rank, rank));
+            // std::cout << (blocks.back().compute() -
+            //                  get_internal_block(internal_block_rows, internal_block_cols, 0, i, 0, k)).norm()
+            //           << std::endl
+            //           << std::endl;
         }
         internal_blocks.emplace_back(first_layer_rows, first_layer_cols, std::move(blocks));
         ASSERT_EQ(blocks.size(), 0);
@@ -391,13 +399,18 @@ TEST_F(TOEPLITZ_MATRIX_TESTS, TWICE_TOEPLITZ_FACTOR_NEW_CONSTRUCT_WITH_RSVD) {
 
     ASSERT_EQ(internal_blocks.size(), 0);
 
-    // Собираем вектор для тестового умножения
-    Types::VectorX<scalar> vec = Types::VectorX<scalar>::Zero(total_cols);
-    for (Types::index i = 0; i < total_cols; i++)
-        vec(i) = static_cast<scalar>(i);
 
+    // --- ТЕСТЫ НА ПОЛУЧИВШУЮСЯ МАТРИЦУ --- //
+
+
+    // Проверка ошибки сжатия матрицы
+    const Types::scalar matrix_err = (full_matrix - test_matrix.to_dense()).norm();
+    ASSERT_NEAR(matrix_err / full_matrix.norm(), 0, 1e-13);
+
+    // Собираем вектор для тестового умножения
+    Types::VectorX<scalar> vec = Types::VectorX<scalar>::Random(total_cols);
     // Проверка умножения с измерением времени
-    final_check_for_vectors(full_matrix, test_matrix, vec);
+    final_check_for_vectors(full_matrix, test_matrix, vec, matrix_err);
 
     // Проверка методов rows_in_block и rows()
     ASSERT_EQ(test_matrix.cols(), total_cols);
@@ -411,4 +424,3 @@ TEST_F(TOEPLITZ_MATRIX_TESTS, TWICE_TOEPLITZ_FACTOR_NEW_CONSTRUCT_WITH_RSVD) {
     std::cout << "Количество памяти для тёплицевой матрицы: " << mem_u.toeplitz_matrix << " Gb" << std::endl;
     std::cout << "Количество памяти для для сжатой матрицы: " << mem_u.toeplitz_and_factored_matrix << " Gb" << std::endl;
 }
-

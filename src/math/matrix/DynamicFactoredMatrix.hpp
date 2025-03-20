@@ -34,7 +34,7 @@ public:
 
     template <typename vector_t> vector_t matvec(const vector_t &vector) const;
 
-    decltype(auto) compute() const;
+    decltype(auto) compute() const noexcept;
 
     template <Types::index I> decltype(auto) get() const;
 
@@ -43,6 +43,9 @@ public:
     Types::scalar memory_usage() const;
     Types::index rows() const { return factors_.front().rows(); };
     Types::index cols() const { return factors_.back().cols(); };
+
+    // --- Aux methods --- //
+    decltype(auto) to_dense() const noexcept { return compute(); };
 };
 
 template <typename factor_t>
@@ -55,7 +58,7 @@ vector_t DynamicFactoredMatrix<factor_t>::matvec(const vector_t &vector) const {
     return result;
 }
 
-template <typename factor_t> decltype(auto) DynamicFactoredMatrix<factor_t>::compute() const {
+template <typename factor_t> decltype(auto) DynamicFactoredMatrix<factor_t>::compute() const noexcept {
     factor_t result = factors_[0];
     for (Types::index i = 1; i < factor_number(); ++i) {
         result *= factors_[i];

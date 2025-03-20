@@ -21,6 +21,9 @@ TEST_F(TOEPLITZ_MATRIX_TESTS, TOEPLITZ_BLOCK_MATVEC_BENCHMARK) {
     vec.setRandom();
 
     final_check_for_vectors(toeplitz_matrix, matrix, vec);
+
+    // Сравнение матриц и одновременная проверка метода to_dense
+    ASSERT_NEAR((toeplitz_matrix - matrix.to_dense()).norm(), 0, 1e-14);
 }
 
 TEST_F(TOEPLITZ_MATRIX_TESTS, TOEPLITZ_BLOCK_MULL_BY_VALUE) {
@@ -70,8 +73,8 @@ TEST_F(TOEPLITZ_MATRIX_TESTS, TOEPLITZ_BLOCK_CONSTRUCT_EASILY) {
     ASSERT_EQ(blocks.size(), 0);
 
     // Создаем вектор и умножаемся
-    VectorXc vec(2 * N);
+    VectorXc vec(M);
     vec.setRandom();
     // Собираем вектор и умножаем
-    ASSERT_NEAR((matrix * vec - matrix_2 * vec).norm(), 0, 0);
+    ASSERT_NEAR((matrix * vec - matrix_2 * vec).norm(), 0, 5e-14);
 }

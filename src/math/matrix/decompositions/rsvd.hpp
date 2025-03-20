@@ -64,7 +64,7 @@ class RSVD {
         for (int i = 0; i < size; ++i) {
             result.col(i) = householder_sequence * get_ith_vector(i, nr);
         }
-        return result; // recover skinny Q matrix
+        return result;
     }
 
     static Matrix::DynamicFactoredMatrix<matrix_t> compute(const matrix_t &A, int rank, int oversamples, int iter = 0) {
@@ -73,13 +73,13 @@ class RSVD {
 
         Containers::vector<matrix_t> factors; factors.reserve(3);
 
-        factors.emplace_back(FindRandomizedRange(A, rank + oversamples, iter));
-
         // If matrix is too small for desired rank/oversamples
         if ((rank + oversamples) > std::min(A.rows(), A.cols())) {
             rank = std::min(A.rows(), A.cols());
             oversamples = 0;
         }
+
+        factors.emplace_back(FindRandomizedRange(A, rank + oversamples, iter));
 
         matrix_t B = factors[0].adjoint() * A;
 

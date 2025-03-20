@@ -37,7 +37,7 @@ class TOEPLITZ_MATRIX_TESTS : public testing::Test {
 
     template <typename matrix_t>
     void final_check_for_vectors(const Types::MatrixX<complex_d> &matrix, const matrix_t &toeplitz,
-                                 const Types::VectorX<complex_d> &vec) {
+                                 const Types::VectorX<complex_d> &vec, const Types::scalar tolerance = 1e-14) {
         auto start = std::chrono::system_clock::now();
 
         const Types::VectorX<complex_d> result_straightforward = matrix * vec;
@@ -55,7 +55,7 @@ class TOEPLITZ_MATRIX_TESTS : public testing::Test {
         std::cout << "Произведение с новой матрицей: " << elapsed.count() << '\n';
 
         // Сравниваем результаты умножения
-        ASSERT_NEAR((result_straightforward - result_special).norm() / result_straightforward.norm(), 0, 1e-14);
+        ASSERT_NEAR((result_straightforward - result_special).norm() / result_straightforward.norm(), 0, tolerance);
     }
 };
 

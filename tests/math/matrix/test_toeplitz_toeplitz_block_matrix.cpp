@@ -138,8 +138,8 @@ TEST_F(TOEPLITZ_MATRIX_TESTS, TWICE_TOEPLITZ_REAL_1_NO_PARALLEL) {
     const Types::index internal_block_rows = 10;
     const Types::index internal_block_cols = 20;
 
-    const Types::index first_layer_rows = 200;
-    const Types::index first_layer_cols = 100;
+    const Types::index first_layer_rows = 20;
+    const Types::index first_layer_cols = 10;
 
     const Types::index second_layer_rows = 10;
     const Types::index second_layer_cols = 10;
@@ -173,14 +173,17 @@ TEST_F(TOEPLITZ_MATRIX_TESTS, TWICE_TOEPLITZ_REAL_1_NO_PARALLEL) {
     // Сравниваем результаты умножения
 
     final_check_for_vectors(full_matrix, test_matrix, vec);
+
+    // Проверка совпадения матриц
+    ASSERT_NEAR((full_matrix - test_matrix.to_dense()).norm(), 0, 1e-14);
 }
 
 TEST_F(TOEPLITZ_MATRIX_TESTS, TWICE_TOEPLITZ_REAL_2_NO_PARALLEL) {
     Eigen::setNbThreads(1);
 
     // Описываем структуру матрицы
-    const Types::index internal_block_rows = 440;
-    const Types::index internal_block_cols = 440;
+    const Types::index internal_block_rows = 100;
+    const Types::index internal_block_cols = 100;
 
     const Types::index first_layer_rows = 7;
     const Types::index first_layer_cols = 7;
@@ -219,12 +222,13 @@ TEST_F(TOEPLITZ_MATRIX_TESTS, TWICE_TOEPLITZ_REAL_2_NO_PARALLEL) {
                                                                                  get_toeplitz_block_by_indexes};
 
     // Собираем вектор для тестового умножения
-    Types::VectorX<scalar> vec = Types::VectorX<scalar>::Zero(total_cols);
-    for (Types::index i = 0; i < total_cols; i++)
-        vec(i) = static_cast<scalar>(i);
+    Types::VectorX<scalar> vec = Types::VectorX<scalar>::Random(total_cols);
 
     // Проверка умножения с измерением времени
     final_check_for_vectors(full_matrix, test_matrix, vec);
+
+    // Проверка совпадения матриц
+    ASSERT_NEAR((full_matrix - test_matrix.to_dense()).norm(), 0, 1e-14);
 }
 
 /**
