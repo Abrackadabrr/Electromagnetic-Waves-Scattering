@@ -48,7 +48,7 @@ struct CalcTraits<CalculationMethod::Compressed> {
 
 template <CalculationMethod Calc, Types::index N1, Types::index N2>
 typename CalcTraits<Calc>::ReturnType
-getMatrix(const Geometry::PeriodicStructure<N1, N2> &geometry, Types::scalar a, Types::complex_d k) {
+__attribute_deprecated__ getMatrix(const Geometry::PeriodicStructure<N1, N2> &geometry, Types::scalar a, Types::complex_d k) {
     // алиасы для удобного пользования
     using CT = CalcTraits<Calc>;
     using ToeplitzBlock = typename CT::ToeplitzBlock;
@@ -158,7 +158,7 @@ getMatrix(const Geometry::PeriodicStructure<N1, N2> &geometry, Types::scalar a, 
 };
 
 template <CalculationMethod CalcMethod, Types::index N1, Types::index N2>
-CalcTraits<CalcMethod>::ReturnType
+__attribute_deprecated__ CalcTraits<CalcMethod>::ReturnType
 getMatrixCompressed(const Geometry::PeriodicStructure<N1, N2> &geometry, Types::scalar a, Types::complex_d k) {
 
 #define INFO 1

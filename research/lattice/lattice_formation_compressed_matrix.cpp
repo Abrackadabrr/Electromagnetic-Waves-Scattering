@@ -19,9 +19,9 @@
 
 #include "VTKFunctions.hpp"
 
-#include "EquationsWithToeplitzStructure.hpp"
 #include "FieldCalculation.hpp"
 #include "FieldOverGeometry.hpp"
+#include "GeneralEquation.hpp"
 #include "GeneralizedEquations.hpp"
 
 #include "math/matrix/Matrix.hpp"
@@ -54,7 +54,8 @@ calculateField(const FieldTopology &fields, const Containers::vector<Mesh::point
     return field;
 }
 
-template <typename Fields> void getSigmaValuesXZ(const Types::complex_d k, const Fields &fields, const std::string path) {
+template <typename Fields>
+void getSigmaValuesXZ(const Types::complex_d k, const Fields &fields, const std::string path) {
     int samples = 720;
     Containers::vector<Types::scalar> esas;
     esas.reserve(samples);
@@ -63,7 +64,7 @@ template <typename Fields> void getSigmaValuesXZ(const Types::complex_d k, const
 
     for (int i = 0; i < samples; i++) {
         Types::scalar angle = i * Math::Constants::PI<Types::scalar>() * 2 / samples;
-        Types::Vector3d tau = {std::sin(angle), std::cos(angle), 0};
+        Types::Vector3d tau = {std::sin(angle), 0, std::cos(angle)};
         esas.push_back(ESA::calculateESA(tau, k, fields.get_electric_fields(), fields.get_magnetic_fields()));
         angles.push_back(angle);
     }
@@ -72,7 +73,8 @@ template <typename Fields> void getSigmaValuesXZ(const Types::complex_d k, const
     Utils::to_csv(esas, angles, "sigma", "angle", sigma);
 }
 
-template <typename Fields> void getSigmaValuesYZ(const Types::complex_d k, const Fields &fields, const std::string path) {
+template <typename Fields>
+void getSigmaValuesYZ(const Types::complex_d k, const Fields &fields, const std::string path) {
     int samples = 720;
     Containers::vector<Types::scalar> esas;
     esas.reserve(samples);
@@ -95,7 +97,7 @@ using TTBMatrix = LAMatrix::ToeplitzToeplitzDynFactoredBlock<Types::complex_d>;
 using DiagonalPrec = LAMatrix::Preconditioning::DiagonalPreconditioner<Types::complex_d, TTBMatrix>;
 using BlockDiagPrec = LAMatrix::Preconditioning::BlockDiagonalPreconditioner<Types::complex_d, TTBMatrix>;
 using NoPrec = LAMatrix::Preconditioning::IdentityPreconditioner<Types::complex_d, TTBMatrix>;
-using MatrixWrapper = LAMatrix::Wrappers::MatrixReplacement<TTBMatrix, DiagonalPrec>;
+using MatrixWrapper = LAMatrix::Wrappers::MatrixReplacement<TTBMatrix, BlockDiagPrec>;
 
 int main() {
     // считываем сетку на антенне
@@ -110,10 +112,10 @@ int main() {
     const auto parser_out = EMW::Parser::parseMesh(nodesFile, cellsFile, nNodes, nCells);
     auto mesh_base = Mesh::SurfaceMesh{parser_out.first, parser_out.second};
 
-    constexpr Types::index N1 = 1;
-    constexpr Types::index N2 = 20;
+    constexpr Types::index N1 = 30;
+    constexpr Types::index N2 = 1;
     constexpr Types::index N1_x_N2 = N1 * N2;
-    const Scene<N1, N2> geometry{0.07, 0.1, mesh_base};
+    const Scene<N1, N2> geometry{0.075, 0.05, mesh_base};
 
     // Геометрические параметры антенн
     // Короткая сторона волновода
@@ -134,7 +136,8 @@ int main() {
 
     auto start = std::chrono::high_resolution_clock::now();
 
-    const auto matrix = Research::Lattice::getMatrixCompressed(geometry, a, k);
+    Research::Lattice::CalcTraits<Research::Lattice::CalculationMethod::Compressed>::rank = 25;
+    const auto matrix = Research::Lattice::getMatrix<Research::Lattice::CalculationMethod::Compressed>(geometry, a, k);
 
     auto end = std::chrono::high_resolution_clock::now();
     auto elapsed = std::chrono::duration_cast<std::chrono::seconds>(end - start);
@@ -144,7 +147,11 @@ int main() {
 
     // собираем правую часть шаманским способом (очень шаманским)
     // решаем какой будет фазовый фактор на волноводах
-    const Containers::array<Types::scalar, N1_x_N2> phases{0., 0, 0,};
+    const Containers::array<Types::scalar, N1_x_N2> phases{
+        0.,
+        0,
+        0,
+    };
     Containers::array<Types::complex_d, N1_x_N2> phase_factors;
     for (Types::index i = 0; i < phases.size(); ++i)
         phase_factors[i] = std::exp(Math::Constants::i * phases[i] * Math::Constants::deg_to_rad<Types::scalar>());
@@ -157,9 +164,10 @@ int main() {
     // Разбиваем на токи и рисуем на разных многообразиях
     const Research::Lattice::FieldOver field_set(geometry, std::move(result));
 
-    const std::string path = "/home/evgen/Education/MasterDegree/thesis/results/lattice_compressed/";
-    const std::string dir_name = std::to_string(N1) + "_x_" + std::to_string(N2) + "_lattice";
-    VTK::set_of_fields_snapshot(field_set, path + dir_name + ".vtu");
+    const std::string path =
+        "/home/evgen/Education/MasterDegree/thesis/results/investigation_over_asymmetry/compressed/";
+    const std::string dir_name = std::to_string(N1) + "_x_" + std::to_string(N2) + "_lattice/";
+    VTK::set_of_fields_snapshot(field_set, path + std::to_string(N1) + "_x_" + std::to_string(N2) + "_lattice.vtu");
 
 #if FIELD_CALCULATION
     // Рисуем картину поля в плоскости y = 0
@@ -182,6 +190,6 @@ int main() {
     VTK::field_in_points_snapshot({calculated_field}, {"E"}, points, "surrounding_mesh", path);
 #endif
 
-    getSigmaValuesXZ(k, field_set, path + dir_name + "/");
-    getSigmaValuesYZ(k, field_set, path + dir_name + "/");
+    getSigmaValuesXZ(k, field_set, path + dir_name);
+    getSigmaValuesYZ(k, field_set, path + dir_name);
 }

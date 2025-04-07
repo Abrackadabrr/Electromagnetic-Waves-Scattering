@@ -42,7 +42,7 @@ template <typename scalar_t, typename matrix_t> class BlockDiagonalPreconditione
   public:
     /** ну тут проблема с делением на ноль но я забил */
     BlockDiagonalPreconditioner(const matrix_t &matrix)
-        : invdiag_block(matrix.get_block(0, 0).get_block(0, 0)//.template get<0>()
+        : invdiag_block(matrix.get_block(0, 0).get_block(0, 0).template get<0>()
           .inverse()), block_rows(invdiag_block.rows()),
           n_blocks(matrix.rows() / block_rows) {
         std::cout << "BlockDiagonalPreconditioner is constructed" << std::endl;

@@ -19,9 +19,8 @@
 
 #include "VTKFunctions.hpp"
 
-#include "EquationsWithToeplitzStructure.hpp"
 #include "FieldCalculation.hpp"
-#include "FieldOverGeometry.hpp"
+#include "GeneralEquation.hpp"
 #include "GeneralizedEquations.hpp"
 
 #include "math/matrix/Matrix.hpp"
@@ -76,7 +75,8 @@ int main() {
               << std::endl;
 
     // собираем тёплицеву матрицу
-    const auto matrix_toeplitz = Research::Lattice::getMatrix(geometry, a, k);
+    const auto matrix_toeplitz =
+        Research::Lattice::getMatrix<Research::Lattice::CalculationMethod::Full>(geometry, a, k);
     std::cout << "Toeplitz matrix is ready" << std::endl;
 
     // собираем общую матрицу (большую и плотную!)
@@ -84,10 +84,21 @@ int main() {
     std::cout << "Full matrix is ready" << std::endl;
 
     // собираем факторизованную матрицу
-    const auto matrix_factored = Research::Lattice::getMatrixCompressed(geometry, a, k);
+//    const auto matrix_factored =
+//        Research::Lattice::getMatrix<Research::Lattice::CalculationMethod::Compressed>(geometry, a, k);
     std::cout << "Factored matrix is ready" << std::endl;
 
     // Считаем ошибку
-    std::cout << (matrix_toeplitz.to_dense() - matrix_full).norm() / matrix_full.norm() << std::endl;
-    std::cout << (matrix_full - matrix_factored.to_dense()).norm() / matrix_full.norm() << std::endl;
+    std::cout << (matrix_toeplitz.to_dense() - matrix_full).norm() << std::endl;
+//    std::cout << (matrix_full - matrix_factored.to_dense()).norm() << std::endl;
+
+    // Проверка умножения на матрицу
+    for (int i = 0; i < 100; ++i) {
+        const Types::VectorXc vec = Types::VectorXc::Random(matrix_toeplitz.rows());
+        const auto res_toeplitz = matrix_toeplitz * vec;
+        const Types::VectorXc res_full = matrix_full * vec;
+        std::cout << "----- Iteration " << i << " -----" << std::endl;
+        std::cout << (res_toeplitz - res_full).norm() << std::endl;
+        std::cout << (res_toeplitz - res_full).norm() / res_full.norm() << std::endl;
+    }
 }

@@ -20,7 +20,6 @@
 
 #include "VTKFunctions.hpp"
 
-#include "EquationsWithToeplitzStructure.hpp"
 #include "FieldCalculation.hpp"
 #include "FieldOverGeometry.hpp"
 #include "GeneralizedEquations.hpp"
@@ -73,6 +72,17 @@ template <typename Fields> void getSigmaValuesXZ(const Types::complex_d k, const
     Utils::to_csv(esas, angles, "sigma", "angle", sigma);
 }
 
+#include "math/matrix/iterative_solvers_coverage/DiagonalPreconditioner.hpp"
+#include "math/matrix/iterative_solvers_coverage/MatrixReplacement.hpp"
+#include "math/matrix/iterative_solvers_coverage/MatrixTraits.hpp"
+
+namespace LAMatrix = Math::LinAgl::Matrix;
+using MyMatrix = Types::MatrixXc;
+using DiagonalPrec = LAMatrix::Preconditioning::DiagonalPreconditioner<Types::complex_d, MyMatrix>;
+using BlockDiagPrec = LAMatrix::Preconditioning::BlockDiagonalPreconditioner<Types::complex_d, MyMatrix>;
+using NoPrec = LAMatrix::Preconditioning::IdentityPreconditioner<Types::complex_d, MyMatrix>;
+using MatrixWrapper = LAMatrix::Wrappers::MatrixReplacement<MyMatrix, DiagonalPrec>;
+
 int main() {
     // считываем сетку на антенне
     const std::string nodesFile = "/home/evgen/Education/MasterDegree/thesis/Electromagnetic-Waves-Scattering/meshes/"
@@ -87,7 +97,7 @@ int main() {
     auto mesh_base = Mesh::SurfaceMesh{parser_out.first, parser_out.second};
 
     constexpr Types::index N1 = 1;
-    constexpr Types::index N2 = 7;
+    constexpr Types::index N2 = 5;
     constexpr Types::index N1_x_N2 = N1 * N2;
     const Scene<N1, N2> geometry{0.14, 0.1, mesh_base};
 
@@ -113,7 +123,7 @@ int main() {
 
     // собираем правую часть шаманским способом (очень шаманским)
     // решаем какой будет фазовый фактор на волноводах
-    const Containers::array<Types::scalar, N1_x_N2> phases{0., 0, 0, 0, 0, 0, 0};
+    const Containers::array<Types::scalar, N1_x_N2> phases{0., 0, 0, 0, 0};
     Containers::array<Types::complex_d, N1_x_N2> phase_factors;
     for (Types::index i = 0; i < phases.size(); ++i)
         phase_factors[i] = std::exp(Math::Constants::i * phases[i] * Math::Constants::deg_to_rad<Types::scalar>());
@@ -121,7 +131,9 @@ int main() {
 
     std::cout << "RHS assembled, size: " << rhs.rows() << std::endl;
 
-    auto result = Research::solve<Eigen::GMRES>(matrix, rhs, 2000, 1e-2);
+    auto result = Research::solve<Eigen::GMRES>(MatrixWrapper{matrix}, rhs, 2000, 1e-2);
+
+    std::cout << (matrix * result - rhs).norm() / rhs.norm() << std::endl;
 
     // Разбиваем на токи и рисуем на разных многообразиях
     const Research::Lattice::FieldOver field_set(geometry, std::move(result));

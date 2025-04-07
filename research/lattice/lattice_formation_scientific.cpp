@@ -8,7 +8,6 @@
 #include "mesh/Parser.hpp"
 #include "mesh/SurfaceMesh.hpp"
 
-#include "math/fields/SurfaceVectorField.hpp"
 #include "math/matrix/iterative_solvers_coverage/DiagonalPreconditioner.hpp"
 #include "math/matrix/iterative_solvers_coverage/MatrixReplacement.hpp"
 #include "math/matrix/iterative_solvers_coverage/MatrixTraits.hpp"
@@ -19,7 +18,7 @@
 
 #include "VTKFunctions.hpp"
 
-#include "EquationsWithToeplitzStructure.hpp"
+#include "GeneralEquation.hpp"
 #include "FieldCalculation.hpp"
 #include "FieldOverGeometry.hpp"
 #include "GeneralizedEquations.hpp"
@@ -111,7 +110,7 @@ int main() {
     auto mesh_base = Mesh::SurfaceMesh{parser_out.first, parser_out.second};
 
     constexpr Types::index N1 = 1;
-    constexpr Types::index N2 = 7;
+    constexpr Types::index N2 = 5;
     constexpr Types::index N1_x_N2 = N1 * N2;
     const Scene<N1, N2> geometry{0.14, 0.1, mesh_base};
 
@@ -134,7 +133,7 @@ int main() {
 
     auto start = std::chrono::high_resolution_clock::now();
 
-    const auto matrix = Research::Lattice::getMatrix(geometry, a, k);
+    const auto matrix = Research::Lattice::getMatrix<Research::Lattice::CalculationMethod::Full>(geometry, a, k);
 
     auto end = std::chrono::high_resolution_clock::now();
     auto elapsed = std::chrono::duration_cast<std::chrono::seconds>(end - start);
