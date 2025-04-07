@@ -2,8 +2,8 @@
 // Created by evgen on 27.02.2025.
 //
 
-#ifndef MATRIXTRAITS_HPP
-#define MATRIXTRAITS_HPP
+#ifndef ITERATIVE_SOLVERS_COVERAGE_MATRIXTRAITS_HPP
+#define ITERATIVE_SOLVERS_COVERAGE_MATRIXTRAITS_HPP
 
 #include "IdentityPreconditioner.hpp"
 #include "MatrixReplacement.hpp"
@@ -57,4 +57,4 @@ template <typename MatrixType> struct traits<My::MatrixReplacement<MatrixType>> 
 };
 } // namespace Eigen::internal
 
-#endif // MATRIXTRAITS_HPP
+#endif // ITERATIVE_SOLVERS_COVERAGE_MATRIXTRAITS_HPP

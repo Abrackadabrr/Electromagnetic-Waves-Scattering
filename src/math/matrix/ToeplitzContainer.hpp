@@ -113,7 +113,8 @@ ToeplitzContainer<data_type>::ToeplitzContainer(Types::index rows, Types::index 
                                                 Containers::vector<data_type> &&values_)
     : rows_(rows), cols_(cols), values(std::move(values_)) {
     if (!(values.size() == rows_ + cols_ - 1))
-        throw std::invalid_argument("ToeplitzContainer constructor with &&vector failed");
+        throw std::invalid_argument("ToeplitzContainer constructor with &&vector failed with values.size() == "
+                                    + std::to_string(values.size()) + " and rows_ + cols_ - 1 ==" + std::to_string(rows_ + cols_ - 1));
 }
 
 template <typename data_type>

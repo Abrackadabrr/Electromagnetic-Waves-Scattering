@@ -62,43 +62,6 @@ void final_check_for_vectors(const Types::MatrixX<scalar>& matrix, const matrix_
     ASSERT_NEAR((result_straightforward - result_special).norm(), 0, 0);
 }
 
-/**
- * Обычная тёплиц-блочная матрица тоже является дважды блочно теплицевой
- * Этот тест проверяет тривиальную корректность
- *
- * Здесь очень плохой пример с точки зрения времени работы: прямое умножение в 80 раз быстрее
- */
-TEST_F(TOEPLITZ_MATRIX_TESTS, TWICE_TOEPLITZ_SIMPLE) {
-    // Описываем структуру матрицы
-    const Types::index internal_block_rows = 1;
-    const Types::index internal_block_cols = 1;
-
-    const Types::index first_layer_rows = 20;
-    const Types::index first_layer_cols = 20;
-
-    const Types::index second_layer_rows = 1;
-    const Types::index second_layer_cols = 1;
-
-    const Types::index total_rows = internal_block_rows * first_layer_rows * second_layer_rows;
-    const Types::index total_cols = internal_block_cols * first_layer_cols * second_layer_cols;
-
-    // Строим обычнцую матрицу, без специального хранения элементов
-    const auto toeplitz_matrix = get_toeplitz_matrix(total_rows, total_cols, internal_block_cols);
-    // Собираем дважды тёплицеву матрицу
-    const Math::LinAgl::Matrix::ToeplitzToeplitzBlock<complex_d> test_matrix(
-        second_layer_rows, second_layer_cols, [&first_layer_cols, &first_layer_rows](Types::index i, Types::index j) {
-            return Math::LinAgl::Matrix::ToeplitzBlock<complex_d>(first_layer_rows, first_layer_cols, get_internal_block);
-        });
-    // Собираем вектор для тестового умножения
-    Types::VectorX<scalar> vec = Types::VectorX<scalar>::Zero(total_cols);
-    for (Types::index i = 0; i < total_cols; i++)
-        vec(i) = static_cast<scalar>(i);
-
-    final_check_for_vectors(toeplitz_matrix, test_matrix, vec);
-}
-
-// А теперь настоящие дважды тёплицевы тесты
-
 // Пусть теперь внутренние блоки будут одинаковые, притом с заданным размером
 // Как и положено, блоки нумеруются четырьмя индексами, притом зависят на самом деле только от их разности
 Types::MatrixX<complex_d> get_internal_block(Types::index rows, Types::index cols, Types::index i, Types::index j,
@@ -386,4 +349,116 @@ TEST_F(TOEPLITZ_MATRIX_TESTS, TWICE_TOEPLITZ_ELEMENTS_ACCESS) {
     for (Types::index i = 0; i < total_rows; i++)
         for (Types::index k = 0; k < total_cols; k++)
             ASSERT_EQ(test_matrix(i, k), full_matrix(i, k)) << i << " " << k << std::endl;
+}
+
+
+TEST_F(TOEPLITZ_MATRIX_TESTS, TWICE_TOEPLITZ_MATRIX_OPERATIONS) {
+    Eigen::setNbThreads(1);
+    // Описываем структуру матрицы
+    const Types::index internal_block_rows = 20;
+    const Types::index internal_block_cols = 20;
+
+    const Types::index first_layer_rows = 5;
+    const Types::index first_layer_cols = 5;
+
+    const Types::index second_layer_rows = 7;
+    const Types::index second_layer_cols = 7;
+
+    const Types::index total_rows = internal_block_rows * first_layer_rows * second_layer_rows;
+    const Types::index total_cols = internal_block_cols * first_layer_cols * second_layer_cols;
+
+    // Строим обычнцую матрицу, без специального хранения элементов
+    const Types::MatrixX<complex_d> full_matrix =
+        get_full_matrix(second_layer_rows, second_layer_cols, first_layer_rows, first_layer_cols, internal_block_rows,
+                        internal_block_cols);
+    // std::cout << full_matrix << std::endl;
+
+    // Собираем дважды тёплицеву матрицу
+    const auto get_toeplitz_block_by_indexes = [&internal_block_rows, &internal_block_cols, &first_layer_rows,
+                                                &first_layer_cols](Types::index i, Types::index j) {
+        const auto get_internal_block_by_indexes = [&internal_block_rows, &internal_block_cols, &i,
+                                                    &j](Types::index k, Types::index l) {
+            return get_internal_block(internal_block_rows, internal_block_cols, i, j, k, l);
+        };
+        return Math::LinAgl::Matrix::ToeplitzBlock<complex_d>{first_layer_rows, first_layer_cols,
+                                                           get_internal_block_by_indexes};
+    };
+    const auto test_matrix = Math::LinAgl::Matrix::ToeplitzToeplitzBlock<complex_d>{second_layer_rows, second_layer_cols,
+                                                                                 get_toeplitz_block_by_indexes};
+
+    // Проверка совпадения матриц
+    ASSERT_NEAR((full_matrix - test_matrix.to_dense()).norm(), 0, 0) << "to_dense method does not work";
+
+    // Проверка метода diagonal
+    const Types::VectorXc real_diag = full_matrix.diagonal();
+    const Types::VectorXc toeplitz_diag = test_matrix.diagonal();
+
+    ASSERT_EQ(real_diag.size(), toeplitz_diag.size());
+    ASSERT_NEAR((full_matrix.diagonal() - test_matrix.diagonal()).norm(), 0, 0) << "diagonal method does not work";
+
+    //
+}
+
+
+TEST_F(TOEPLITZ_MATRIX_TESTS, TWICE_TOEPLITZ_MATRIX_TO_DENSE) {
+    Eigen::setNbThreads(1);
+    // Описываем структуру матрицы
+    const Types::index internal_block_rows = 20;
+    const Types::index internal_block_cols = 20;
+
+    const Types::index first_layer_rows = 5;
+    const Types::index first_layer_cols = 5;
+
+    const Types::index second_layer_rows = 7;
+    const Types::index second_layer_cols = 7;
+
+    const Types::index total_rows = internal_block_rows * first_layer_rows * second_layer_rows;
+    const Types::index total_cols = internal_block_cols * first_layer_cols * second_layer_cols;
+
+    // Строим обычнцую матрицу, без специального хранения элементов
+    const Types::MatrixX<complex_d> full_matrix =
+        get_full_matrix(second_layer_rows, second_layer_cols, first_layer_rows, first_layer_cols, internal_block_rows,
+                        internal_block_cols);
+    // std::cout << full_matrix << std::endl;
+
+    // Собираем дважды тёплицеву матрицу
+    Containers::vector<ToeplitzBlock> internal_blocks;
+    internal_blocks.reserve(ToeplitzBlock::get_size_of_container(second_layer_rows, second_layer_cols));
+    // Собираем большой вектор из тёплицевых блоков
+    // Этот сбор опирается на то, как именно хранится вектор,
+    // который задает тёплицеву матрицу (сначала хранится --, затем |)
+    for (int i = 0; i < second_layer_cols; i++) {
+        Containers::vector<block_t> blocks;
+        Types::index first_layer_size = ToeplitzBlock::get_size_of_container(first_layer_cols, first_layer_cols);
+        blocks.reserve(first_layer_size);
+        for (int k = 0; k < first_layer_cols; k++) {
+            // а тут обычный расчет
+            blocks.emplace_back(get_internal_block(internal_block_rows, internal_block_cols, 0, i, 0, k));
+        }
+        for (int k = 1; k < first_layer_rows; k++) {
+            // тут снова обычный расчет
+            blocks.emplace_back(get_internal_block(internal_block_rows, internal_block_cols, 0, i, k, 0));
+        }
+        internal_blocks.emplace_back(first_layer_rows, first_layer_cols, std::move(blocks));
+        ASSERT_EQ(blocks.size(), 0);
+    }
+    for (int i = 1; i < second_layer_rows; i++) {
+        Containers::vector<block_t> blocks;
+        Types::index first_layer_size = ToeplitzBlock::get_size_of_container(first_layer_cols, first_layer_cols);
+        blocks.reserve(first_layer_size);
+        for (int k = 0; k < first_layer_cols; k++) {
+            blocks.emplace_back(get_internal_block(internal_block_rows, internal_block_cols, i, 0, 0, k));
+        }
+        for (int k = 1; k < first_layer_rows; k++) {
+            blocks.emplace_back(get_internal_block(internal_block_rows, internal_block_cols, i, 0, k, 0));
+        }
+        internal_blocks.emplace_back(first_layer_rows, first_layer_cols, std::move(blocks));
+        ASSERT_EQ(blocks.size(), 0);
+    }
+
+    const Math::LinAgl::Matrix::ToeplitzToeplitzBlock test_matrix
+                            {second_layer_rows, second_layer_cols, std::move(internal_blocks)};
+
+    // Проверка совпадения матриц
+    ASSERT_NEAR((full_matrix - test_matrix.to_dense()).norm(), 0, 0) << "to_dense method does not work";
 }

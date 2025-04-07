@@ -5,16 +5,20 @@
 #ifndef DYMANICFACTOREDMATRIX_HPP
 #define DYMANICFACTOREDMATRIX_HPP
 
+#include "MatrixTraits.hpp"
 #include "types/Types.hpp"
+
 #include <iostream>
 
 namespace EMW::Math::LinAgl::Matrix {
 
 template <typename factor_t> class DynamicFactoredMatrix {
 
+    using factor_traits = MatrixTraits<factor_t>;
+
     Containers::vector<factor_t> factors_;
 
-public:
+  public:
     DynamicFactoredMatrix() = default;
 
     DynamicFactoredMatrix(Containers::vector<factor_t> &&factors) : factors_(factors){};
@@ -23,20 +27,13 @@ public:
         std::cout << "FactoredMatrix constructor with copying" << std::endl;
     };
 
-#if 0
-    template<typename ... factors_t>
-    DynamicFactoredMatrix(factors_t&& ... factors) {
-        static_assert((std::is_same_v<factors_t, factor_t> && ...));
-        factors_.reserve(sizeof...(factors));
-
-    };
-#endif
-
     template <typename vector_t> vector_t matvec(const vector_t &vector) const;
 
-    decltype(auto) compute() const noexcept;
+    typename factor_traits::production_t compute() const noexcept;
 
-    template <Types::index I> decltype(auto) get() const;
+    template <Types::index I> const factor_t& get() const;
+
+    typename factor_traits::vector_t diagonal() const;
 
     // ---- Selectors ---- //
     Types::index factor_number() const { return factors_.size(); };
@@ -48,11 +45,6 @@ public:
     decltype(auto) to_dense() const noexcept { return compute(); };
 
     // --- Доступ к элементам матрицы --- //
-    [[nodiscard]] decltype(auto) operator()(Types::index i, Types::index j) const noexcept {
-        if (factor_number() > 1)
-            std::cout << "You have probably done smth extremely wrong" << std::endl;
-        return factors_.front()(i, j);
-    }
 };
 
 template <typename factor_t>
@@ -65,7 +57,18 @@ vector_t DynamicFactoredMatrix<factor_t>::matvec(const vector_t &vector) const {
     return result;
 }
 
-template <typename factor_t> decltype(auto) DynamicFactoredMatrix<factor_t>::compute() const noexcept {
+template <typename factor_t>
+typename DynamicFactoredMatrix<factor_t>::factor_traits::vector_t
+DynamicFactoredMatrix<factor_t>::diagonal() const {
+    if (factor_number() == 1)
+        return factors_.front().diagonal();
+    std::cout << "diagonal() is potentially long operation while running with more that 1 factor numbers" << std::endl;
+    return compute().diagonal();
+}
+
+template <typename factor_t>
+typename DynamicFactoredMatrix<factor_t>::factor_traits::production_t
+DynamicFactoredMatrix<factor_t>::compute() const noexcept {
     factor_t result = factors_[0];
     for (Types::index i = 1; i < factor_number(); ++i) {
         result *= factors_[i];
@@ -73,15 +76,13 @@ template <typename factor_t> decltype(auto) DynamicFactoredMatrix<factor_t>::com
     return result;
 }
 
-template <typename factor_t>
-template <Types::index I>
-decltype(auto) DynamicFactoredMatrix<factor_t>::get() const {
+template <typename factor_t> template <Types::index I>
+const factor_t& DynamicFactoredMatrix<factor_t>::get() const {
     return factors_[I];
 }
 
 // --- Selectors --- //
-template<typename factor_t>
-Types::scalar DynamicFactoredMatrix<factor_t>::memory_usage() const {
+template <typename factor_t> Types::scalar DynamicFactoredMatrix<factor_t>::memory_usage() const {
     Types::index result = 0;
     for (auto &factor : factors_) {
         result += factor.size();
@@ -93,6 +94,6 @@ template <typename factor_t, typename vector_t>
 vector_t operator*(const DynamicFactoredMatrix<factor_t> &mat, const vector_t &vector) {
     return mat.matvec(vector);
 }
-}
+} // namespace EMW::Math::LinAgl::Matrix
 
-#endif //DYMANICFACTOREDMATRIX_HPP
+#endif // DYMANICFACTOREDMATRIX_HPP

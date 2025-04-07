@@ -55,8 +55,8 @@ calculateField(const FieldTopology &fields, const Containers::vector<Mesh::point
     return field;
 }
 
-template <typename Fields> void getSigmaValuesXZ(const Types::complex_d k, const Fields &fields) {
-    int samples = 360;
+template <typename Fields> void getSigmaValuesXZ(const Types::complex_d k, const Fields &fields, const std::string path) {
+    int samples = 720;
     Containers::vector<Types::scalar> esas;
     esas.reserve(samples);
     Containers::vector_d angles;
@@ -68,7 +68,7 @@ template <typename Fields> void getSigmaValuesXZ(const Types::complex_d k, const
         esas.push_back(ESA::calculateESA(tau, k, fields.get_electric_fields(), fields.get_magnetic_fields()));
         angles.push_back(angle);
     }
-    std::ofstream sigma("/home/evgen/Education/MasterDegree/thesis/results/lattice/sigmaXZ.csv");
+    std::ofstream sigma(path + "sigmaXZ.csv");
 
     Utils::to_csv(esas, angles, "sigma", "angle", sigma);
 }
@@ -86,10 +86,10 @@ int main() {
     const auto parser_out = EMW::Parser::parseMesh(nodesFile, cellsFile, nNodes, nCells);
     auto mesh_base = Mesh::SurfaceMesh{parser_out.first, parser_out.second};
 
-    constexpr Types::index N1 = 2;
-    constexpr Types::index N2 = 3;
+    constexpr Types::index N1 = 1;
+    constexpr Types::index N2 = 7;
     constexpr Types::index N1_x_N2 = N1 * N2;
-    const Scene<N1, N2> geometry{0.21, 0.14, mesh_base};
+    const Scene<N1, N2> geometry{0.14, 0.1, mesh_base};
 
     // Геометрические параметры антенн
     // Короткая сторона волновода
@@ -113,7 +113,7 @@ int main() {
 
     // собираем правую часть шаманским способом (очень шаманским)
     // решаем какой будет фазовый фактор на волноводах
-    const Containers::array<Types::scalar, N1_x_N2> phases{0., 124, 233, 34, 90, 351};
+    const Containers::array<Types::scalar, N1_x_N2> phases{0., 0, 0, 0, 0, 0, 0};
     Containers::array<Types::complex_d, N1_x_N2> phase_factors;
     for (Types::index i = 0; i < phases.size(); ++i)
         phase_factors[i] = std::exp(Math::Constants::i * phases[i] * Math::Constants::deg_to_rad<Types::scalar>());
@@ -126,9 +126,11 @@ int main() {
     // Разбиваем на токи и рисуем на разных многообразиях
     const Research::Lattice::FieldOver field_set(geometry, std::move(result));
 
-    const std::string path = "/home/evgen/Education/MasterDegree/thesis/results/lattice/";
+    const std::string path = "/home/evgen/Education/MasterDegree/thesis/results/investigation_over_asymmetry/full/";
     VTK::set_of_fields_snapshot(field_set, path + std::to_string(N1) + "_x_" + std::to_string(N2) + "_lattice.vtu");
 
+
+# if 0  // РАСЧЕТ ЭЛЕКТРИЧЕСКИХ ПОЛЕЙ В ПЛОСКОСТИ
     // Рисуем картину поля в плоскости y = 0
     int k1 = 100;
     Types::scalar h1 = 1. / (k1 - 1);
@@ -146,7 +148,7 @@ int main() {
 
     const auto calculated_field = calculateField(field_set, points, k);
 
-   // VTK::field_in_points_snapshot({calculated_field}, {"E"}, points, "surrounding_mesh", path);
-
-    getSigmaValuesXZ(k, field_set);
+   VTK::field_in_points_snapshot({calculated_field}, {"E"}, points, "surrounding_mesh", path);
+#endif
+    getSigmaValuesXZ(k, field_set, path + std::to_string(N1) + "_x_" + std::to_string(N2) + "_lattice/");
 }

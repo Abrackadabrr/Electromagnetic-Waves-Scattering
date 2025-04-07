@@ -56,10 +56,11 @@ Types::MatrixXc compute(const TopologicalStructure &geometry, const SelfAffectin
                         const typename auxiliary_info<SelfAffecting, OtherAffecting>::tuple_additional_args &args,
                         const std::index_sequence<IndexSequenceForAdditionalArgumentsExpansion...> &) {
     // Создаем итоговый результат
-    // Размер итоговой матрицы
+    // Размер блока в матрице
     const Types::index size_of_block =
         2 * (geometry.get(0).getCells().size() +
              geometry.get(0).getSubmesh(Mesh::IndexedCell::Tag::WAVEGUIDE_CROSS_SECTION).getCells().size());
+    // Итоговый размер матрицы
     const Types::index size = size_of_block * geometry.size();
     // std::cout << size << std::endl;
     Types::MatrixXc A(size, size);
@@ -72,7 +73,7 @@ Types::MatrixXc compute(const TopologicalStructure &geometry, const SelfAffectin
         for (int j = 0; j < geometry.size(); j++)
             if (i != j) {
                 // если у нас недиагональный блок, то считаем матрицу
-                // A_ij блок показывает как k сетка влияет на поле в точках коллокации на j сетке
+                // A_ij блок показывает как j сетка влияет на поле в точках коллокации на i сетке
                 const auto A_ij = submatrix(geometry.get(j), geometry.get(i),
                                             std::get<IndexSequenceForAdditionalArgumentsExpansion>(args)...);
                 // рассчитывем место, где этот блок должен находится

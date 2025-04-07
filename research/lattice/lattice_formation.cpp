@@ -1,5 +1,5 @@
 //
-// Created by evgen on 05.02.2025.
+// Created by evgen on 27.03.2025.
 //
 
 #include <string>
@@ -63,7 +63,7 @@ template <typename Fields> void getSigmaValuesXZ(const Types::complex_d k, const
 
     for (int i = 0; i < samples; i++) {
         Types::scalar angle = i * Math::Constants::PI<Types::scalar>() * 2 / samples;
-        Types::Vector3d tau = {std::sin(angle), std::cos(angle), 0};
+        Types::Vector3d tau = {std::sin(angle), 0, std::cos(angle)};
         esas.push_back(ESA::calculateESA(tau, k, fields.get_electric_fields(), fields.get_magnetic_fields()));
         angles.push_back(angle);
     }
@@ -95,7 +95,7 @@ using TTBMatrix = LAMatrix::ToeplitzToeplitzDynFactoredBlock<Types::complex_d>;
 using DiagonalPrec = LAMatrix::Preconditioning::DiagonalPreconditioner<Types::complex_d, TTBMatrix>;
 using BlockDiagPrec = LAMatrix::Preconditioning::BlockDiagonalPreconditioner<Types::complex_d, TTBMatrix>;
 using NoPrec = LAMatrix::Preconditioning::IdentityPreconditioner<Types::complex_d, TTBMatrix>;
-using MatrixWrapper = LAMatrix::Wrappers::MatrixReplacement<TTBMatrix, DiagonalPrec>;
+using MatrixWrapper = LAMatrix::Wrappers::MatrixReplacement<TTBMatrix, BlockDiagPrec>;
 
 int main() {
     // считываем сетку на антенне
@@ -110,10 +110,10 @@ int main() {
     const auto parser_out = EMW::Parser::parseMesh(nodesFile, cellsFile, nNodes, nCells);
     auto mesh_base = Mesh::SurfaceMesh{parser_out.first, parser_out.second};
 
-    constexpr Types::index N1 = 1;
-    constexpr Types::index N2 = 20;
+    constexpr Types::index N1 = 16;
+    constexpr Types::index N2 = 16;
     constexpr Types::index N1_x_N2 = N1 * N2;
-    const Scene<N1, N2> geometry{0.07, 0.1, mesh_base};
+    const Scene<N1, N2> geometry{0.1, 0.05, mesh_base};
 
     // Геометрические параметры антенн
     // Короткая сторона волновода
@@ -141,10 +141,10 @@ int main() {
 
     std::cout << Utils::get_memory_usage(matrix) << std::endl;
     std::cout << "Matrix assembled, size: " << matrix.rows() << "; time elapsed: " << elapsed << std::endl;
-
+#if 0
     // собираем правую часть шаманским способом (очень шаманским)
     // решаем какой будет фазовый фактор на волноводах
-    const Containers::array<Types::scalar, N1_x_N2> phases{0., 0, 0,};
+    const Containers::array<Types::scalar, N1_x_N2> phases{};
     Containers::array<Types::complex_d, N1_x_N2> phase_factors;
     for (Types::index i = 0; i < phases.size(); ++i)
         phase_factors[i] = std::exp(Math::Constants::i * phases[i] * Math::Constants::deg_to_rad<Types::scalar>());
@@ -157,31 +157,11 @@ int main() {
     // Разбиваем на токи и рисуем на разных многообразиях
     const Research::Lattice::FieldOver field_set(geometry, std::move(result));
 
-    const std::string path = "/home/evgen/Education/MasterDegree/thesis/results/lattice_compressed/";
+    const std::string path = "/home/evgen/Education/MasterDegree/thesis/Conferentions/calculations/seminar_01_04_2025/lattice_compressed/";
     const std::string dir_name = std::to_string(N1) + "_x_" + std::to_string(N2) + "_lattice";
     VTK::set_of_fields_snapshot(field_set, path + dir_name + ".vtu");
 
-#if FIELD_CALCULATION
-    // Рисуем картину поля в плоскости y = 0
-    int k1 = 100;
-    Types::scalar h1 = 1. / (k1 - 1);
-    int k2 = 200;
-    Types::scalar h2 = 2. / (k2 - 1);
-
-    std::vector<Mesh::point_t> points;
-    points.reserve(k1 * k2);
-    Mesh::Utils::cartesian_product_unevenXZ(std::ranges::views::iota(0, k1), std::ranges::views::iota(0, k2),
-                                            std::back_inserter(points), N1, N2, h1, h2);
-
-    std::for_each(points.begin(), points.end(), [](Mesh::point_t& p) {p -= Mesh::point_t{0.5, 0, 0.5}; });
-
-    std::cout << "Surrounding Mesh Constructed" << std::endl;
-
-    const auto calculated_field = calculateField(field_set, points, k);
-
-    VTK::field_in_points_snapshot({calculated_field}, {"E"}, points, "surrounding_mesh", path);
-#endif
-
     getSigmaValuesXZ(k, field_set, path + dir_name + "/");
     getSigmaValuesYZ(k, field_set, path + dir_name + "/");
+#endif
 }

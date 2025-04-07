@@ -60,11 +60,10 @@ TEST_F(MESH_TESTING_WITH_DUPLICATED_NODES, SIMPLE_TEST) {
  * Хочу проверить тезис о том, что в сетку можно загрузить совпадающие узлы и она корректно отобразится
  */
 TEST_F(MESH_TESTING_WITH_DUPLICATED_NODES, RUPOR_MESH_TEST) {
-    GTEST_SKIP();
     const std::string nodesFile = "/home/evgen/Education/MasterDegree/thesis/Electromagnetic-Waves-Scattering/meshes/"
-                                  "waveguide/8000_nodes.csv";
+                                  "lattice/22400_nodes.csv";
     const std::string cellsFile = "/home/evgen/Education/MasterDegree/thesis/Electromagnetic-Waves-Scattering/meshes/"
-                                  "waveguide/2000_cells.csv";
+                                  "lattice/5600_cells.csv";
     const EMW::Types::index nNodes = 8000;
     const EMW::Types::index nCells = 2000;
 

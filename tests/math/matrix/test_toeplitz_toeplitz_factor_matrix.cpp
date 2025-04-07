@@ -415,3 +415,76 @@ TEST_F(TOEPLITZ_MATRIX_TESTS, TWICE_TOEPLITZ_FACTOR_NEW_CONSTRUCT_WITH_RSVD) {
     std::cout << "Количество памяти для тёплицевой матрицы: " << mem_u.toeplitz_matrix << " Gb" << std::endl;
     std::cout << "Количество памяти для для сжатой матрицы: " << mem_u.toeplitz_and_factored_matrix << " Gb" << std::endl;
 }
+
+TEST_F(TOEPLITZ_MATRIX_TESTS, TWICE_TOEPLITZ_FACTOR_MATRIX_OPERATIONS) {
+    // Описываем структуру матрицы
+    const Types::index internal_block_rows = 2;
+    const Types::index internal_block_cols = 2;
+
+    const Types::index first_layer_rows = 3;
+    const Types::index first_layer_cols = first_layer_rows;
+
+    const Types::index second_layer_rows = 2;
+    const Types::index second_layer_cols = second_layer_rows;
+
+    const Types::index total_rows = internal_block_rows * first_layer_rows * second_layer_rows;
+    const Types::index total_cols = internal_block_cols * first_layer_cols * second_layer_cols;
+
+    // Строим обычнцую матрицу, без специального хранения элементов
+    const Types::MatrixX<complex_d> full_matrix =
+        get_full_matrix(second_layer_rows, second_layer_cols, first_layer_rows, first_layer_cols, internal_block_rows,
+                        internal_block_cols);
+
+    // Собираем дважды тёплицеву матрицу
+    Containers::vector<ToeplitzBlock> internal_blocks;
+    internal_blocks.reserve(ToeplitzBlock::get_size_of_container(second_layer_rows, second_layer_cols));
+    // Собираем большой вектор из тёплицевых блоков
+    // Этот сбор опирается на то, как именно хранится вектор,
+    // который задает тёплицеву матрицу (сначала хранится --, затем |)
+    for (int i = 0; i < second_layer_cols; i++) {
+        Containers::vector<block_t> blocks;
+        Types::index first_layer_size = ToeplitzBlock::get_size_of_container(first_layer_cols, first_layer_cols);
+        blocks.reserve(first_layer_size);
+        for (int k = 0; k < first_layer_cols; k++) {
+            // а тут обычный расчет
+            blocks.emplace_back(
+                Containers::vector{get_internal_block(internal_block_rows, internal_block_cols, 0, i, 0, k)});
+        }
+        for (int k = 1; k < first_layer_rows; k++) {
+            // тут снова обычный расчет
+            blocks.emplace_back(
+                Containers::vector{get_internal_block(internal_block_rows, internal_block_cols, 0, i, k, 0)});
+        }
+        internal_blocks.emplace_back(first_layer_rows, first_layer_cols, std::move(blocks));
+        ASSERT_EQ(blocks.size(), 0);
+    }
+    for (int i = 1; i < second_layer_rows; i++) {
+        Containers::vector<block_t> blocks;
+        Types::index first_layer_size = ToeplitzBlock::get_size_of_container(first_layer_cols, first_layer_cols);
+        blocks.reserve(first_layer_size);
+        for (int k = 0; k < first_layer_cols; k++) {
+            blocks.emplace_back(
+                Containers::vector{get_internal_block(internal_block_rows, internal_block_cols, i, 0, 0, k)});
+        }
+        for (int k = 1; k < first_layer_rows; k++) {
+            blocks.emplace_back(
+                Containers::vector{get_internal_block(internal_block_rows, internal_block_cols, i, 0, k, 0)});
+        }
+        internal_blocks.emplace_back(first_layer_rows, first_layer_cols, std::move(blocks));
+        ASSERT_EQ(blocks.size(), 0);
+    }
+
+    const Math::LinAgl::Matrix::ToeplitzToeplitzDynFactoredBlock test_matrix{second_layer_rows, second_layer_cols,
+                                                                             std::move(internal_blocks)};
+
+    ASSERT_EQ(internal_blocks.size(), 0);
+
+
+    ASSERT_EQ(test_matrix.cols(), total_cols);
+    ASSERT_EQ(test_matrix.rows(), total_rows);
+    ASSERT_EQ(test_matrix.cols_in_block(), internal_block_rows * first_layer_rows);
+    ASSERT_EQ(test_matrix.rows_in_block(), internal_block_cols * first_layer_cols);
+
+    ASSERT_NEAR((test_matrix.to_dense() - full_matrix).norm(), 0, 0);
+    ASSERT_NEAR((test_matrix.diagonal() - full_matrix.diagonal()).norm(), 0, 0);
+}

@@ -23,7 +23,10 @@ TEST_F(TOEPLITZ_MATRIX_TESTS, TOEPLITZ_BLOCK_MATVEC_BENCHMARK) {
     final_check_for_vectors(toeplitz_matrix, matrix, vec);
 
     // Сравнение матриц и одновременная проверка метода to_dense
-    ASSERT_NEAR((toeplitz_matrix - matrix.to_dense()).norm(), 0, 1e-14);
+    ASSERT_NEAR((toeplitz_matrix - matrix.to_dense()).norm(), 0, 1e-14) << "to_dense method does not work";
+
+    // Тест на метод diagonal
+    ASSERT_NEAR((toeplitz_matrix.diagonal() - matrix.diagonal()).norm(), 0, 0) << "diagonal method does not work";
 }
 
 TEST_F(TOEPLITZ_MATRIX_TESTS, TOEPLITZ_BLOCK_MULL_BY_VALUE) {
@@ -77,4 +80,25 @@ TEST_F(TOEPLITZ_MATRIX_TESTS, TOEPLITZ_BLOCK_CONSTRUCT_EASILY) {
     vec.setRandom();
     // Собираем вектор и умножаем
     ASSERT_NEAR((matrix * vec - matrix_2 * vec).norm(), 0, 5e-14);
+}
+
+TEST_F(TOEPLITZ_MATRIX_TESTS, TOEPLITZ_BLOCK_MATRIX_OPRATION) {
+    Types::index tl_rows = 53;
+    Types::index tl_cols = 40;
+    Types::index block_size = 2;
+    Types::index N = block_size * tl_rows;
+    Types::index M = block_size * tl_cols;
+    const Types::MatrixX<complex_d> toeplitz_matrix = get_toeplitz_matrix(tl_rows, tl_cols, block_size);
+    const Math::LinAgl::Matrix::ToeplitzBlock<complex_d> matrix(
+        tl_rows, tl_cols, [block_size](Types::index i, Types::index j) { return get_block(i, j, block_size); });
+
+    // Сравнение матриц и одновременная проверка метода to_dense
+    ASSERT_NEAR((toeplitz_matrix - matrix.to_dense()).norm(), 0, 0) << "to_dense method does not work";
+
+    // Тест на метод diagonal
+    const Types::VectorXc real_diag = toeplitz_matrix.diagonal();
+    const Types::VectorXc toeplitz_diag = matrix.diagonal();
+
+    ASSERT_EQ(real_diag.size(), toeplitz_diag.size());
+    ASSERT_NEAR((real_diag - toeplitz_diag).norm(), 0, 0) << "diagonal method does not work";
 }

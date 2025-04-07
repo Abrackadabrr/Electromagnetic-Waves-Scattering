@@ -17,6 +17,8 @@ namespace EMW::Math::LinAgl::Matrix {
  * Матрица со структурой тёплиц-тёплиц-общий_вид
  */
 template <typename scalar_t, typename block_t> class ToeplitzStructure {
+    // Проверка на дефолт контруирование
+    static_assert(std::is_default_constructible_v<block_t>);
   public:
     using vector_t = Types::VectorX<scalar_t>;
     using block_type = block_t;
@@ -54,8 +56,15 @@ template <typename scalar_t, typename block_t> class ToeplitzStructure {
     /** Умножение себя на число */
     const ToeplitzStructure &mull_inplace(scalar_t value) noexcept;
     /** Взятие диагонали */
+    [[nodiscard]] vector_t diagonal() const;
 
     // --- Selectors --- //
+    /**
+     * Вернуть блок в матрице под передаваемой нумерацией
+     * @param row номер строки (в контексте блочной структуры)
+     * @param col номер столбца (в контексте блочной структуры)
+     * @return const ref на соотвествующий блок в тёплицевом контейнере
+     */
     [[nodiscard]] const block_t &get_block(Types::index row, Types::index col) const noexcept {
         return blocks(row, col);
     }
@@ -69,20 +78,14 @@ template <typename scalar_t, typename block_t> class ToeplitzStructure {
     [[nodiscard]] Types::index rows() const noexcept { return rows_in_block_ * blocks.rows(); }
     [[nodiscard]] Types::index cols() const noexcept { return cols_in_block_ * blocks.cols(); }
 
+    [[nodiscard]] Types::index rows_in_toeplitrz() { return blocks.rows(); };
+    [[nodiscard]] Types::index cols_in_toeplitrz() { return blocks.cols(); };
+
     // --- Доступ к элементам на чтение --- //
 
-    /**
-     * Доступ к настоящим элементам в матрице, а не к блокам!
-     */
-    [[nodiscard]] const scalar_t &operator()(Types::index i, Types::index j) const noexcept {
-        // сначала поймем в каком из "верхних блоков" мы находимся
-        const Types::index row_on_current_level = i / rows_in_block_;
-        const Types::index col_on_current_level = j / cols_in_block_;
-        const Types::index i_new = i % rows_in_block_;
-        const Types::index j_new = j % cols_in_block_;
-        return blocks(row_on_current_level, col_on_current_level)(i_new, j_new);
-    }
-
+    /** Доступ к настоящим элементам в матрице, а не к блокам! */
+    [[nodiscard]] const scalar_t &operator()(Types::index i, Types::index j) const noexcept;
+    /** Доступ к блокам в матрице */
     const ToeplitzContainer<block_t> &get_blocks() const noexcept { return blocks; }
 
     // ---- Static methods --- //
@@ -94,6 +97,35 @@ template <typename scalar_t, typename block_t> class ToeplitzStructure {
     // Приведение к плотной матрице
     Types::MatrixX<scalar_t> to_dense() const noexcept;
 };
+
+template <typename scalar_t, typename block_t>
+typename ToeplitzStructure<scalar_t, block_t>::vector_t ToeplitzStructure<scalar_t, block_t>::diagonal() const {
+    if (rows_in_block_ != cols_in_block_) {
+        throw std::runtime_error(
+            "To correct use of diagonal method internal blocks of toeplitz structure must be square");
+    }
+
+    const Types::index diagonal_size = std::min(rows_in_block_, cols_in_block_);
+    const Types::index how_many_diagonal_blocks = std::min(blocks.rows(), blocks.cols());
+    const vector_t subdiag = blocks(0, 0).diagonal();
+
+    vector_t result = vector_t::Zero(diagonal_size * how_many_diagonal_blocks);
+    for (Types::index i = 0; i < how_many_diagonal_blocks; ++i) {
+        result.block(i * diagonal_size, 0, diagonal_size, 1) = subdiag;
+    }
+    return result;
+}
+
+template <typename scalar_t, typename block_t>
+[[nodiscard]] const scalar_t &ToeplitzStructure<scalar_t, block_t>::operator()(Types::index i,
+                                                                               Types::index j) const noexcept {
+    // сначала поймем в каком из "верхних блоков" мы находимся
+    const Types::index row_on_current_level = i / rows_in_block_;
+    const Types::index col_on_current_level = j / cols_in_block_;
+    const Types::index i_new = i % rows_in_block_;
+    const Types::index j_new = j % cols_in_block_;
+    return blocks(row_on_current_level, col_on_current_level)(i_new, j_new);
+}
 
 template <typename scalar_t, typename block_t>
 ToeplitzStructure<scalar_t, block_t>::ToeplitzStructure(
@@ -155,10 +187,12 @@ Types::MatrixX<scalar_t> ToeplitzStructure<scalar_t, block_t>::to_dense() const 
     Types::MatrixX<scalar_t> result(rows(), cols());
     for (Types::index i = 0; i < blocks.rows(); ++i) {
         for (Types::index j = 0; j < blocks.cols(); ++j) {
+            const auto& block = blocks(i, j);
             if constexpr (std::is_same_v<block_t, Types::MatrixX<scalar_t>>) {
-                result.block(i * rows_in_block_, j * cols_in_block_, rows_in_block_, cols_in_block_) = blocks(i, j);
+                result.block(i * rows_in_block_, j * cols_in_block_, rows_in_block_, cols_in_block_) = block;
             } else {
-                result.block(i * rows_in_block_, j * cols_in_block_, rows_in_block_, cols_in_block_) = blocks(i, j).to_dense();
+               // std::cout << block.rows() << " " << rows_in_block_ << std::endl;
+                result.block(i * rows_in_block_, j * cols_in_block_, rows_in_block_, cols_in_block_) = block.to_dense();
             }
         }
     }

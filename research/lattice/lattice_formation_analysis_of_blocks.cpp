@@ -15,13 +15,13 @@
 #include "FieldCalculation.hpp"
 #include "GeneralizedEquations.hpp"
 
-#include <unsupported/Eigen/IterativeSolvers>
-
 #include "experiment/PhysicalCondition.hpp"
 
-#include <Utils.hpp>
+#include "Utils.hpp"
+
 #include <chrono>
 #include <iostream>
+#include <numeric>
 
 template <typename Matrix> void dump(const Matrix &matrix, const std::string &filename) {
     std::ofstream file(filename);
@@ -36,38 +36,18 @@ template <typename Matrix> void dump(const Matrix &matrix, const std::string &fi
     file.close();
 }
 
-int main() {
+
+void dump_matrix(const std::string &nodesFile, const std::string &cellsFile, int nodes, int cells) {
     // путь до папки, куда писать результаты
     const std::string path = "/home/evgen/Education/MasterDegree/thesis/results/lattice/";
-    // считываем сетку на антенне
-
-#define REAL_CASE 1
-#define SVD 0
-
-#if REAL_CASE
-    const std::string nodesFile = "/home/evgen/Education/MasterDegree/thesis/Electromagnetic-Waves-Scattering/meshes/"
-                                  "lattice/8000_nodes.csv";
-    const std::string cellsFile = "/home/evgen/Education/MasterDegree/thesis/Electromagnetic-Waves-Scattering/meshes/"
-                                  "lattice/2000_cells.csv";
-    constexpr EMW::Types::index nNodes = 8000;
-    constexpr EMW::Types::index nCells = 2000;
-#else
-    const std::string cellsFile = "/home/evgen/Education/MasterDegree/thesis/Electromagnetic-Waves-Scattering/tests/"
-                                  "meshes_for_tests/lattice_redused/80_cells.csv";
-    const std::string nodesFile = "/home/evgen/Education/MasterDegree/thesis/Electromagnetic-Waves-Scattering/tests/"
-                                  "meshes_for_tests/lattice_redused/320_nodes.csv";
-    constexpr EMW::Types::index nNodes = 320;
-    constexpr EMW::Types::index nCells = 80;
-#endif
-
     // собираем сетки
-    const auto parser_out = EMW::Parser::parseMesh(nodesFile, cellsFile, nNodes, nCells);
+    const auto parser_out = EMW::Parser::parseMesh(nodesFile, cellsFile, nodes, cells);
     auto mesh_base = Mesh::SurfaceMesh{parser_out.first, parser_out.second};
 
     // сделаем ещё одну сетку для анализа внедиагонлаьных элементов
     const auto &mesh_1 = mesh_base;
 
-    const Types::Vector3d origin{4 * 0.14, 0, 0.0};
+    const Types::Vector3d origin{0.075, 0, 0.0};
     const auto mesh_2 = Mesh::Utils::move_by_vector(mesh_base, origin);
 
     // Геометрические параметры антенн
@@ -79,26 +59,33 @@ int main() {
     const Types::complex_d k{Physics::get_k_on_frquency(freq), 0};
 
     const auto out_diagonal_block = WaveGuideWithActiveSection::submatrix(mesh_2, mesh_1, a, k);
-    const auto diagonal_block = WaveGuideWithActiveSection::diagonal(mesh_1, a, k);
 
-#if SVD
     const auto svd = out_diagonal_block.bdcSvd();
-    const auto SVD_diag = diagonal_block.bdcSvd();
 
     const auto sing_vals = svd.singularValues();
-    const auto sing_vals_diag = SVD_diag.singularValues();
     Containers::vector<int> indexes{};
     indexes.resize(sing_vals.size());
     std::iota(indexes.begin(), indexes.end(), 0);
     // Запись сингулярных чисел
-    std::ofstream file(path + "sv_out.csv");
+    std::ofstream file(path + "sv_out" + std::to_string(cells) +".csv");
     Utils::to_csv(indexes, sing_vals, "ind", "sv", file);
+}
 
-    std::ofstream file_diag(path + "sv_diagonal.csv");
-    Utils::to_csv(indexes, sing_vals_diag, "ind", "sv_out_diag", file);
-#endif
+int main() {
+    const std::string nodesFile_c = "/home/evgen/Education/MasterDegree/thesis/Electromagnetic-Waves-Scattering/meshes/"
+                                  "lattice/8000_nodes.csv";
+    const std::string cellsFile_c = "/home/evgen/Education/MasterDegree/thesis/Electromagnetic-Waves-Scattering/meshes/"
+                                  "lattice/2000_cells.csv";
+    constexpr EMW::Types::index nNodes_c = 8000;
+    constexpr EMW::Types::index nCells_c = 2000;
 
-    // Запись матриц в файлик для обработке в други месте
-    dump(diagonal_block, path + "matrix/diagonal.txt");
-    dump(out_diagonal_block, path + "matrix/out_diagonal.txt");
+    const std::string nodesFile_f = "/home/evgen/Education/MasterDegree/thesis/Electromagnetic-Waves-Scattering/meshes/"
+                                  "lattice/22400_nodes.csv";
+    const std::string cellsFile_f = "/home/evgen/Education/MasterDegree/thesis/Electromagnetic-Waves-Scattering/meshes/"
+                                  "lattice/5600_cells.csv";
+    constexpr EMW::Types::index nNodes_f = 22400;
+    constexpr EMW::Types::index nCells_f = 5600;
+
+    dump_matrix(nodesFile_f, cellsFile_f, nNodes_f, nCells_f);
+    dump_matrix(nodesFile_c, cellsFile_c, nNodes_c, nCells_c);
 }
