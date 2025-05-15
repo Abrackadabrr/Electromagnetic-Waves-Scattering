@@ -5,26 +5,14 @@
 #include "math/matrix/decompositions/Decompositions.hpp"
 #include "types/Types.hpp"
 
+#include "mat_decomp.hpp"
+
 #include <gtest/gtest.h>
 
 using namespace EMW;
 
-class RSVD_TESTS : public ::testing::Test {
-  protected:
-    Types::scalar sin_mat_el(Types::index i, Types::index j) { return std::sin(i + j); }
 
-    Types::MatrixXd get_sinus_mat(Types::index N) {
-        Types::MatrixXd sin_mat = Types::MatrixXd::Zero(N, N);
-        for (Types::index i = 0; i < N; i++) {
-            for (Types::index j = 0; j < N; j++) {
-                sin_mat(i, j) = sin_mat_el(i, j);
-            }
-        }
-        return sin_mat;
-    }
-};
-
-TEST_F(RSVD_TESTS, TEST_SINUS_MATRIX) {
+TEST_F(MATRIX_DECOMPOSITIONS_TESTS, TEST_SINUS_MATRIX) {
     const Types::index N = 1000;
     const auto mat = get_sinus_mat(N);
 
@@ -62,7 +50,7 @@ TEST_F(RSVD_TESTS, TEST_SINUS_MATRIX) {
 
 #include <chrono>
 
-TEST_F(RSVD_TESTS, REAL_CASE_TEST) {
+TEST_F(MATRIX_DECOMPOSITIONS_TESTS, REAL_CASE_TEST) {
     const std::string nodesFile = "/home/evgen/Education/MasterDegree/thesis/Electromagnetic-Waves-Scattering/meshes/"
                                   "lattice/8000_nodes.csv";
     const std::string cellsFile = "/home/evgen/Education/MasterDegree/thesis/Electromagnetic-Waves-Scattering/meshes/"
