@@ -60,22 +60,20 @@ TEST_F(MESH_TESTING_WITH_DUPLICATED_NODES, SIMPLE_TEST) {
  * Хочу проверить тезис о том, что в сетку можно загрузить совпадающие узлы и она корректно отобразится
  */
 TEST_F(MESH_TESTING_WITH_DUPLICATED_NODES, RUPOR_MESH_TEST) {
-    const std::string nodesFile = "/home/evgen/Education/MasterDegree/thesis/Electromagnetic-Waves-Scattering/meshes/"
-                                  "lattice/22400_nodes.csv";
-    const std::string cellsFile = "/home/evgen/Education/MasterDegree/thesis/Electromagnetic-Waves-Scattering/meshes/"
-                                  "lattice/5600_cells.csv";
-    const EMW::Types::index nNodes = 8000;
-    const EMW::Types::index nCells = 2000;
+    const std::string nodesFile = "/home/evgen/Education/MasterDegree/thesis/Electromagnetic-Waves-Scattering/tests/visualisation/14000_nodes.csv";
+    const std::string cellsFile = "/home/evgen/Education/MasterDegree/thesis/Electromagnetic-Waves-Scattering/tests/visualisation/13998_cells.csv";
+    const EMW::Types::index nNodes = 13998;
+    const EMW::Types::index nCells = 14000;
 
     const auto parser_out = EMW::Parser::parseMesh(nodesFile, cellsFile, nNodes, nCells);
     auto surfaceMesh = EMW::Mesh::SurfaceMesh{parser_out.first, parser_out.second};
+    auto submesh = surfaceMesh.getSubmesh(EMW::Mesh::IndexedCell::Tag::WAVEGUIDE_CROSS_SECTION);
     // surfaceMesh = surfaceMesh.getSubmesh(EMW::Mesh::IndexedCell::Tag::WAVEGUIDE_CROSS_SECTION);
 
-    EMW::Math::SurfaceScalarField tag_field = EMW::Math::SurfaceScalarField::tagField(surfaceMesh);
+    EMW::Math::SurfaceScalarField tag_field = EMW::Math::SurfaceScalarField::tagField(submesh);
     tag_field.setName("tag");
-    EMW::Math::SurfaceScalarField number_field = EMW::Math::SurfaceScalarField::sequenceNumberField(surfaceMesh);
+    EMW::Math::SurfaceScalarField number_field = EMW::Math::SurfaceScalarField::sequenceNumberField(submesh);
     number_field.setName("number");
-    VTK::united_snapshot({}, {tag_field, number_field}, surfaceMesh, "/home/evgen/Education/MasterDegree/thesis/"
+    VTK::united_snapshot({}, {tag_field, number_field}, submesh, "/home/evgen/Education/MasterDegree/thesis/"
                                "Electromagnetic-Waves-Scattering/tests/visualisation/");
 }
-
