@@ -1,20 +1,14 @@
 //
-// Created by evgen on 18.01.2025.
+// Created by evgen on 14.04.2025.
 //
 
-#ifndef GENERALIZEDEQUATIONS_HPP
-#define GENERALIZEDEQUATIONS_HPP
+#ifndef EQUATIONS_HPP
+#define EQUATIONS_HPP
 
 #include "mesh/SurfaceMesh.hpp"
-
-#include "slae_generation/MatrixGeneration.hpp"
-
 #include "types/Types.hpp"
 
-#include "math/MathConstants.hpp"
-#include "math/fields/SurfaceVectorField.hpp"
-
-namespace WaveGuideWithActiveSection {
+namespace InfiniteWaveguideEquations {
 
 using namespace EMW;
 
@@ -46,7 +40,6 @@ inline EMW::Types::MatrixXc diagonal(const Mesh::SurfaceMesh &mesh_all, Types::s
 #endif
 
     // генерируем необходимые подматрицы
-    // TODO: переписать код, чтобы матрицы генерировалась in-place
     auto K_all = Matrix::getMatrixK(k, mesh_all);
     auto R_0 = Matrix::getMatrixR(k, mesh_zero, mesh_all);
     auto K_0 = Matrix::getMatrixK(k, mesh_zero);
@@ -143,8 +136,7 @@ inline Types::MatrixXc submatrix(const Mesh::SurfaceMesh &mest_to_integrate,
     return A;
 }
 
-inline Types::VectorXc getRhsBase(const Mesh::SurfaceMesh &mesh_all, Types::scalar a, Types::complex_d k) {
-
+inline Types::VectorXc getRhs(const Mesh::SurfaceMesh &mesh_all, Types::scalar a, Types::complex_d k) {
     // Собираем сабсетку с активным сечением
     const auto &mesh_zero = mesh_all.getSubmesh(Mesh::IndexedCell::Tag::WAVEGUIDE_CROSS_SECTION);
     // Собираем функцию поля на активном сечении волновода
@@ -152,7 +144,7 @@ inline Types::VectorXc getRhsBase(const Mesh::SurfaceMesh &mesh_all, Types::scal
     const auto get_e_h10_mode = [&k, &a, &beta](const Mesh::point_t &x) {
         const auto pi = Math::Constants::PI<Types::scalar>();
         const Types::complex_d mult = Math::Constants::i * (a / pi) * k / Math::Constants::e_0_c;
-        const Types::complex_d exp = std::exp(Math::Constants::i * beta * (x.z() + 0.17));
+        const Types::complex_d exp = std::exp(Math::Constants::i * beta * (x.z()));
         const Types::scalar cos = std::cos(pi * x.x() / a);
         return Types::Vector3c{Types::complex_d{0, 0}, mult * cos * exp, Types::complex_d{0, 0}};
     };
@@ -161,28 +153,18 @@ inline Types::VectorXc getRhsBase(const Mesh::SurfaceMesh &mesh_all, Types::scal
     const Types::index K = mesh_zero.getCells().size();
 
     const Math::SurfaceVectorField direct_e_field{mesh_zero, get_e_h10_mode};
-    const Types::VectorXc non_zer0_rhs = -2 * direct_e_field.normalCrossField().asVector();
+    Types::VectorXc non_zer0_rhs = -2 * direct_e_field.normalCrossField().asVector();
+    non_zer0_rhs.block(K/2, 0, K/2, 1) = Types::VectorXc::Zero(K/2);
+    non_zer0_rhs.block(K + K/2, 0, K/2, 1) = Types::VectorXc::Zero(K/2);
 
     Types::VectorXc res = Types::VectorXc::Zero(2 * N + 2 * K);
     res.block(2 * N, 0, 2 * K, 1) = non_zer0_rhs;
     return res;
 }
 
-template<Types::index N>
-Types::VectorXc getRhs(std::array<Types::complex_d, N> phases,
-    const Mesh::SurfaceMesh &mesh_all, Types::scalar a, Types::complex_d k) {
-    const auto base_rhs = getRhsBase(mesh_all, a, k);
-
-    Types::VectorXc res{N * base_rhs.size()};
-
-    for (int i = 0; i < N; ++i) {
-        res.block(i * base_rhs.rows(), 0, base_rhs.rows(), 1) = phases[i] * base_rhs;
-    }
-    return res;
-}
-
 using diagonal_t = decltype(diagonal);
 using submatrix_t = decltype(submatrix);
+
 }
 
-#endif //GENERALIZEDEQUATIONS_HPP
+#endif //EQUATIONS_HPP

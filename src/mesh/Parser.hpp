@@ -12,7 +12,7 @@
 
 namespace EMW::Parser {
 std::pair<Containers::vector<Mesh::point_t>, Containers::vector<Containers::array<Types::index, 4>>>
-parseMesh(const std::string &csvNodes, const std::string &csvCells, int nNodes, int nCells);
+parseMesh(const std::string &csvNodes, const std::string &csvCells);
 
 }
 

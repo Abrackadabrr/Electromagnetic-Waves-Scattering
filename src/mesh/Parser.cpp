@@ -6,11 +6,11 @@
 #include "third_party/csv/csv.h"
 namespace EMW::Parser {
 std::pair<Containers::vector<Mesh::point_t>, Containers::vector<Containers::array<Types::index, 4>>>
-parseMesh(const std::string &csvNodes, const std::string &csvCells, int nNodes, int nCells) {
+parseMesh(const std::string &csvNodes, const std::string &csvCells) {
     Containers::vector<Mesh::point_t> nodes;
-    nodes.reserve(nNodes);
+    nodes.reserve(5000);
     Containers::vector<Containers::array<Types::index, 4>> cells;
-    cells.reserve(nCells);
+    cells.reserve(5000);
 
     io::CSVReader<3> nodesF(csvNodes);
     io::CSVReader<4> cellsF(csvCells);

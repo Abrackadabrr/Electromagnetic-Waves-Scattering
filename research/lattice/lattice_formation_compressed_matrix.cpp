@@ -115,7 +115,7 @@ int main() {
     constexpr Types::index N1 = 30;
     constexpr Types::index N2 = 1;
     constexpr Types::index N1_x_N2 = N1 * N2;
-    const Scene<N1, N2> geometry{0.075, 0.05, mesh_base};
+    const Scene<N1, N2> geometry{0.1, 0.036, mesh_base};
 
     // Геометрические параметры антенн
     // Короткая сторона волновода
@@ -132,11 +132,25 @@ int main() {
               << "; Длина волны в свободном пространстве: " << 2 * Math::Constants::PI<Types::scalar>() / k.real()
               << std::endl;
 
+    // собираем правую часть шаманским способом (очень шаманским)
+    // решаем какой будет фазовый фактор на волноводах
+    Containers::array<Types::scalar, N1_x_N2> phases{};
+    std::iota(phases.begin(), phases.end(), 0);
+    std::transform(phases.begin(), phases.end(), phases.begin(), [](const Types::scalar value) { return value * 45; });
+    Containers::array<Types::complex_d, N1_x_N2> phase_factors;
+    for (Types::index i = 0; i < phases.size(); ++i) {
+        const Types::scalar radians = phases[i] * Math::Constants::deg_to_rad<Types::scalar>();
+        std::cout << radians << std::endl;
+        phase_factors[i] = std::exp(Math::Constants::i * radians);
+    }
+    const auto rhs = eq::getRhs(phase_factors, mesh_base, a, k);
+    std::cout << "RHS assembled, size: " << rhs.rows() << std::endl;
+
     // собираем общую маленькую тёплицеву матрицу, притом сжатую
 
     auto start = std::chrono::high_resolution_clock::now();
 
-    Research::Lattice::CalcTraits<Research::Lattice::CalculationMethod::Compressed>::rank = 25;
+    Research::Lattice::CalcTraits<Research::Lattice::CalculationMethod::Compressed>::rank = 25                                          ;
     const auto matrix = Research::Lattice::getMatrix<Research::Lattice::CalculationMethod::Compressed>(geometry, a, k);
 
     auto end = std::chrono::high_resolution_clock::now();
@@ -145,27 +159,13 @@ int main() {
     std::cout << Utils::get_memory_usage(matrix) << std::endl;
     std::cout << "Matrix assembled, size: " << matrix.rows() << "; time elapsed: " << elapsed << std::endl;
 
-    // собираем правую часть шаманским способом (очень шаманским)
-    // решаем какой будет фазовый фактор на волноводах
-    const Containers::array<Types::scalar, N1_x_N2> phases{
-        0.,
-        0,
-        0,
-    };
-    Containers::array<Types::complex_d, N1_x_N2> phase_factors;
-    for (Types::index i = 0; i < phases.size(); ++i)
-        phase_factors[i] = std::exp(Math::Constants::i * phases[i] * Math::Constants::deg_to_rad<Types::scalar>());
-    const auto rhs = eq::getRhs(phase_factors, mesh_base, a, k);
-
-    std::cout << "RHS assembled, size: " << rhs.rows() << std::endl;
-
-    auto result = Research::solve<Eigen::GMRES>(MatrixWrapper{matrix}, rhs, 2000, 1e-2);
+    auto result = Research::solve<Eigen::GMRES>(MatrixWrapper{matrix}, rhs, 2000, 1e-4);
 
     // Разбиваем на токи и рисуем на разных многообразиях
     const Research::Lattice::FieldOver field_set(geometry, std::move(result));
 
     const std::string path =
-        "/home/evgen/Education/MasterDegree/thesis/results/investigation_over_asymmetry/compressed/";
+        "/home/evgen/Education/MasterDegree/thesis/results/investigation_over_rotation/compressed/";
     const std::string dir_name = std::to_string(N1) + "_x_" + std::to_string(N2) + "_lattice/";
     VTK::set_of_fields_snapshot(field_set, path + std::to_string(N1) + "_x_" + std::to_string(N2) + "_lattice.vtu");
 

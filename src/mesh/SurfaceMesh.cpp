@@ -9,23 +9,22 @@ namespace EMW::Mesh {
 SurfaceMesh::SurfaceMesh(Containers::vector<point_t> nodes,
                          Containers::vector<Containers::array<Types::index, 4>> cells)
     : nodes_(nodes) {
-    const auto cellsConstructed =
-        cells | std::views::transform([&nodes](const Containers::array<Types::index, 4> &indexes) -> IndexedCell {
-            auto cell = IndexedCell(indexes, nodes);
-            return cell;
-        });
-    cells_ = Containers::vector<IndexedCell>{std::ranges::begin(cellsConstructed), std::ranges::end(cellsConstructed)};
-
+    std::transform(cells.begin(), cells.end(), std::back_inserter(cells_),
+                   [&nodes](const Containers::array<Types::index, 4> &indexes) -> IndexedCell {
+                       return IndexedCell(indexes, nodes);
+                   });
+#if 1
     // БОЛЬШУЩИЙ КОСТЫЛЬ ДЛЯ РАСЧЕТА ВОЛНОВОДА
     // этот параметр показывает количество ячеек в плоскости,
     // где есть матгнитный ток и задается импедансное условие
     // эти точки помечаются отдельно, чтобы в дальнейшем их вынуть
     // в своем формате сетки я точно знаю, что эти точки лежат в конце
-    int amount_of_cells_in_active_surface = 200;
+    int amount_of_cells_in_active_surface = 2 * 10 * 21;
     for (int i = 1; i <= amount_of_cells_in_active_surface; i++) {
-        cells_[static_cast<int>(cells.size()) - i >= 0 ? cells.size() - i : 0].tag =
+        cells_[cells_.size() - i].tag =
             IndexedCell::Tag::WAVEGUIDE_CROSS_SECTION;
     }
+#endif
 };
 
 SurfaceMesh::SurfaceMesh(Containers::vector<point_t> nodes,

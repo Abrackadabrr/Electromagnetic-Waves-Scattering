@@ -15,7 +15,7 @@ Mesh::SurfaceMesh loadTriangularMesh(int nNodes, int nCells, std::string type) {
                                   "plate/triangulated/" +
                                   type + "/cells/" + std::to_string(nCells) + "_cells.csv";
 
-    auto preMesh = EMW::Parser::parseMesh(nodesFile, cellsFile, nNodes, nCells);
+    auto preMesh = EMW::Parser::parseMesh(nodesFile, cellsFile);
     auto surfaceMesh = EMW::Mesh::SurfaceMesh(
         preMesh.first, preMesh.second,
         [&](const Containers::array<Types::index, 4> &p, const Containers::vector<point_t> &fp) -> point_t {
