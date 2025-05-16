@@ -17,13 +17,19 @@ template <typename factor_t> class DynamicFactoredMatrix {
     using factor_traits = MatrixTraits<factor_t>;
 
     Containers::vector<factor_t> factors_;
+    Containers::vector<bool> transposed;
 
   public:
     DynamicFactoredMatrix() = default;
 
-    DynamicFactoredMatrix(Containers::vector<factor_t> &&factors) : factors_(factors){};
+    DynamicFactoredMatrix(Containers::vector<factor_t> &&factors)
+        : factors_(std::move(factors)), transposed(factors.size(), false){};
 
-    DynamicFactoredMatrix(const Containers::vector<factor_t> &factors) : factors_(factors) {
+    DynamicFactoredMatrix(Containers::vector<factor_t> &&factors, Containers::vector<bool> &&transposed)
+    : factors_(std::move(factors)), transposed(std::move(transposed)){};
+
+    DynamicFactoredMatrix(const Containers::vector<factor_t> &factors)
+        : factors_(factors), transposed(factors.size(), false) {
         std::cout << "FactoredMatrix constructor with copying" << std::endl;
     };
 
@@ -31,15 +37,15 @@ template <typename factor_t> class DynamicFactoredMatrix {
 
     typename factor_traits::production_t compute() const noexcept;
 
-    template <Types::index I> const factor_t& get() const;
+    template <Types::index I> const factor_t &get() const;
 
     typename factor_traits::vector_t diagonal() const;
 
     // ---- Selectors ---- //
-    Types::index factor_number() const { return factors_.size(); };
-    Types::scalar memory_usage() const;
-    Types::index rows() const { return factors_.front().rows(); };
-    Types::index cols() const { return factors_.back().cols(); };
+    inline Types::index factor_number() const { return factors_.size(); };
+    inline Types::scalar memory_usage() const;
+    inline Types::index rows() const { return factors_.front().rows(); };
+    inline Types::index cols() const { return factors_.back().cols(); };
 
     // --- Aux methods --- //
     decltype(auto) to_dense() const noexcept { return compute(); };
@@ -50,16 +56,18 @@ template <typename factor_t> class DynamicFactoredMatrix {
 template <typename factor_t>
 template <typename vector_t>
 vector_t DynamicFactoredMatrix<factor_t>::matvec(const vector_t &vector) const {
-    vector_t result = factors_.back() * vector;
-    for (Types::integer i = factor_number() - 2; i >= 0; --i) {
-        result = factors_[i] * result;
+    vector_t result = vector;
+    for (Types::integer i = factor_number() - 1; i >= 0; --i) {
+        if (transposed[i])
+            result = factors_[i].transpose() * result;
+        else
+            result = factors_[i] * result;
     }
     return result;
 }
 
 template <typename factor_t>
-typename DynamicFactoredMatrix<factor_t>::factor_traits::vector_t
-DynamicFactoredMatrix<factor_t>::diagonal() const {
+typename DynamicFactoredMatrix<factor_t>::factor_traits::vector_t DynamicFactoredMatrix<factor_t>::diagonal() const {
     if (factor_number() == 1)
         return factors_.front().diagonal();
     std::cout << "diagonal() is potentially long operation while running with more that 1 factor numbers" << std::endl;
@@ -69,15 +77,21 @@ DynamicFactoredMatrix<factor_t>::diagonal() const {
 template <typename factor_t>
 typename DynamicFactoredMatrix<factor_t>::factor_traits::production_t
 DynamicFactoredMatrix<factor_t>::compute() const noexcept {
-    factor_t result = factors_[0];
+    factor_t result{};
+    if (transposed[0])
+        result = factors_[0].transpose();
+    else
+        result = factors_[0];
     for (Types::index i = 1; i < factor_number(); ++i) {
-        result *= factors_[i];
+        if (transposed[i])
+            result *= factors_[i].transpose();
+        else
+            result *= factors_[i];
     }
     return result;
 }
 
-template <typename factor_t> template <Types::index I>
-const factor_t& DynamicFactoredMatrix<factor_t>::get() const {
+template <typename factor_t> template <Types::index I> const factor_t &DynamicFactoredMatrix<factor_t>::get() const {
     return factors_[I];
 }
 
