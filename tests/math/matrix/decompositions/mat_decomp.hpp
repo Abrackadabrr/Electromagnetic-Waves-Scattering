@@ -12,7 +12,17 @@ using namespace EMW;
 
 class MATRIX_DECOMPOSITIONS_TESTS : public ::testing::Test {
 protected:
-    Types::scalar sin_mat_el(Types::index i, Types::index j) { return std::sin(i - j); }
+    Types::scalar sin_mat_el(Types::integer i, Types::integer j) { return std::sin(i - j); }
+
+    Types::MatrixXd get_hilbert_mat(Types::index N) {
+        Types::MatrixXd mat = Types::MatrixXd::Zero(N, N);
+        for (Types::index i = 0; i < N; i++) {
+            for (Types::index j = 0; j < N; j++) {
+                mat(i, j) = 1. / (1 + i + j);
+            }
+        }
+        return mat;
+    }
 
     Types::MatrixXd get_sinus_mat(Types::index N) {
         Types::MatrixXd sin_mat = Types::MatrixXd::Zero(N, N);

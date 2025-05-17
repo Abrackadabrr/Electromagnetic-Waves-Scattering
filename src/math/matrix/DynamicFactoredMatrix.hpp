@@ -44,8 +44,8 @@ template <typename factor_t> class DynamicFactoredMatrix {
     // ---- Selectors ---- //
     inline Types::index factor_number() const { return factors_.size(); };
     inline Types::scalar memory_usage() const;
-    inline Types::index rows() const { return factors_.front().rows(); };
-    inline Types::index cols() const { return factors_.back().cols(); };
+    inline Types::index rows() const { return transposed.front() ? factors_.front().cols() : factors_.front().rows(); };
+    inline Types::index cols() const { return transposed.back() ? factors_.back().rows() : factors_.back().cols(); };
 
     // --- Aux methods --- //
     decltype(auto) to_dense() const noexcept { return compute(); };

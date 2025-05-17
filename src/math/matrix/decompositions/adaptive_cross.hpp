@@ -8,13 +8,33 @@
 #include "math/matrix/DynamicFactoredMatrix.hpp"
 #include "types/Types.hpp"
 
+#include <bits/random.h>
 #include <numeric>
 
 namespace EMW::Math::LinAgl::Decompositions {
 template <typename matrix_t, typename vector_t, typename value_t> struct ACA {
+#ifndef NDEBUG
+    /*
+     * Вычислить полную матрицy
+     */
+    template <typename MatrixElementFunction>
+    static matrix_t get_matrix(Types::index n, Types::index m, const MatrixElementFunction &element_function) {
+        matrix_t result = matrix_t::Zero(n, m);
+        for (int row = 0; row < n; ++row)
+            for (int j = 0; j < m; ++j) {
+                result(row, j) = element_function(row, j);
+            }
+        return result;
+    }
+#endif
 
-    struct element_indexing {
+    struct maxvol_solution {
         Types::index i, j;
+        value_t value;
+        vector_t row;
+        vector_t col;
+
+        bool operator<(const maxvol_solution &other) const { return std::abs(value) < std::abs(other.value); }
     };
 
     /*
@@ -55,28 +75,31 @@ template <typename matrix_t, typename vector_t, typename value_t> struct ACA {
      * Вычислить приближение к максимальному элементу в матрице
      */
     template <typename MatrixElementFunction>
-    static element_indexing get_argmax_of_matrix_elements(MatrixElementFunction &&element_function,
-                                                          Types::index n, Types::index m, Types::index start_column) {
-        Types::index iterations = 2; // это подкручиваемый параметр
+    static maxvol_solution get_argmax_of_matrix_elements(MatrixElementFunction &&element_function, Types::index n,
+                                                         Types::index m, Types::index start_column) {
+        Types::index iterations = 4; // это подкручиваемый параметр
         Types::index current_column = start_column;
         Types::index current_row = 0;
         value_t max_element_value = 0;
+        vector_t row;
+        vector_t col;
         for (int i = 0; i < iterations; ++i) {
             // Проходка вдоль столбца
-            const auto &&col = get_col(current_column, n, m, element_function);
-            const vector_t col_abs = col.cwiseAbs();
+            col = get_col(current_column, n, m, element_function);
+            const Types::VectorXd col_abs = col.cwiseAbs();
             // Нашли строку максимального элемента в столбце
-            current_row = std::max_element(col.begin(), col.end()) - col.begin();
+            current_row = std::max_element(col_abs.begin(), col_abs.end()) - col_abs.begin();
 
             // Проходка вдоль строки
-            const auto &&row = get_row(current_row, n, m, element_function);
-            const vector_t row_abs = row.cwiseAbs();
+            row = get_row(current_row, n, m, element_function);
+            const Types::VectorXd row_abs = row.cwiseAbs();
             // Нашли столбец максимального элемента в строке
-            current_column = std::max_element(row.begin(), row.end()) - row.begin();
+            current_column = std::max_element(row_abs.begin(), row_abs.end()) - row_abs.begin();
 
             // TODO: вставить проверку на то, что колонка не изменилась, а значит, что пора останавливать функцию
         }
-        return {current_row, current_column, };
+
+        return {current_row, current_column, row(current_column), row, col};
     }
 
     static vector_t get_col_UV(const matrix_t &U, const matrix_t &V, Types::index j) {
@@ -94,42 +117,44 @@ template <typename matrix_t, typename vector_t, typename value_t> struct ACA {
      *  Пока что функция не написана
      */
     template <typename MatrixElementFunction>
-    static element_indexing get_argmax_of_residual_matrix(MatrixElementFunction &&element_function,
-                                                          Types::index n, Types::index m, const matrix_t &U,
-                                                          const matrix_t &V, Types::index start_column) {
-        int iterations = 2; // это подкручиваемый параметр
+    static maxvol_solution get_argmax_of_residual_matrix(MatrixElementFunction &&element_function, Types::index n,
+                                                         Types::index m, const matrix_t &U, const matrix_t &V,
+                                                         Types::index start_column) {
+        int iterations = 4; // это подкручиваемый параметр
         Types::index current_column = start_column;
         Types::index current_row = 0;
+        value_t max_element_value;
+        vector_t row;
+        vector_t col;
         for (int i = 0; i < iterations; ++i) {
             // Проходка вдоль столбца
-            const vector_t col = get_col(current_column, n, m, element_function) - get_col_UV(U, V, current_column);
-            const vector_t col_abs = col.cwiseAbs();
+            col = get_col(current_column, n, m, element_function) - get_col_UV(U, V, current_column);
+            const Types::VectorXd col_abs = col.cwiseAbs();
             // Нашли строку максимального элемента в столбце
             current_row = std::max_element(col_abs.begin(), col_abs.end()) - col_abs.begin();
 
             // Проходка вдоль строки
-            const vector_t row = get_row(current_row, n, m, element_function) - get_row_UV(U, V, current_row);
-            const vector_t row_abs = row.cwiseAbs();
+            row = get_row(current_row, n, m, element_function) - get_row_UV(U, V, current_row);
+            const Types::VectorXd row_abs = row.cwiseAbs();
             // Нашли столбец максимального элемента в строке
             current_column = std::max_element(row_abs.begin(), row_abs.end()) - row_abs.begin();
 
             // TODO: вставить проверку на то, что колонка не изменилась, а значит, что пора останавливать функцию
         }
-        return {current_row, current_column};
+        return {current_row, current_column, row(current_column), row, col};
     }
 
     static Types::scalar squared_norm_update(Types::scalar past_norm_square, const matrix_t &U, const matrix_t &V,
-                                     const vector_t &u_new, const vector_t &v_new) {
-        const auto&& vec1 = (U.transpose() * u_new);
+                                             const vector_t &u_new, const vector_t &v_new) {
+        const vector_t vec1 = (U.transpose() * u_new);
         // Обновляем норму по аналитической формуле
         return (past_norm_square + 2 * std::real(vec1.dot(V.transpose() * v_new)) +
-                         u_new.squaredNorm() * v_new.squaredNorm());
+                u_new.squaredNorm() * v_new.squaredNorm());
     }
 
     template <typename MatrixElementFunction>
-    static Matrix::DynamicFactoredMatrix<matrix_t> compute(MatrixElementFunction &&element,
-                                                                   Types::index n, Types::index m,
-                                                                   Types::scalar error_control_parameter) {
+    static Matrix::DynamicFactoredMatrix<matrix_t> compute(MatrixElementFunction &&element, Types::index n,
+                                                           Types::index m, Types::scalar error_control_parameter) {
         Containers::vector<Types::index> I;
         I.resize(n);
         Containers::vector<Types::index> J;
@@ -143,34 +168,59 @@ template <typename matrix_t, typename vector_t, typename value_t> struct ACA {
         std::iota(I.begin(), I.end(), 0);
         std::iota(J.begin(), J.end(), 0);
 
-        // Первая итерация с поиском максимального элемента (TODO: семплинг нескольких начальных колонок и выбор
-        // наибольшего элемента из них)
-        auto [i, j] = get_argmax_of_matrix_elements<MatrixElementFunction>(element, n, m, 0);
+        // Первая итерация с поиском максимального элемента
+
+        // 1) Семплинг некоторого случайного количества колонок
+        std::array<Types::index, 6> initial_cols;
+        initial_cols[0] = 0;
+        std::random_device rd;  // a seed source for the random number engine
+        std::mt19937 gen(rd()); // mersenne_twister_engine seeded with rd()
+        std::uniform_int_distribution<> distrib(0, m);
+        std::generate(initial_cols.begin() + 1, initial_cols.end(), [&distrib, &gen]() {return distrib(gen);});
+        // Расчет максвола для каждой их этих колонок
+        std::set<maxvol_solution> initial_samples;
+        for (auto &&start_col : initial_cols)
+            initial_samples.emplace(get_argmax_of_matrix_elements<MatrixElementFunction>(element, n, m, start_col));
+
+        // 2) Выбор наилучшего приближения для максимального элемента
+        auto [i, j, ij_element, row, col] = *(initial_samples.rbegin());
+        // 3) Работа уже с этим приближением
         J_z.push_back(j);
         I_z.push_back(i);
         I.erase(std::remove(I.begin(), I.end(), i));
         J.erase(std::remove(J.begin(), J.end(), j));
-        const value_t ij_element = element(i, j);
         // Добавление столбцов и строк в матрицы U и V (TODO: решить чето с памятью)
-        U.col(0) = get_col(j, n, m, element) / std::abs(ij_element);
-        V.col(0) = get_row(i, n, m, element) * std::abs(ij_element) / ij_element;
+        U.col(0) = col / std::abs(ij_element);
+        V.col(0) = row * std::abs(ij_element) / ij_element;
+
+#ifndef NDEBUG
+        std::cout << "Rank = " << 1 << "; residual matrix is \n"
+                  << get_matrix(n, m, element) - U * V.transpose() << std::endl;
+        std::cout << "U\n" << U << std::endl;
+        std::cout << "V^T\n" << V.transpose() << std::endl;
+        std::cout << "Element was " << i << ' ' << j << " with value:" << ij_element << std::endl;
+        std::cout << "// ------- //" << std::endl;
+#endif
 
         // Основной цикл работы
         Types::index rank = 1;
         Types::scalar sq_norm = U.col(0).squaredNorm() * V.col(0).squaredNorm();
         while (!stop_criterion(std::sqrt(sq_norm), error_control_parameter, n, m, rank, ij_element)) {
-            rank += 1;
             // Поиск элемента "максимального объема" (maxvol для 1d)
             const auto maxvol_sol = get_argmax_of_residual_matrix(element, n, m, U, V, J.front());
             i = maxvol_sol.i;
             j = maxvol_sol.j;
+            ij_element = maxvol_sol.value;
+            if (std::abs(ij_element) < std::numeric_limits<Types::scalar>::epsilon()) {
+                break;
+            } // TODO: перестроить цикл так, чтобы убрать этот лишний if
             J_z.push_back(j);
             I_z.push_back(i);
             I.erase(std::remove(I.begin(), I.end(), i));
             J.erase(std::remove(J.begin(), J.end(), j));
             // Вычисляем новые столбцы для матриц U и V
-            const auto&& u = (get_col(j, n, m, element) - get_col_UV(U, V, j)) / std::abs(ij_element);
-            const auto&& v = (get_row(i, n, m, element) - get_row_UV(U, V, i)) * std::abs(ij_element) / ij_element;
+            const vector_t u = maxvol_sol.col / std::abs(ij_element);
+            const vector_t v = maxvol_sol.row * std::abs(ij_element) / ij_element;
             // Апдейтим норму
             sq_norm = squared_norm_update(sq_norm, U, V, u, v);
             // И дальше цикл заново, но сначала обновим матрицы
@@ -178,9 +228,18 @@ template <typename matrix_t, typename vector_t, typename value_t> struct ACA {
             V.conservativeResize(Eigen::NoChange_t::NoChange, V.cols() + 1);
             U.col(U.cols() - 1) = u;
             V.col(V.cols() - 1) = v;
+            rank += 1;
+
+#ifndef NDEBUG
+            std::cout << "Rank = " << rank << "; residual matrix is \n" << get_matrix(n, m, element) - U * V.transpose() << std::endl;
+            std::cout << "U\n" << U << std::endl;
+            std::cout << "V^T\n" << V.transpose() << std::endl;
+            std::cout << "Element was " << i << ' ' << j << " with value:" << ij_element << std::endl;
+            std::cout << "// ------- //" << std::endl;
+#endif
         }
 
-        return {Containers::vector{std::move(U), std::move(V)}, Containers::vector<bool>{false, true}};
+        return {Containers::vector{std::move(U), std::move(V)}, Containers::vector{false, true}};
     }
 };
 
