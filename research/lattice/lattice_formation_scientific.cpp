@@ -106,7 +106,7 @@ int main() {
     constexpr EMW::Types::index nCells = 2000;
 
     // собираем сетки
-    const auto parser_out = EMW::Parser::parseMesh(nodesFile, cellsFile, nNodes, nCells);
+    const auto parser_out = EMW::Parser::parseMesh(nodesFile, cellsFile);
     auto mesh_base = Mesh::SurfaceMesh{parser_out.first, parser_out.second};
 
     constexpr Types::index N1 = 1;

@@ -168,22 +168,25 @@ template <typename matrix_t, typename vector_t, typename value_t> struct ACA {
         std::iota(I.begin(), I.end(), 0);
         std::iota(J.begin(), J.end(), 0);
 
-        // Первая итерация с поиском максимального элемента
+        // Первая итерация с поиском максимального элемента путем семплинга нескольких колонок
+        // со случайной нумерацией элементов, так будет более вероятно найти максимальный элемент
+        // в матрице (решение задачи максвола с k = 1)
 
         // 1) Семплинг некоторого случайного количества колонок
-        std::array<Types::index, 6> initial_cols;
+        const int N_SAMPLES = 6; // как раз эта константа
+        std::array<Types::index, N_SAMPLES> initial_cols;
         initial_cols[0] = 0;
         std::random_device rd;  // a seed source for the random number engine
         std::mt19937 gen(rd()); // mersenne_twister_engine seeded with rd()
         std::uniform_int_distribution<> distrib(0, m);
         std::generate(initial_cols.begin() + 1, initial_cols.end(), [&distrib, &gen]() {return distrib(gen);});
         // Расчет максвола для каждой их этих колонок
-        std::set<maxvol_solution> initial_samples;
+        Containers::set<maxvol_solution> initial_samples;
         for (auto &&start_col : initial_cols)
             initial_samples.emplace(get_argmax_of_matrix_elements<MatrixElementFunction>(element, n, m, start_col));
 
         // 2) Выбор наилучшего приближения для максимального элемента
-        auto [i, j, ij_element, row, col] = *(initial_samples.rbegin());
+        auto [i, j, ij_element, row, col] = *initial_samples.rbegin();
         // 3) Работа уже с этим приближением
         J_z.push_back(j);
         I_z.push_back(i);

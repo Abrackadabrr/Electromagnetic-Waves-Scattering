@@ -9,6 +9,7 @@
 #include "third_party/eigen/Eigen/Geometry"
 #include <array>
 #include <vector>
+#include <set>
 
 namespace EMW::Types {
     using scalar = double;
@@ -46,6 +47,8 @@ namespace EMW::Containers {
     using vector = std::vector<type>;
     template<typename ... types>
     using tuple = std::tuple<types...>;
+    template<typename Type>
+    using set = std::set<Type>;
 
 };
 

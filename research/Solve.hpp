@@ -40,27 +40,30 @@ vector_t solve(const matrix_t &A, const vector_t &b, EMW::Types::index max_itera
 }
 
 template <template <typename> typename method_t, typename vector_t>
-vector_t solve(const EMW::Types::MatrixXc &A, const vector_t &b, EMW::Types::index max_iterations, EMW::Types::scalar tolerance) {
-  auto method = method_t<EMW::Types::MatrixXc>{};
-  std::cout << "GMRES with native diagonal preconditioner" << std::endl;
-  method.setMaxIterations(max_iterations);
-  std::cout << method.maxIterations() << std::endl;
-  method.setTolerance(tolerance);
-  method.set_restart(max_iterations);
+vector_t solve(const EMW::Types::MatrixXc &A, const vector_t &b, EMW::Types::index max_iterations,
+               EMW::Types::scalar tolerance) {
+    auto method = method_t<EMW::Types::MatrixXc>{};
+    std::cout << "GMRES with native diagonal preconditioner" << std::endl;
+    method.setMaxIterations(max_iterations);
+    std::cout << "Max iterations: " << method.maxIterations() << std::endl;
+    method.setTolerance(tolerance);
+    std::cout << "Tolerance: " << tolerance << std::endl;
+    method.set_restart(500);
+    std::cout << "Restarts every: " << method.get_restart() << std::endl;
 
-  auto start = std::chrono::steady_clock::now();
+    auto start = std::chrono::steady_clock::now();
 
-  method.compute(A);
-  auto j_vec = vector_t{method.solve(b)};
+    method.compute(A);
+    auto j_vec = vector_t{method.solve(b)};
 
-  auto end = std::chrono::steady_clock::now();
-  auto elapsed_seconds = std::chrono::duration_cast<std::chrono::milliseconds>(end - start);
-  std::cout << "Время решения GMRES: " << elapsed_seconds.count() << std::endl;
-  std::cout << "total iterations: " << method.iterations() << std::endl;
-  std::cout << "tolerance: " << method.tolerance() << std::endl;
-  std::cout << "total error: " << method.error() << std::endl;
-  std::cout << "Info: " << static_cast<int>(method.info()) << std::endl;
-  return j_vec;
+    auto end = std::chrono::steady_clock::now();
+    auto elapsed_seconds = std::chrono::duration_cast<std::chrono::milliseconds>(end - start);
+    std::cout << "Время решения GMRES: " << elapsed_seconds.count() << std::endl;
+    std::cout << "total iterations: " << method.iterations() << std::endl;
+    std::cout << "tolerance: " << method.tolerance() << std::endl;
+    std::cout << "total error: " << method.error() << std::endl;
+    std::cout << "Info: " << static_cast<int>(method.info()) << std::endl;
+    return j_vec;
 }
 
 template <template <typename, typename> typename method_t, typename matrix_t, typename precond_t, typename vector_t>

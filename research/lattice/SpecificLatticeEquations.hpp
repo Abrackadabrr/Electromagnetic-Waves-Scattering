@@ -143,6 +143,77 @@ inline Types::MatrixXc submatrix(const Mesh::SurfaceMesh &mest_to_integrate,
     return A;
 }
 
+template<typename CalcElement>
+decltype(auto) get_element_in_matrix(const Mesh::IndexedCell &cell_integrate, const Mesh::IndexedCell &cell_colloc,
+                                    Types::complex_d k,
+                                    CalcElement&& function) {
+    return std::forward<CalcElement>(function)(cell_colloc, cell_integrate, k);
+}
+
+/**
+ * Не прямо-таки элемент в матрице, а его "брат-близнец" в верхней части соотвествующего блока в матрице
+ */
+inline Types::complex_d element_of_submatrix(Types::index i, Types::index j,
+                                 const Mesh::SurfaceMesh &mesh_to_integrate_all,
+                                 const Mesh::SurfaceMesh &mesh_to_integrate_zero,
+                                 const Mesh::SurfaceMesh &mesh_collocation_all,
+                                 const Mesh::SurfaceMesh &mesh_collocation_zero,
+                                 const Types::scalar a,
+                                 const Types::complex_d k) {
+    // Надо понять какие размеры будем иметь итоговая матрица
+    const Types::index N_cols = mesh_to_integrate_all.getCells().size();
+    const Types::index K_cols = mesh_to_integrate_zero.getCells().size();
+    const Types::index cols = 2 * (N_cols + K_cols);
+    const Types::index N_rows = mesh_collocation_all.getCells().size();
+    const Types::index K_rows = mesh_collocation_zero.getCells().size();
+    const Types::index rows = 2 * (N_rows + K_rows);
+    // Надо понять какие константы будут фигурировать в расчете
+    const Types::complex_d epsilon{1., 0};
+    const Types::complex_d mu{1., 0};
+    // расчет коэффициента импеданса и вспомогательных констант
+    const Types::complex_d beta = std::sqrt(k * k - EMW::Math::Constants::PI_square<Types::scalar>() / (a * a));
+#ifdef OLD
+    const Types::complex_d z = -k * Math::Constants::one_div_c / beta;
+    const Types::complex_d with_e = Math::Constants::i * Math::Constants::mu_0_c / k;
+    const Types::complex_d with_mu = Math::Constants::i * Math::Constants::e_0_c / k;
+#else
+    const Types::complex_d z = -k * mu / beta;
+    const Types::complex_d with_e = Math::Constants::i / (k * epsilon);
+    const Types::complex_d with_mu = Math::Constants::i / (k * mu);
+
+    // Расчет значения элемента непосредственно
+    if (i < 2 * N_rows) {
+        if (j < 2 * N_cols) {
+            return with_e * get_element_in_matrix(mesh_to_integrate_all.getCells()[j % N_cols],
+                                                  mesh_collocation_all.getCells()[i % N_rows],
+                                                  k, Matrix::DiscreteK::getMatrixCoefs).a11;
+            // а давайте попробуем приближать матрицу, используя только один набор коэффициентов
+            // таким образом, вместо настоящего коэффициента,
+            // мы всегда будем возвращать соответствующий элемент в блоке (0, N_rows) x (0, N_cols)
+        } else {
+            Types::index local_j = j - 2 * N_cols;
+            return -get_element_in_matrix(mesh_to_integrate_zero.getCells()[local_j % K_cols],
+                                                  mesh_collocation_all.getCells()[i % N_rows],
+                                                  k, Matrix::DiscreteK::getMatrixCoefs).a11;
+            // тут аналогично, но уже в другом блоке матрицы
+        }
+    } else {
+        Types::index local_i = i - 2 * N_rows;
+        if (j < 2 * N_cols) {
+            return z * get_element_in_matrix(mesh_to_integrate_all.getCells()[j % N_cols],
+                                                  mesh_collocation_zero.getCells()[local_i % K_rows],
+                                                  k, Matrix::DiscreteK::getMatrixCoefs).a11;
+            // тут аналогично, но уже в другом блоке матрицы
+        } else {
+            Types::index local_j = j - 2 * N_cols;
+            return z * with_mu * get_element_in_matrix(mesh_to_integrate_zero.getCells()[local_j % K_cols],
+                                                  mesh_collocation_zero.getCells()[local_i % K_rows],
+                                                  k, Matrix::DiscreteK::getMatrixCoefs).a11;
+            // тут аналогично, но уже в другом блоке матрицы
+        }
+    }
+}
+
 inline Types::VectorXc getRhsBase(const Mesh::SurfaceMesh &mesh_all, Types::scalar a, Types::complex_d k) {
 
     // Собираем сабсетку с активным сечением

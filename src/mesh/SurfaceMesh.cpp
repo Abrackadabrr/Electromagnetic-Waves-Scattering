@@ -13,7 +13,7 @@ SurfaceMesh::SurfaceMesh(Containers::vector<point_t> nodes,
                    [&nodes](const Containers::array<Types::index, 4> &indexes) -> IndexedCell {
                        return IndexedCell(indexes, nodes);
                    });
-#if 1
+#if 0
     // БОЛЬШУЩИЙ КОСТЫЛЬ ДЛЯ РАСЧЕТА ВОЛНОВОДА
     // этот параметр показывает количество ячеек в плоскости,
     // где есть матгнитный ток и задается импедансное условие
@@ -23,6 +23,7 @@ SurfaceMesh::SurfaceMesh(Containers::vector<point_t> nodes,
     for (int i = 1; i <= amount_of_cells_in_active_surface; i++) {
         cells_[cells_.size() - i].tag =
             IndexedCell::Tag::WAVEGUIDE_CROSS_SECTION;
+        std::cout << "Костяль для считывания сетки activated" << std::endl;
     }
 #endif
 };
