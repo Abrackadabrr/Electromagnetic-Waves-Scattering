@@ -23,13 +23,13 @@ template <typename factor_t> class DynamicFactoredMatrix {
     DynamicFactoredMatrix() = default;
 
     DynamicFactoredMatrix(Containers::vector<factor_t> &&factors)
-        : factors_(std::move(factors)), transposed(factors.size(), false){};
+        : factors_(std::move(factors)), transposed(factors_.size(), false){};
 
     DynamicFactoredMatrix(Containers::vector<factor_t> &&factors, Containers::vector<bool> &&transposed)
     : factors_(std::move(factors)), transposed(std::move(transposed)){};
 
     DynamicFactoredMatrix(const Containers::vector<factor_t> &factors)
-        : factors_(factors), transposed(factors.size(), false) {
+        : factors_(factors), transposed(factors_.size(), false) {
         std::cout << "FactoredMatrix constructor with copying" << std::endl;
     };
 
@@ -44,8 +44,8 @@ template <typename factor_t> class DynamicFactoredMatrix {
     // ---- Selectors ---- //
     inline Types::index factor_number() const { return factors_.size(); };
     inline Types::scalar memory_usage() const;
-    inline Types::index rows() const { return transposed.front() ? factors_.front().cols() : factors_.front().rows(); };
-    inline Types::index cols() const { return transposed.back() ? factors_.back().rows() : factors_.back().cols(); };
+    inline Types::index rows() const { return (*transposed.begin()) ? factors_.front().cols() : factors_.front().rows(); };
+    inline Types::index cols() const { return (*transposed.rbegin()) ? factors_.back().rows() : factors_.back().cols(); };
 
     // --- Aux methods --- //
     decltype(auto) to_dense() const noexcept { return compute(); };

@@ -58,6 +58,10 @@ Types::Matrix3c getZeroPartIntegral(Types::index i, Types::index j, Types::compl
 
 MatrixCoefs getMatrixCoefs(Types::index i, Types::index j, Types::complex_d k,
                            const Containers::vector<Mesh::IndexedCell> &cells);
+
+MatrixCoefs getMatrixCoefs(const Mesh::IndexedCell &cell_i, const Mesh::IndexedCell &cell_j, Types::complex_d k);
+
+Containers::array<Types::complex_d, 4> getMatrixCoefsInArray(const Mesh::IndexedCell &cell_i, const Mesh::IndexedCell &cell_j, Types::complex_d k);
 } // namespace DiscreteK
 
 namespace DiscreteR {
@@ -75,6 +79,8 @@ MatrixCoefs getMatrixCoefs(Types::index i, Types::index j, Types::complex_d k,
  * лежат точки коллокации
  */
 MatrixCoefs getMatrixCoefs(const Mesh::IndexedCell &cell_i, const Mesh::IndexedCell &cell_j, Types::complex_d k);
+
+Containers::array<Types::complex_d, 4> getMatrixCoefsInArray(const Mesh::IndexedCell &cell_i, const Mesh::IndexedCell &cell_j, Types::complex_d k);
 
 } // namespace DiscreteR
 

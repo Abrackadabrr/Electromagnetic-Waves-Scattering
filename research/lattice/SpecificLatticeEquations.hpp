@@ -143,23 +143,13 @@ inline Types::MatrixXc submatrix(const Mesh::SurfaceMesh &mest_to_integrate,
     return A;
 }
 
-template<typename CalcElement>
-decltype(auto) get_element_in_matrix(const Mesh::IndexedCell &cell_integrate, const Mesh::IndexedCell &cell_colloc,
-                                    Types::complex_d k,
-                                    CalcElement&& function) {
-    return std::forward<CalcElement>(function)(cell_colloc, cell_integrate, k);
-}
-
 /**
  * Не прямо-таки элемент в матрице, а его "брат-близнец" в верхней части соотвествующего блока в матрице
  */
-inline Types::complex_d element_of_submatrix(Types::index i, Types::index j,
-                                 const Mesh::SurfaceMesh &mesh_to_integrate_all,
-                                 const Mesh::SurfaceMesh &mesh_to_integrate_zero,
-                                 const Mesh::SurfaceMesh &mesh_collocation_all,
-                                 const Mesh::SurfaceMesh &mesh_collocation_zero,
-                                 const Types::scalar a,
-                                 const Types::complex_d k) {
+inline Types::complex_d
+element_of_submatrix(Types::index i, Types::index j, const Mesh::SurfaceMesh &mesh_to_integrate_all,
+                     const Mesh::SurfaceMesh &mesh_to_integrate_zero, const Mesh::SurfaceMesh &mesh_collocation_all,
+                     const Mesh::SurfaceMesh &mesh_collocation_zero, const Types::scalar a, const Types::complex_d k) {
     // Надо понять какие размеры будем иметь итоговая матрица
     const Types::index N_cols = mesh_to_integrate_all.getCells().size();
     const Types::index K_cols = mesh_to_integrate_zero.getCells().size();
@@ -180,36 +170,41 @@ inline Types::complex_d element_of_submatrix(Types::index i, Types::index j,
     const Types::complex_d z = -k * mu / beta;
     const Types::complex_d with_e = Math::Constants::i / (k * epsilon);
     const Types::complex_d with_mu = Math::Constants::i / (k * mu);
-
+#endif
     // Расчет значения элемента непосредственно
+
+    const auto local_array_index = [](Types::index i, Types::index j, Types::index rows, Types::index cols) {
+        // есть двоичное число i / rows, j / cols
+        // десятичное будет в виде (i / rows * 2) + (j / cols)
+        return (i / rows) * 2 + (j / cols);
+    };
+
     if (i < 2 * N_rows) {
         if (j < 2 * N_cols) {
-            return with_e * get_element_in_matrix(mesh_to_integrate_all.getCells()[j % N_cols],
-                                                  mesh_collocation_all.getCells()[i % N_rows],
-                                                  k, Matrix::DiscreteK::getMatrixCoefs).a11;
+            return with_e * Matrix::DiscreteK::getMatrixCoefsInArray(mesh_to_integrate_all.getCells()[j % N_cols],
+                                                              mesh_collocation_all.getCells()[i % N_rows], k)
+                                                                [local_array_index(i, j, N_rows, N_cols)];
             // а давайте попробуем приближать матрицу, используя только один набор коэффициентов
             // таким образом, вместо настоящего коэффициента,
             // мы всегда будем возвращать соответствующий элемент в блоке (0, N_rows) x (0, N_cols)
         } else {
             Types::index local_j = j - 2 * N_cols;
-            return -get_element_in_matrix(mesh_to_integrate_zero.getCells()[local_j % K_cols],
-                                                  mesh_collocation_all.getCells()[i % N_rows],
-                                                  k, Matrix::DiscreteK::getMatrixCoefs).a11;
-            // тут аналогично, но уже в другом блоке матрицы
+            return -Matrix::DiscreteR::getMatrixCoefsInArray(mesh_to_integrate_zero.getCells()[local_j % K_cols],
+                                                      mesh_collocation_all.getCells()[i % N_rows], k)
+                                                        [local_array_index(i, local_j, N_rows, K_cols)];
         }
     } else {
         Types::index local_i = i - 2 * N_rows;
         if (j < 2 * N_cols) {
-            return z * get_element_in_matrix(mesh_to_integrate_all.getCells()[j % N_cols],
-                                                  mesh_collocation_zero.getCells()[local_i % K_rows],
-                                                  k, Matrix::DiscreteK::getMatrixCoefs).a11;
-            // тут аналогично, но уже в другом блоке матрицы
+            return z * Matrix::DiscreteR::getMatrixCoefsInArray(mesh_to_integrate_all.getCells()[j % N_cols],
+                                                         mesh_collocation_zero.getCells()[local_i % K_rows], k)
+                                                         [local_array_index(local_i, j, K_rows, N_cols)];
         } else {
             Types::index local_j = j - 2 * N_cols;
-            return z * with_mu * get_element_in_matrix(mesh_to_integrate_zero.getCells()[local_j % K_cols],
-                                                  mesh_collocation_zero.getCells()[local_i % K_rows],
-                                                  k, Matrix::DiscreteK::getMatrixCoefs).a11;
-            // тут аналогично, но уже в другом блоке матрицы
+            return z * with_mu *
+                   Matrix::DiscreteK::getMatrixCoefsInArray(mesh_to_integrate_zero.getCells()[local_j % K_cols],
+                                                     mesh_collocation_zero.getCells()[local_i % K_rows], k)
+                                                         [local_array_index(local_i, local_j, K_rows, K_cols)];
         }
     }
 }

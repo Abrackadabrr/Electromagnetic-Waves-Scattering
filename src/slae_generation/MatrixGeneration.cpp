@@ -67,6 +67,12 @@ MatrixCoefs getMatrixCoefs(const Mesh::IndexedCell &cell_i, const Mesh::IndexedC
     return {a11_0 + a11_1, a12_0 + a12_1, a21_0 + a21_1, a22_0 + a22_1};
 }
 
+Containers::array<Types::complex_d, 4> getMatrixCoefsInArray(const Mesh::IndexedCell &cell_i,
+                                                             const Mesh::IndexedCell &cell_j, Types::complex_d k) {
+    const auto res = getMatrixCoefs(cell_i, cell_j, k);
+    return {res.a11, res.a12, res.a21, res.a22};
+}
+
 MatrixCoefs getMatrixCoefs(Types::index i, Types::index j, Types::complex_d k,
                            const Containers::vector<Mesh::IndexedCell> &cells) {
     return getMatrixCoefs(cells[i], cells[j], k);
@@ -93,6 +99,12 @@ MatrixCoefs getMatrixCoefs(const Mesh::IndexedCell &cell_i, const Mesh::IndexedC
     const Types::complex_d a22 = Math::quasiDot(cell_i.tau[1], Math::cross(integral, cell_j.tau[1]));
 #endif
     return {a11, a12, a21, a22};
+}
+
+Containers::array<Types::complex_d, 4> getMatrixCoefsInArray(const Mesh::IndexedCell &cell_i,
+                                                             const Mesh::IndexedCell &cell_j, Types::complex_d k) {
+    const auto res = getMatrixCoefs(cell_i, cell_j, k);
+    return {res.a11, res.a12, res.a21, res.a22};
 }
 
 MatrixCoefs getMatrixCoefs(Types::index i, Types::index j, Types::complex_d k,
@@ -179,7 +191,8 @@ Types::MatrixXc getMatrixR(Types::complex_d k, const Mesh::SurfaceMesh &integrat
     for (long i = 0; i < N; ++i) {
         for (long j = 0; j < M; ++j) {
             const auto coefs = DiscreteR::getMatrixCoefs(cells[i], cells_to_integrate[j], k);
-            // if (i == j) std::cout << coefs.a11 << " " << coefs.a12 << " " << coefs.a21 << ' ' << coefs.a22 << std::endl;
+            // if (i == j) std::cout << coefs.a11 << " " << coefs.a12 << " " << coefs.a21 << ' ' << coefs.a22 <<
+            // std::endl;
             result(i, j) = coefs.a11;
             result(i + N, j) = coefs.a21;
             result(i, j + M) = coefs.a12;

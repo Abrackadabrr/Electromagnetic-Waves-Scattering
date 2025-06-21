@@ -3,6 +3,8 @@
 //
 
 #include "SurfaceMesh.hpp"
+
+#include <iostream>
 #include <ranges>
 
 namespace EMW::Mesh {
@@ -13,17 +15,18 @@ SurfaceMesh::SurfaceMesh(Containers::vector<point_t> nodes,
                    [&nodes](const Containers::array<Types::index, 4> &indexes) -> IndexedCell {
                        return IndexedCell(indexes, nodes);
                    });
-#if 0
+#define WAVEGUIDE_CALCULATION 1
+    std::cout << "Waveguide submesh creation:" << WAVEGUIDE_CALCULATION << std::endl;
+#if WAVEGUIDE_CALCULATION
     // БОЛЬШУЩИЙ КОСТЫЛЬ ДЛЯ РАСЧЕТА ВОЛНОВОДА
     // этот параметр показывает количество ячеек в плоскости,
     // где есть матгнитный ток и задается импедансное условие
     // эти точки помечаются отдельно, чтобы в дальнейшем их вынуть
     // в своем формате сетки я точно знаю, что эти точки лежат в конце
-    int amount_of_cells_in_active_surface = 2 * 10 * 21;
+    int amount_of_cells_in_active_surface = 200;
     for (int i = 1; i <= amount_of_cells_in_active_surface; i++) {
         cells_[cells_.size() - i].tag =
             IndexedCell::Tag::WAVEGUIDE_CROSS_SECTION;
-        std::cout << "Костяль для считывания сетки activated" << std::endl;
     }
 #endif
 };

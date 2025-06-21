@@ -61,6 +61,6 @@ template <typename scalar_t, typename matrix_t> class BlockDiagonalPreconditione
 };
 
 
-} // namespace EMW::EMW::Math::LinAgl::Matrix::Preconditioning
+} // namespace EMW::Math::LinAgl::Matrix::Preconditioning
 
 #endif // DIAGONALPRECONDITIONER_HPP

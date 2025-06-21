@@ -21,7 +21,6 @@
 #include "GeneralEquation.hpp"
 #include "FieldCalculation.hpp"
 #include "FieldOverGeometry.hpp"
-#include "GeneralizedEquations.hpp"
 
 #include "math/matrix/Matrix.hpp"
 
@@ -90,7 +89,7 @@ template <typename Fields> void getSigmaValuesYZ(const Types::complex_d k, const
 }
 
 namespace LAMatrix = Math::LinAgl::Matrix;
-using TTBMatrix = LAMatrix::ToeplitzToeplitzBlock<Types::complex_d>;
+using TTBMatrix = LAMatrix::ToeplitzToeplitzDynFactoredBlock<Types::complex_d>;
 using DiagonalPrec = LAMatrix::Preconditioning::DiagonalPreconditioner<Types::complex_d, TTBMatrix>;
 using BlockDiagPrec = LAMatrix::Preconditioning::BlockDiagonalPreconditioner<Types::complex_d, TTBMatrix>;
 using NoPrec = LAMatrix::Preconditioning::IdentityPreconditioner<Types::complex_d, TTBMatrix>;
@@ -110,7 +109,7 @@ int main() {
     auto mesh_base = Mesh::SurfaceMesh{parser_out.first, parser_out.second};
 
     constexpr Types::index N1 = 1;
-    constexpr Types::index N2 = 5;
+    constexpr Types::index N2 = 2;
     constexpr Types::index N1_x_N2 = N1 * N2;
     const Scene<N1, N2> geometry{0.14, 0.1, mesh_base};
 
@@ -133,7 +132,7 @@ int main() {
 
     auto start = std::chrono::high_resolution_clock::now();
 
-    const auto matrix = Research::Lattice::getMatrix<Research::Lattice::CalculationMethod::Full>(geometry, a, k);
+    const auto matrix = Research::Lattice::getMatrix<Research::Lattice::CalculationMethod::ACA>(geometry, a, k);
 
     auto end = std::chrono::high_resolution_clock::now();
     auto elapsed = std::chrono::duration_cast<std::chrono::seconds>(end - start);
@@ -143,7 +142,7 @@ int main() {
 
     // собираем правую часть шаманским способом (очень шаманским)
     // решаем какой будет фазовый фактор на волноводах
-    const Containers::array<Types::scalar, N1_x_N2> phases{0, 0, 0, 0};
+    const Containers::array<Types::scalar, N1_x_N2> phases{0, 0};
     Containers::array<Types::complex_d, N1_x_N2> phase_factors;
     for (Types::index i = 0; i < phases.size(); ++i)
         phase_factors[i] = std::exp(Math::Constants::i * phases[i] * Math::Constants::deg_to_rad<Types::scalar>());
@@ -156,7 +155,7 @@ int main() {
     // Разбиваем на токи и рисуем на разных многообразиях
     const Research::Lattice::FieldOver field_set(geometry, std::move(result));
 
-    const std::string path = "/home/evgen/Education/MasterDegree/thesis/results/investigation_over_asymmetry/toeplitz/";
+    const std::string path = "/home/evgen/Education/MasterDegree/thesis/results/rsvd_vs_aca/";
     const std::string dir_name = std::to_string(N1) + "_x_" + std::to_string(N2) + "_lattice/";
     VTK::set_of_fields_snapshot(field_set, path + std::to_string(N1) + "_x_" + std::to_string(N2) + "_lattice.vtu");
 

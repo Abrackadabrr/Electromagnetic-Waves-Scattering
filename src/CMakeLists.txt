@@ -17,7 +17,7 @@ target_link_libraries(${PROJECT_NAME} PUBLIC OpenMP::OpenMP_CXX)
 target_link_libraries(${PROJECT_NAME} PUBLIC ${TARGET_LIBS})
 target_include_directories(${PROJECT_NAME} PUBLIC ${CMAKE_CURRENT_SOURCE_DIR} "${CMAKE_CURRENT_SOURCE_DIR}/..")
 
-target_compile_options(${PROJECT_NAME} PUBLIC -flto)
+target_compile_options(${PROJECT_NAME} PUBLIC)
 
 # ENABLING PGO
 # target_compile_options(${PROJECT_NAME} PUBLIC -fprofile-generate)

@@ -67,7 +67,7 @@ class RSVD {
         return result;
     }
 
-    static LinAgl::Matrix::DynamicFactoredMatrix<matrix_t> compute(const matrix_t &A, int rank, int oversamples, int iter = 0) {
+    static LinAgl::Matrix::DynamicFactoredMatrix<matrix_t> compute(const matrix_t &A, Types::index rank, Types::index oversamples, int iter = 0) {
 
         using diag_t = Types::DiagonalMatrixX<value_t>;
 
@@ -86,7 +86,7 @@ class RSVD {
         // 4) Compute the SVD on the thin matrix (much cheaper than SVD on original)
         Eigen::BDCSVD<matrix_t> svd(B, Eigen::ComputeThinU | Eigen::ComputeThinV);
 
-        // 5) Remove oversampled eigenvalues
+        // 5) Remove oversampled eigenvalues and construct matrixes
         factors.push_back(svd.matrixU().block(0, 0, B.rows(), rank) * diag_t(svd.singularValues().head(rank)));
         factors.push_back(svd.matrixV().block(0, 0, A.cols(), rank).adjoint());
 
