@@ -8,8 +8,6 @@
 
 #include "mat_decomp.hpp"
 
-#include <slae_generation/MatrixGeneration.hpp>
-
 TEST_F(MATRIX_DECOMPOSITIONS_TESTS, ACA_AUX_TEST1) {
     const Types::index N = 1000;
     const Types::index M = 1200;
@@ -44,8 +42,6 @@ TEST_F(MATRIX_DECOMPOSITIONS_TESTS, ACA_AUX_TEST1) {
     }
 
     // 2. Вычисление нормы матрицы
-
-
 }
 
 TEST_F(MATRIX_DECOMPOSITIONS_TESTS, ACA_SINUS) {
@@ -54,7 +50,7 @@ TEST_F(MATRIX_DECOMPOSITIONS_TESTS, ACA_SINUS) {
 
     const auto function_for_element = [&mat](const Types::index i, const Types::index j) { return mat(i, j); };
 
-    const Types::scalar error = 1e-10;
+    const Types::scalar error = 1;
     const auto factored_matrix = Math::LinAgl::Decompositions::RealACA::compute(function_for_element, N, N, error);
 
     std::cout << "Rank = " << factored_matrix.get<0>().cols() << std::endl;
@@ -77,7 +73,7 @@ TEST_F(MATRIX_DECOMPOSITIONS_TESTS, ACA_HILBERT) {
     std::cout << "Rank = " << factored_matrix.get<0>().cols() << std::endl;
 
     const Types::scalar err = (factored_matrix.compute() - mat).norm() / mat.norm();
-    std::cout << err << std::endl;
+    std::cout << "Relative error: " <<  err << std::endl;
     std::cout << "Full mem usage: " << N * N * 8. / (1024 * 1024) << " Mb" << std::endl;
     std::cout << "Compressed mem usage: " << factored_matrix.memory_usage() * 8 / (1024 * 1024) << " Mb" << std::endl;
 }
@@ -92,7 +88,7 @@ TEST_F(MATRIX_DECOMPOSITIONS_TESTS, ACA_HILBERT) {
 #include "VTKFunctions.hpp"
 
 #include "research/lattice/FieldCalculation.hpp"
-#include "research/lattice/GeneralizedEquations.hpp"
+#include "research/lattice/SpecificLatticeEquations.hpp"
 
 #include <unsupported/Eigen/IterativeSolvers>
 
@@ -105,8 +101,6 @@ TEST_F(MATRIX_DECOMPOSITIONS_TESTS, ACA_REAL_CASE_TEST) {
                                   "lattice/8000_nodes.csv";
     const std::string cellsFile = "/home/evgen/Education/MasterDegree/thesis/Electromagnetic-Waves-Scattering/meshes/"
                                   "lattice/2000_cells.csv";
-    constexpr EMW::Types::index nNodes = 8000;
-    constexpr EMW::Types::index nCells = 2000;
 
     // собираем сетки
     const auto parser_out = EMW::Parser::parseMesh(nodesFile, cellsFile);
@@ -142,7 +136,7 @@ TEST_F(MATRIX_DECOMPOSITIONS_TESTS, ACA_REAL_CASE_TEST) {
 
     // Вспомогательная функция для эмулирвоания функционального задания матрциы
     const auto element = [&out_diagonal_block](Types::index i, Types::index j) { return out_diagonal_block(i, j); };
-    Types::scalar error_control = 1;
+    Types::scalar error_control = 0.1;
 
     start = std::chrono::system_clock::now();
 
@@ -156,8 +150,8 @@ TEST_F(MATRIX_DECOMPOSITIONS_TESTS, ACA_REAL_CASE_TEST) {
 
     std::cout << "Elapsed time: " << elapsed.count() << " ms" << std::endl;
 
-    const Types::scalar err = (out_diagonal_block - out_factored_matrix.compute()).norm();
-    std::cout << "Ошибка приближения: " << err << std::endl;
+    const Types::scalar err = (out_diagonal_block - out_factored_matrix.compute()).norm() / out_diagonal_block.norm();
+    std::cout << "Relative error: " << err << std::endl;
     std::cout << "Rank = " << out_factored_matrix.get<0>().cols() << std::endl;
 
     std::cout << "Память для хранения общего блока: " << out_diagonal_block.size() * 16. / (1024 * 1024 * 1024)
@@ -174,5 +168,5 @@ TEST_F(MATRIX_DECOMPOSITIONS_TESTS, ACA_REAL_CASE_TEST) {
     const Types::VectorXc res1 = out_diagonal_block * vec;
     const Types::VectorXc res2 = out_factored_matrix * vec;
 
-    std::cout << "Real error: " << (res1 - res2).norm() / vec.norm() << "; error_control = " << error_control << std::endl;
+    std::cout << "Relative error of matvec: " << (res1 - res2).norm() / vec.norm() << "; error_control = " << error_control << std::endl;
 }

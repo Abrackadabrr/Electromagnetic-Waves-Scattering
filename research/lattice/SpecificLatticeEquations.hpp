@@ -14,6 +14,8 @@
 #include "math/MathConstants.hpp"
 #include "math/fields/SurfaceVectorField.hpp"
 
+#include <math/integration/newton_cotess/Rectangular.hpp>
+
 namespace WaveGuideWithActiveSection {
 
 using namespace EMW;
@@ -147,19 +149,22 @@ inline Types::MatrixXc submatrix(const Mesh::SurfaceMesh &mest_to_integrate,
  * Не прямо-таки элемент в матрице, а его "брат-близнец" в верхней части соотвествующего блока в матрице
  */
 inline Types::complex_d
-element_of_submatrix(Types::index i, Types::index j, const Mesh::SurfaceMesh &mesh_to_integrate_all,
-                     const Mesh::SurfaceMesh &mesh_to_integrate_zero, const Mesh::SurfaceMesh &mesh_collocation_all,
-                     const Mesh::SurfaceMesh &mesh_collocation_zero, const Types::scalar a, const Types::complex_d k) {
+element_of_submatrix(Types::index i, Types::index j,
+                     const Containers::vector<Mesh::IndexedCell> &mesh_to_integrate_all_cells,
+                     const Containers::vector<Mesh::IndexedCell> &mesh_to_integrate_zero_cells,
+                     const Containers::vector<Mesh::IndexedCell> &mesh_collocation_all_cells,
+                     const Containers::vector<Mesh::IndexedCell> &mesh_collocation_zero_cells,
+                     const Types::scalar a, const Types::complex_d k) {
     // Надо понять какие размеры будем иметь итоговая матрица
-    const Types::index N_cols = mesh_to_integrate_all.getCells().size();
-    const Types::index K_cols = mesh_to_integrate_zero.getCells().size();
+    const Types::index N_cols = mesh_to_integrate_all_cells.size();
+    const Types::index K_cols = mesh_to_integrate_zero_cells.size();
     const Types::index cols = 2 * (N_cols + K_cols);
-    const Types::index N_rows = mesh_collocation_all.getCells().size();
-    const Types::index K_rows = mesh_collocation_zero.getCells().size();
+    const Types::index N_rows = mesh_collocation_all_cells.size();
+    const Types::index K_rows = mesh_collocation_zero_cells.size();
     const Types::index rows = 2 * (N_rows + K_rows);
     // Надо понять какие константы будут фигурировать в расчете
-    const Types::complex_d epsilon{1., 0};
-    const Types::complex_d mu{1., 0};
+    constexpr Types::complex_d epsilon{1., 0};
+    constexpr Types::complex_d mu{1., 0};
     // расчет коэффициента импеданса и вспомогательных констант
     const Types::complex_d beta = std::sqrt(k * k - EMW::Math::Constants::PI_square<Types::scalar>() / (a * a));
 #ifdef OLD
@@ -173,38 +178,50 @@ element_of_submatrix(Types::index i, Types::index j, const Mesh::SurfaceMesh &me
 #endif
     // Расчет значения элемента непосредственно
 
-    const auto local_array_index = [](Types::index i, Types::index j, Types::index rows, Types::index cols) {
-        // есть двоичное число i / rows, j / cols
-        // десятичное будет в виде (i / rows * 2) + (j / cols)
-        return (i / rows) * 2 + (j / cols);
-    };
-
     if (i < 2 * N_rows) {
+        const auto cell_i = mesh_collocation_all_cells[i % N_rows];
+        const Types::index i_for_taus = i / N_rows;
         if (j < 2 * N_cols) {
-            return with_e * Matrix::DiscreteK::getMatrixCoefsInArray(mesh_to_integrate_all.getCells()[j % N_cols],
-                                                              mesh_collocation_all.getCells()[i % N_rows], k)
-                                                                [local_array_index(i, j, N_rows, N_cols)];
-            // а давайте попробуем приближать матрицу, используя только один набор коэффициентов
-            // таким образом, вместо настоящего коэффициента,
-            // мы всегда будем возвращать соответствующий элемент в блоке (0, N_rows) x (0, N_cols)
+            const auto cell_j = mesh_to_integrate_all_cells[j % N_cols];
+            // код из функции со сбором матрицы (a bit modified)
+            const Types::index j_for_taus = j / N_cols;
+            const Types::Matrix3c int0 =  Matrix::DiscreteK::getZeroPartIntegral(cell_i, cell_j, k);
+            const Types::complex_d int1_k2 = k * k *  Matrix::DiscreteK::getFirstPartIntegral(cell_i, cell_j, k);
+            const Types::complex_d a_0 = cell_i.tau[i_for_taus].transpose() * int0 * cell_j.tau[j_for_taus];
+            const Types::complex_d a_1 = Math::quasiDot(cell_i.tau[i_for_taus], cell_j.tau[j_for_taus]) * int1_k2;
+            return with_e * (a_0 + a_1);
+
         } else {
             Types::index local_j = j - 2 * N_cols;
-            return -Matrix::DiscreteR::getMatrixCoefsInArray(mesh_to_integrate_zero.getCells()[local_j % K_cols],
-                                                      mesh_collocation_all.getCells()[i % N_rows], k)
-                                                        [local_array_index(i, local_j, N_rows, K_cols)];
+            const Types::index j_for_taus = local_j / K_cols;
+            const auto cell_j = mesh_to_integrate_zero_cells[local_j % K_cols];
+            const Types::Vector3c integral =
+                OperatorR::detail::forMatrix::commonIntegralPart<DefiniteIntegrals::NewtonCotess::Quadrature<2, 2>>(
+                        cell_j, cell_i.collPoint_, k);
+            return -Math::quasiDot(integral, cell_j.tau[j_for_taus].cross(cell_i.tau[i_for_taus]));
         }
     } else {
         Types::index local_i = i - 2 * N_rows;
+        const auto cell_i = mesh_collocation_zero_cells[local_i % K_rows];
+        const Types::index i_for_taus = local_i / K_rows;
         if (j < 2 * N_cols) {
-            return z * Matrix::DiscreteR::getMatrixCoefsInArray(mesh_to_integrate_all.getCells()[j % N_cols],
-                                                         mesh_collocation_zero.getCells()[local_i % K_rows], k)
-                                                         [local_array_index(local_i, j, K_rows, N_cols)];
+            const auto cell_j = mesh_to_integrate_all_cells[j % N_cols];
+            // код из функции со сбором матрицы (a bit modified)
+            const Types::index j_for_taus = j / N_cols;
+            const Types::Vector3c integral =
+                OperatorR::detail::forMatrix::commonIntegralPart<DefiniteIntegrals::NewtonCotess::Quadrature<2, 2>>(
+                        cell_j, cell_i.collPoint_, k);
+            return z * Math::quasiDot(integral, cell_j.tau[j_for_taus].cross(cell_i.tau[i_for_taus]));
+
         } else {
             Types::index local_j = j - 2 * N_cols;
-            return z * with_mu *
-                   Matrix::DiscreteK::getMatrixCoefsInArray(mesh_to_integrate_zero.getCells()[local_j % K_cols],
-                                                     mesh_collocation_zero.getCells()[local_i % K_rows], k)
-                                                         [local_array_index(local_i, local_j, K_rows, K_cols)];
+            const Types::index j_for_taus = local_j / K_cols;
+            const auto cell_j = mesh_to_integrate_zero_cells[local_j % K_cols];
+            const Types::Matrix3c int0 =  Matrix::DiscreteK::getZeroPartIntegral(cell_i, cell_j, k);
+            const Types::complex_d int1_k2 = k * k *  Matrix::DiscreteK::getFirstPartIntegral(cell_i, cell_j, k);
+            const Types::complex_d a_0 = cell_i.tau[i_for_taus].transpose() * int0 * cell_j.tau[j_for_taus];
+            const Types::complex_d a_1 = Math::quasiDot(cell_i.tau[i_for_taus], cell_j.tau[j_for_taus]) * int1_k2;
+            return z * with_mu * (a_0 + a_1);
         }
     }
 }

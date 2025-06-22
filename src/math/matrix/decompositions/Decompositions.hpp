@@ -7,6 +7,7 @@
 
 #include "rsvd.hpp"
 #include "adaptive_cross.hpp"
+#include "templated_adaptive_cross.hpp"
 #include "types/Types.hpp"
 
 namespace EMW::Math::LinAgl::Decompositions {
@@ -16,6 +17,11 @@ using RealRSVD = RSVD<Types::MatrixXd, Types::VectorXd, Types::scalar>;
 
 using ComplexACA = ACA<Types::MatrixXc, Types::VectorXc, Types::complex_d>;
 using RealACA = ACA<Types::MatrixXd, Types::VectorXd, Types::scalar>;
+
+template<typename Callable>
+using T_ComplexACA = T_ACA<Callable, Types::MatrixXc, Types::VectorXc, Types::complex_d>;
+template<typename Callable>
+using T_RealACA = T_ACA<Callable, Types::MatrixXd, Types::VectorXd, Types::scalar>;
 
 }
 

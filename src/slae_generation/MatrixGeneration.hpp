@@ -45,6 +45,9 @@ struct ContourIntegralParts {
 Types::complex_d getFirstPartIntegral(Types::index i, Types::index j, Types::complex_d k,
                                       const Containers::vector<Mesh::IndexedCell> &cells);
 
+Types::complex_d getFirstPartIntegral(const Mesh::IndexedCell &cell_i, const Mesh::IndexedCell &cell_j,
+                                      Types::complex_d k);
+
 /**
  * Рассчитывает нулевую часть коэффициентов в матрицу (контурный интеграл)
  * @param i - индекс уравнения
@@ -55,6 +58,9 @@ Types::complex_d getFirstPartIntegral(Types::index i, Types::index j, Types::com
  */
 Types::Matrix3c getZeroPartIntegral(Types::index i, Types::index j, Types::complex_d k,
                                     const Containers::vector<Mesh::IndexedCell> &cells);
+
+Types::Matrix3c getZeroPartIntegral(const Mesh::IndexedCell &cell_i, const Mesh::IndexedCell &cell_j,
+                                    Types::complex_d k);
 
 MatrixCoefs getMatrixCoefs(Types::index i, Types::index j, Types::complex_d k,
                            const Containers::vector<Mesh::IndexedCell> &cells);

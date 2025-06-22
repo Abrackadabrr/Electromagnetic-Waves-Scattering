@@ -87,14 +87,20 @@ template <> struct CalcTraits<CalculationMethod::ACA> {
         // тут дурацкая функция для расчета элемента матрицы
         const auto &ref_mesh_zero = reference_mesh.getSubmesh(Mesh::IndexedCell::Tag::WAVEGUIDE_CROSS_SECTION);
         const auto &another_mesh_zero = another_mesh.getSubmesh(Mesh::IndexedCell::Tag::WAVEGUIDE_CROSS_SECTION);
-        const auto element_function = [&reference_mesh, &ref_mesh_zero, &another_mesh, &another_mesh_zero, k,
+        // cells extraction
+        const auto &ref_cells = reference_mesh.getCells();
+        const auto &ref_zero_cells = ref_mesh_zero.getCells();
+        const auto &an_cells = another_mesh.getCells();
+        const auto &an_zero_cells = another_mesh_zero.getCells();
+        const auto element_function = [&ref_cells, &ref_zero_cells, &an_cells, &an_zero_cells, k,
                                        a](Types::index row, Types::index col) -> Types::complex_d {
-            return WaveGuideWithActiveSection::element_of_submatrix(row, col, another_mesh, another_mesh_zero,
-                                                                    reference_mesh, ref_mesh_zero, a, k);
+            return WaveGuideWithActiveSection::element_of_submatrix(row, col, ref_cells, ref_zero_cells, an_cells,
+                                                                    an_zero_cells, a, k);
         };
 
         // тут непосредственно делаем адаптивный крест
-        const auto result =  Math::LinAgl::Decompositions::ComplexACA::compute(element_function, rows, cols, error_controller);
+        const auto result =
+            Math::LinAgl::Decompositions::ComplexACA::compute(element_function, rows, cols, error_controller);
 
 #if COMPUTE_ERRORS_OF_APPROXIMATION
         const auto full_block = CalcTraits<CalculationMethod::Full>::create_a_block(reference_mesh, another_mesh, k, a);
@@ -105,7 +111,7 @@ template <> struct CalcTraits<CalculationMethod::ACA> {
         std::cout << 'm' << std::endl;
         std::cout << "Rank = " << result.get<0>().cols() << std::endl;
         std::cout << "Absolute error of approximation = " << error_matrix.norm() << std::endl;
-        std::cout << "Relative error of approximation = " << error_matrix.norm()  / full_block.norm() << std::endl;
+        std::cout << "Relative error of approximation = " << error_matrix.norm() / full_block.norm() << std::endl;
 #endif
         return result;
     }
