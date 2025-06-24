@@ -120,7 +120,7 @@ int main() {
     const auto & ref_zero_cells = ref_mesh_zero.getCells();
     const auto & an_cells = an_mesh.getCells();
     const auto & an_zero_cells = another_mesh_zero.getCells();
-    const auto element_function = [&ref_cells, &ref_zero_cells, &an_cells, &an_zero_cells, k,
+    const auto element_function = [ref_cells, ref_zero_cells, an_cells, an_zero_cells, k,
                                    a](Types::index row, Types::index col) -> Types::complex_d {
         return WaveGuideWithActiveSection::element_of_submatrix(row, col, ref_cells, ref_zero_cells,
                                                                 an_cells, an_zero_cells, a, k);
@@ -132,7 +132,7 @@ int main() {
     start = std::chrono::system_clock::now();
 
     const auto result =
-        Math::LinAgl::Decompositions::ComplexACA::compute(element_function, out_block.rows(), out_block.cols(), 0.001);
+        Math::LinAgl::Decompositions::ComplexACA::compute(element_function, out_block.rows(), out_block.cols(), 0.1);
 
     end = std::chrono::system_clock::now();
     elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(end - start);

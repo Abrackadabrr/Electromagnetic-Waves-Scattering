@@ -93,7 +93,7 @@ using TTBMatrix = LAMatrix::ToeplitzToeplitzDynFactoredBlock<Types::complex_d>;
 using DiagonalPrec = LAMatrix::Preconditioning::DiagonalPreconditioner<Types::complex_d, TTBMatrix>;
 using BlockDiagPrec = LAMatrix::Preconditioning::BlockDiagonalPreconditioner<Types::complex_d, TTBMatrix>;
 using NoPrec = LAMatrix::Preconditioning::IdentityPreconditioner<Types::complex_d, TTBMatrix>;
-using MatrixWrapper = LAMatrix::Wrappers::MatrixReplacement<TTBMatrix, DiagonalPrec>;
+using MatrixWrapper = LAMatrix::Wrappers::MatrixReplacement<TTBMatrix, BlockDiagPrec>;
 
 int main() {
     // считываем сетку на антенне
@@ -108,10 +108,10 @@ int main() {
     const auto parser_out = EMW::Parser::parseMesh(nodesFile, cellsFile);
     auto mesh_base = Mesh::SurfaceMesh{parser_out.first, parser_out.second};
 
-    constexpr Types::index N1 = 1;
-    constexpr Types::index N2 = 2;
+    constexpr Types::index N1 = 10;
+    constexpr Types::index N2 = 9;
     constexpr Types::index N1_x_N2 = N1 * N2;
-    const Scene<N1, N2> geometry{0.14, 0.1, mesh_base};
+    const Scene<N1, N2> geometry{0.1, 0.07, mesh_base};
 
     // Геометрические параметры антенн
     // Короткая сторона волновода
@@ -142,7 +142,7 @@ int main() {
 
     // собираем правую часть шаманским способом (очень шаманским)
     // решаем какой будет фазовый фактор на волноводах
-    const Containers::array<Types::scalar, N1_x_N2> phases{0, 0};
+    const Containers::array<Types::scalar, N1_x_N2> phases{0};
     Containers::array<Types::complex_d, N1_x_N2> phase_factors;
     for (Types::index i = 0; i < phases.size(); ++i)
         phase_factors[i] = std::exp(Math::Constants::i * phases[i] * Math::Constants::deg_to_rad<Types::scalar>());
@@ -155,7 +155,7 @@ int main() {
     // Разбиваем на токи и рисуем на разных многообразиях
     const Research::Lattice::FieldOver field_set(geometry, std::move(result));
 
-    const std::string path = "/home/evgen/Education/MasterDegree/thesis/results/rsvd_vs_aca/";
+    const std::string path = "/home/evgen/Education/MasterDegree/thesis/results/rsvd_vs_aca/aca/";
     const std::string dir_name = std::to_string(N1) + "_x_" + std::to_string(N2) + "_lattice/";
     VTK::set_of_fields_snapshot(field_set, path + std::to_string(N1) + "_x_" + std::to_string(N2) + "_lattice.vtu");
 

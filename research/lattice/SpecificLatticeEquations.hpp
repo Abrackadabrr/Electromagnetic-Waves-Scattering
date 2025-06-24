@@ -12,9 +12,12 @@
 #include "types/Types.hpp"
 
 #include "math/MathConstants.hpp"
+#include "math/Productions.hpp"
 #include "math/fields/SurfaceVectorField.hpp"
+#include "math/integration/newton_cotess/Rectangular.hpp"
 
-#include <math/integration/newton_cotess/Rectangular.hpp>
+#include "operators/OperatorR.hpp"
+#include "operators/OperatorK.hpp"
 
 namespace WaveGuideWithActiveSection {
 

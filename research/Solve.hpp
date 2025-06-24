@@ -75,7 +75,7 @@ vector_t solve(const EMW::Math::LinAgl::Matrix::Wrappers::MatrixReplacement<matr
     method.setMaxIterations(max_iterations);
     std::cout << method.maxIterations() << std::endl;
     method.setTolerance(tolerance);
-    method.set_restart(max_iterations);
+    method.set_restart(200);
 
     std::cout << "Starting solution with 2ToepMatrix" << std::endl;
 

@@ -46,13 +46,14 @@ template <typename scalar_t, typename matrix_t> class BlockDiagonalPreconditione
           .inverse()), block_rows(invdiag_block.rows()),
           n_blocks(matrix.rows() / block_rows) {
         std::cout << "BlockDiagonalPreconditioner is constructed" << std::endl;
-        std::cout << "with " << n_blocks << "equal diagonal blocks" << std::endl;
+        std::cout << "with " << n_blocks << " equal diagonal blocks" << std::endl;
     }
 
     // Решается система уравнений Dx = rsh
-    // D -- это наша диагонлаьная матрица
+    // D -- это наш предобуславливатель
     vector_t solve(const vector_t &rhs) const {
         vector_t result = vector_t::Zero(block_rows * n_blocks);
+#pragma omp parallel for num_threads(14)
         for (Types::index i = 0; i < n_blocks; i++) {
           result.block(i * block_rows, 0, block_rows, 1) = invdiag_block * rhs.block(i * block_rows, 0, block_rows, 1);
       }

@@ -35,7 +35,7 @@ template <> struct CalcTraits<CalculationMethod::Full> {
     }
 };
 
-#define COMPUTE_ERRORS_OF_APPROXIMATION 1
+#define COMPUTE_ERRORS_OF_APPROXIMATION 0
 
 template <> struct CalcTraits<CalculationMethod::RSVD> {
     using ReturnType = Math::LinAgl::Matrix::ToeplitzToeplitzDynFactoredBlock<Types::complex_d>;
@@ -63,7 +63,7 @@ template <> struct CalcTraits<CalculationMethod::RSVD> {
     }
 };
 
-Types::index CalcTraits<CalculationMethod::RSVD>::rank = 100;
+Types::index CalcTraits<CalculationMethod::RSVD>::rank = 50;
 
 template <> struct CalcTraits<CalculationMethod::ACA> {
     using ReturnType = Math::LinAgl::Matrix::ToeplitzToeplitzDynFactoredBlock<Types::complex_d>;
@@ -72,7 +72,7 @@ template <> struct CalcTraits<CalculationMethod::ACA> {
     using compression = EMW::Math::LinAgl::Decompositions::ComplexACA;
 
     // ПАРАМЕТРЫ ACA
-    static constexpr Types::index error_controller = 0.1;
+    static constexpr Types::scalar error_controller = 0.1;
 
     // Функция расчета
     static inline block_t create_a_block(const Mesh::SurfaceMesh &reference_mesh, const Mesh::SurfaceMesh &another_mesh,
@@ -94,22 +94,18 @@ template <> struct CalcTraits<CalculationMethod::ACA> {
         const auto &an_zero_cells = another_mesh_zero.getCells();
         const auto element_function = [&ref_cells, &ref_zero_cells, &an_cells, &an_zero_cells, k,
                                        a](Types::index row, Types::index col) -> Types::complex_d {
-            return WaveGuideWithActiveSection::element_of_submatrix(row, col, ref_cells, ref_zero_cells, an_cells,
-                                                                    an_zero_cells, a, k);
+            return WaveGuideWithActiveSection::element_of_submatrix(row, col, an_cells, an_zero_cells, ref_cells,
+                                                                    ref_zero_cells, a, k);
         };
 
         // тут непосредственно делаем адаптивный крест
         const auto result =
             Math::LinAgl::Decompositions::ComplexACA::compute(element_function, rows, cols, error_controller);
-
+        std::cout << "Rank = " << result.get<0>().cols() << std::endl;
 #if COMPUTE_ERRORS_OF_APPROXIMATION
         const auto full_block = CalcTraits<CalculationMethod::Full>::create_a_block(reference_mesh, another_mesh, k, a);
         const auto approximation = result.compute();
-        std::cout << result.rows() << " " << result.cols() << std::endl;
-        std::cout << full_block.rows() << " " << full_block.cols() << std::endl;
         const Types::MatrixXc error_matrix = (full_block - approximation);
-        std::cout << 'm' << std::endl;
-        std::cout << "Rank = " << result.get<0>().cols() << std::endl;
         std::cout << "Absolute error of approximation = " << error_matrix.norm() << std::endl;
         std::cout << "Relative error of approximation = " << error_matrix.norm() / full_block.norm() << std::endl;
 #endif
@@ -117,19 +113,21 @@ template <> struct CalcTraits<CalculationMethod::ACA> {
     }
 };
 
-template <CalculationMethod Calc, Types::index N1, Types::index N2>
-typename CalcTraits<Calc>::ReturnType getMatrix(const Geometry::PeriodicStructure<N1, N2> &geometry, Types::scalar a,
+template <CalculationMethod Calc, typename scene>
+typename CalcTraits<Calc>::ReturnType getMatrix(const scene &geometry, Types::scalar a,
                                                 Types::complex_d k) {
     // алиасы для удобного пользования
     using CT = CalcTraits<Calc>;
     using ToeplitzBlock = typename CT::ToeplitzBlock;
     using block_t = typename CT::block_t;
 
+    constexpr Types::index N1 = scene::N1_;
+    constexpr Types::index N2 = scene::N2_;
     // Теперь соберем ту структуру, по которой мы будем производить расчет
     constexpr auto n1 = 2 * N1 - 1;
     constexpr auto n2 = 2 * N2 - 1;
     // тут геометрия содержит сетки с индексами [0, n1 - 1 == 2 N1 - 2] x [0, n2 - 1 == 2 N2 - 2]
-    const Geometry::PeriodicStructure<n1, n2> expanded_geometry = geometry.expand_without_saving_nice_origin();
+    const auto expanded_geometry = geometry.expand_without_saving_nice_origin();
 
     // Тут обязательно есть сетка с origin == {0, 0, 0}, вот относительно неё и будем считать
     // Теперь нам нужно собрать все необходимые блоки в вектор и std::move-нуть его в нужное место
@@ -160,7 +158,7 @@ typename CalcTraits<Calc>::ReturnType getMatrix(const Geometry::PeriodicStructur
             if ((i == 0) && (m == 0)) {
                 // вычисление диагонального блока, единственного несжимаемого
                 // во всей большой матрице
-                blocks[0] = std::move(block_t(std::vector{WaveGuideWithActiveSection::diagonal(reference_mesh, a, k)}));
+                blocks[0] = std::move(block_t({WaveGuideWithActiveSection::diagonal(reference_mesh, a, k)}));
             } else {
                 // а тут обычный расчет
                 // надо найти сетку, по которой считаем

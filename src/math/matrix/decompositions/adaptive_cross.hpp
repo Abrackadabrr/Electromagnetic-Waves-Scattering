@@ -52,6 +52,7 @@ template <typename matrix_t, typename vector_t, typename value_t> struct ACA {
     static vector_t get_row(Types::index i, Types::index n, Types::index m,
                             const MatrixElementFunction &element_function) {
         vector_t result = vector_t::Zero(m);
+#pragma omp parallel for num_threads(14)
         for (Types::index j = 0; j < m; ++j) {
             result[j] = element_function(i, j);
         }
@@ -65,6 +66,7 @@ template <typename matrix_t, typename vector_t, typename value_t> struct ACA {
     static vector_t get_col(Types::index j, Types::index n, Types::index m,
                             const MatrixElementFunction &element_function) {
         vector_t result = vector_t::Zero(n);
+#pragma omp parallel for num_threads(14)
         for (Types::index i = 0; i < n; ++i) {
             result[i] = element_function(i, j);
         }

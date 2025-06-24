@@ -6,13 +6,14 @@
 #define FIELDOVERGEOMETRY_HPP
 
 #include "geometry/PeriodicStructure.hpp"
+#include "geometry/ShiftedPeriodicStructure.hpp"
 #include "types/Types.hpp"
 
 namespace Research::Lattice {
 using namespace EMW;
 
 template <Types::index N1, Types::index N2> class FieldOver {
-    using geometry_t = Geometry::PeriodicStructure<N1, N2>;
+    using geometry_t = Geometry::ShiftedStructure<N1, N2>;
     using mesh_t = typename geometry_t::mesh_t;
     using field_t = Math::SurfaceVectorField;
 
