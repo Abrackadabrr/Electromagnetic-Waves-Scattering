@@ -29,12 +29,12 @@ EMW::Types::complex_d EMW::Math::SurfaceVectorField::supNorm() const {
     return {element->real().norm(), element->imag().norm()};
 }
 
-EMW::Math::SurfaceScalarField
+EMW::Math::SurfaceScalarField<EMW::Types::complex_d>
 EMW::Math::SurfaceVectorField::fieldNorm(const std::string name = "delfault_field_name") const {
     const auto field_view = field_data_ | std::views::transform([](const field_t &v) -> Types::complex_d {
                                 return Types::complex_d{v.real().norm(), v.imag().norm()};
                             });
-    SurfaceScalarField result{manifold_, std::vector<Types::complex_d>{field_view.begin(), field_view.end()}};
+    SurfaceScalarField<EMW::Types::complex_d> result{manifold_, std::vector<Types::complex_d>{field_view.begin(), field_view.end()}};
     result.setName(name);
     return result;
 }

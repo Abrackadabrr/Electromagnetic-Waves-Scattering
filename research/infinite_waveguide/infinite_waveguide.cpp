@@ -2,8 +2,8 @@
 // Created by evgen on 14.04.2025.
 //
 
-#include <string>
 #include <execution>
+#include <string>
 
 #include "mesh/MeshTypes.hpp"
 #include "mesh/Parser.hpp"
@@ -20,7 +20,7 @@
 
 #include "VTKFunctions.hpp"
 
-#include "../lattice/GeneralizedEquations.hpp"
+#include "../lattice/SpecificLatticeEquations.hpp"
 #include "FieldCalculation.hpp"
 
 #include <unsupported/Eigen/IterativeSolvers>
@@ -40,62 +40,62 @@
 
 template <typename Callable>
 void getSWConAxis(const Math::SurfaceVectorField &j_e, const Math::SurfaceVectorField &j_m, const Types::complex_d k,
-                  const Callable &direct_field) {
+                  const Callable &direct_field, const std::string path) {
     // собрать точки на оси
     int N = 2 * 41;
     Types::scalar h = 0.5 / (N - 1);
-    const auto points_view = std::views::iota(0, N) | std::views::transform([&h](auto p) { return Types::Vector3d{0, 0, p * h}; });
+    const auto points_view = std::views::iota(0, N) | std::views::transform([&h](auto p) {
+                                 return Types::Vector3d{0, 0, p * h};
+                             });
     const auto z_values_view = points_view | std::views::transform([&](auto p) { return p.z(); });
     Containers::vector<Mesh::point_t> points{std::begin(points_view), std::end(points_view)};
     const Containers::vector<Types::scalar> z_coordinate{std::begin(z_values_view), std::end(z_values_view)};
 
     const auto inverse_field = [&](Mesh::point_t &point) {
         Types::Vector3c value = InfiniteWaveguide::getE_in_point(j_e, j_m, k, point) - direct_field(point);
-        //std::cout << value << std::endl;
+        // std::cout << value << std::endl;
         return value;
     };
 
     const auto result = EngineeringCoefficients::SWC(direct_field, inverse_field, points);
 
-    std::ofstream sigma(
-        "/home/evgen/Education/MasterDegree/thesis/Electromagnetic-Waves-Scattering/vtk_files/studies/rupor/ksv.csv");
+    std::ofstream sigma(path + "/ksv.csv");
     Utils::to_csv(result, z_coordinate, "ksv", "z", sigma);
 }
 
-void getAmplitudeOverAxis(const Math::SurfaceVectorField &j_e,
-                          const Math::SurfaceVectorField &j_m,
+void getAmplitudeOverAxis(const Math::SurfaceVectorField &j_e, const Math::SurfaceVectorField &j_m,
                           const Types::complex_d k, const std::string path) {
     // собрать точки на оси
     int N = 2 * 41;
-    Types::scalar h = 0.5 / (N - 1);
-    const auto points_view = std::views::iota(0, N) | std::views::transform([&h](auto p) { return Types::Vector3d{0, 0, p * h}; });
+    Types::scalar h = 1. / (N - 1);
+    const auto points_view = std::views::iota(0, N) | std::views::transform([&h](auto p) {
+                                 return Types::Vector3d{0, 0, p * h};
+                             });
     const auto z_values_view = points_view | std::views::transform([&](auto p) { return p.z(); });
     Containers::vector<Mesh::point_t> points{std::begin(points_view), std::end(points_view)};
     const Containers::vector<Types::scalar> z_coordinate{std::begin(z_values_view), std::end(z_values_view)};
 
     Containers::vector<Types::scalar> amplitude{};
     std::transform(points.begin(), points.end(), std::back_inserter(amplitude),
-                    [&](auto p) {
-                       return  InfiniteWaveguide::getE_in_point(j_e, j_m, k, p).norm();
-                    });
+                   [&](auto p) { return InfiniteWaveguide::getE_in_point(j_e, j_m, k, p).norm(); });
 
     std::ofstream file(path + "/module_over_z.csv");
     Utils::to_csv(amplitude, z_coordinate, "module", "z", file);
 }
 
-
 int main() {
     // считываем сетку на антенне
     const std::string nodesFile = "/home/evgen/Education/MasterDegree/thesis/Electromagnetic-Waves-Scattering/meshes/"
-                                  "waveguide/infinite/three_waves/8544_nodes.csv";
+                                  "waveguide/infinite/five_waves/14000_nodes.csv";
     const std::string cellsFile = "/home/evgen/Education/MasterDegree/thesis/Electromagnetic-Waves-Scattering/meshes/"
-                                  "waveguide/infinite/three_waves/8542_cells.csv";
+                                  "waveguide/infinite/five_waves/13998_cells.csv";
     // собираем сетки
     const auto parser_out = EMW::Parser::parseMesh(nodesFile, cellsFile);
     auto mesh_base = Mesh::SurfaceMesh{parser_out.first, parser_out.second};
     mesh_base.setName("All");
     auto mesh_zero = mesh_base.getSubmesh(Mesh::IndexedCell::Tag::WAVEGUIDE_CROSS_SECTION);
     mesh_zero.setName("Zero");
+
 
     // Геометрические параметры антенн
     // Короткая сторона волновода
@@ -111,6 +111,14 @@ int main() {
     std::cout << "Волновое число в свободном пространстве: " << k.real()
               << "; Длина волны в свободном пространстве: " << 2 * Math::Constants::PI<Types::scalar>() / k.real()
               << std::endl;
+    // direct field over waveguide axis
+    const auto get_e_h10_mode = [&k, &a, &beta](const Mesh::point_t &x) {
+        const auto pi = Math::Constants::PI<Types::scalar>();
+        const Types::complex_d mult = Math::Constants::i * (a / pi) * k / Math::Constants::e_0_c;
+        const Types::complex_d exp = std::exp(Math::Constants::i * beta * (x.z()));
+        const Types::scalar cos = std::cos(pi * x.x() / a);
+        return Types::Vector3c{Types::complex_d{0, 0}, mult * cos * exp, Types::complex_d{0, 0}};
+    };
 
     const auto rhs = InfiniteWaveguideEquations::getRhs(mesh_base, a, k);
     std::cout << "RHS assembled, size: " << rhs.rows() << std::endl;
@@ -144,21 +152,22 @@ int main() {
     VTK::united_snapshot({m_c}, {}, mesh_zero, path);
 
     getAmplitudeOverAxis(e_c, m_c, k, path);
+    getSWConAxis(e_c, m_c, k, get_e_h10_mode, path);
 
 #if FIELD_CALCULATION
     // Рисуем картину поля в плоскости y = 0
-    int k1 = 99;
-    Types::scalar h1 = 0.5 / (k1 - 1);
-    int k2 = 99;
-    Types::scalar h2 = 0.5 / (k2 - 1);
+    int k1 = 299;
+    Types::scalar h1 = 1.51 / (k1 - 1);
+    int k2 = 40;
+    Types::scalar h2 = 0.15 / (k2 - 1);
 
     std::vector<Mesh::point_t> points;
     points.reserve(k1 * k2);
     Mesh::Utils::cartesian_product_unevenXZ(std::ranges::views::iota(0, k2), std::ranges::views::iota(0, k1),
                                             std::back_inserter(points), k2, k1, h2, h1);
 
-    for (auto&& p : points)
-        p += Mesh::point_t{0.0, 0, 0.25};
+    for (auto &&p : points)
+        p += Mesh::point_t{0.0, 0, 0.15};
 
     std::cout << "Surrounding Mesh Constructed" << std::endl;
 

@@ -90,6 +90,8 @@ Containers::array<Types::complex_d, 4> getMatrixCoefsInArray(const Mesh::Indexed
 
 } // namespace DiscreteR
 
+// ------------ Оператор К ----------- //
+
 /**
 * Расчет матрицы оператора K для токов и значений образа на одной и той же поверхности
 */
@@ -101,6 +103,8 @@ Types::MatrixXc getMatrixK(Types::complex_d k, const Mesh::SurfaceMesh &surface_
 Types::MatrixXc getMatrixK(Types::complex_d k, const Mesh::SurfaceMesh &integration_mesh,
                                                const Mesh::SurfaceMesh &mesh_with_coll_points);
 
+// ---------------- Оператор R ------------ //
+
 /**
 * Расчет матрицы оператора R для токов и значений образа на одной и той же поверхности
 */
@@ -111,6 +115,8 @@ Types::MatrixXc getMatrixR(Types::complex_d k, const Mesh::SurfaceMesh &surface_
 */
 Types::MatrixXc getMatrixR(Types::complex_d k, const Mesh::SurfaceMesh &integration_mesh,
                                                const Mesh::SurfaceMesh &mesh_with_coll_points);
+
+// ----------- Вспомогательные операторы ------------- //
 
 /**
 * Расчет матрицы оператора векторного умножения на нормаль справа

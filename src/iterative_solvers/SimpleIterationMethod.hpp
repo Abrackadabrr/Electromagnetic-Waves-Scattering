@@ -22,20 +22,22 @@ struct SimpleIterationMethod {
     Types::index max_iterations = 5000;
     Types::index iterations;
     Types::scalar error;
-    Types::scalar tau;
+    Types::scalar tau = 1e-2;
 
-    Vector_t solve(const Operator_t& A, const Operator_t& K, const Vector_t& b, const Vector_t& initial) {
+    Vector_t solve(const Operator_t& preconditioner, const Operator_t& K, const Vector_t& b, const Vector_t& initial) {
+        // обновляем информацию по итерациям
+        iterations = 0;
+        // решаем систему
         Vector_t resudial = b - K * initial;
         const Types::scalar b_norm = b.norm();
         error = resudial.norm() / b_norm;
         Vector_t result = initial;
         iterations = 0;
         while (error > tolerance && iterations < max_iterations) {
-            result += A * resudial;
+            result += tau * (preconditioner * resudial);
             resudial = b - K * result;
             error = resudial.norm() / b_norm;
             iterations++;
-            std::cout << iterations << ' ' << error << std::endl;
         }
         return result;
     }

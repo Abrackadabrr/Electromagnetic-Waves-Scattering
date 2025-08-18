@@ -13,13 +13,13 @@
 
 #include "research/Solve.hpp"
 
-#include "geometry/ShiftedPeriodicStructure.hpp"
+#include "geometry/HomogeneousStructure.hpp"
 
 #include "VTKFunctions.hpp"
 
-#include "GeneralEquation.hpp"
-#include "FieldCalculation.hpp"
-#include "FieldOverGeometry.hpp"
+#include "../GeneralEquation.hpp"
+#include "../FieldCalculation.hpp"
+#include "../FieldOverGeometry.hpp"
 
 #include "math/matrix/Matrix.hpp"
 
@@ -29,12 +29,13 @@
 
 #include <Utils.hpp>
 #include <chrono>
+#include <equations/EquationsOverGeometry.hpp>
 #include <experiment/ESA.hpp>
 #include <iostream>
 
 namespace eq = WaveGuideWithActiveSection;
 
-template <int N1, int N2> using Scene = Geometry::ShiftedStructure<N1, N2>;
+using Scene = Geometry::HomogeneousStructure;
 
 template <typename FieldTopology>
 Containers::vector<Types::Vector3c>
@@ -88,14 +89,8 @@ template <typename Fields> void getSigmaValuesYZ(const Types::complex_d k, const
 }
 
 namespace LAMatrix = Math::LinAgl::Matrix;
-using TTBMatrix = LAMatrix::ToeplitzToeplitzBlock<Types::complex_d>;
-using TTDBMatrix = LAMatrix::ToeplitzToeplitzDynFactoredBlock<Types::complex_d>;
-using matrix = TTDBMatrix;
+using matrix = Types::MatrixXc;
 
-using DiagonalPrec = LAMatrix::Preconditioning::DiagonalPreconditioner<Types::complex_d, matrix>;
-using BlockDiagPrec = LAMatrix::Preconditioning::BlockDiagonalPreconditioner<Types::complex_d, matrix>;
-using NoPrec = LAMatrix::Preconditioning::IdentityPreconditioner<Types::complex_d, matrix>;
-using MatrixWrapper = LAMatrix::Wrappers::MatrixReplacement<matrix, DiagonalPrec>;
 
 int main() {
     // считываем сетку на антенне
@@ -109,21 +104,16 @@ int main() {
     // собираем сетки
     const auto parser_out = EMW::Parser::parseMesh(nodesFile, cellsFile);
     auto mesh_base = Mesh::SurfaceMesh{parser_out.first, parser_out.second};
-
-    constexpr Types::index N1 = 9;
-    constexpr Types::index N2 = 9;
-    constexpr Types::index N1_x_N2 = N1 * N2;
-
+    // собираем orinigs
     const Types::scalar a_hat = 0.04;  // расстояние между центрами сеток "на диагонали 1"
     const Types::scalar b_hat = 0.08;  // расстояние между центрами сеток "на диагонали 2"
-    const Types::scalar step = std::sqrt(a_hat * a_hat + b_hat * b_hat / 4);
+    // 2 3 2 сетка
+    const Containers::vector<Types::Vector3d> origins{
+            Types::Vector3d{-b_hat / 2, -a_hat, 0}, Types::Vector3d{b_hat / 2, -a_hat, 0},
+    Types::Vector3d{-b_hat, 0, 0}, Types::Vector3d{0, 0, 0}, Types::Vector3d{b_hat, 0, 0},
+            Types::Vector3d{-b_hat / 2, a_hat, 0}, Types::Vector3d{b_hat / 2, a_hat, 0}};
 
-    const Types::scalar alpha = std::atan2(b_hat, 2 * a_hat);
-    const Types::scalar y_coord_of_vector = (2 * a_hat / b_hat);
-    const Types::Vector3d dir1 = Types::Vector3d{1, y_coord_of_vector, 0}.normalized();
-    const Types::Vector3d dir2 = Types::Vector3d{1, -y_coord_of_vector, 0}.normalized();
-
-    const Scene<N1, N2> geometry{dir1, dir2, step, step, mesh_base};
+    const Scene geometry{origins, mesh_base};
 
     // Геометрические параметры антенн
     // Короткая сторона волновода
@@ -140,36 +130,33 @@ int main() {
               << "; Длина волны в свободном пространстве: " << 2 * Math::Constants::PI<Types::scalar>() / k.real()
               << std::endl;
 
-    // собираем общую маленькую тёплицеву матрицу
+    // собираем общую самую большую в мире матрицу
 
     auto start = std::chrono::high_resolution_clock::now();
 
-    const auto matrix = Research::Lattice::getMatrix<Research::Lattice::CalculationMethod::ACA>(geometry, a, k);
+    const auto matrix = Equations::MatrixForStructure::compute(geometry, WaveGuideWithActiveSection::diagonal, WaveGuideWithActiveSection::submatrix, {a, k});
 
     auto end = std::chrono::high_resolution_clock::now();
     auto elapsed = std::chrono::duration_cast<std::chrono::seconds>(end - start);
 
-    std::cout << Utils::get_memory_usage(matrix) << std::endl;
-    std::cout << "Matrix assembled, size: " << matrix.rows() << "; time elapsed: " << elapsed << std::endl;
-
     // собираем правую часть шаманским способом (очень шаманским)
     // решаем какой будет фазовый фактор на волноводах
-    const Containers::array<Types::scalar, N1_x_N2> phases{0};
-    Containers::array<Types::complex_d, N1_x_N2> phase_factors;
+    const Containers::array<Types::scalar, 7> phases{0};
+    Containers::array<Types::complex_d, 7> phase_factors;
     for (Types::index i = 0; i < phases.size(); ++i)
         phase_factors[i] = std::exp(Math::Constants::i * phases[i] * Math::Constants::deg_to_rad<Types::scalar>());
     const auto rhs = eq::getRhs(phase_factors, mesh_base, a, k);
 
     std::cout << "RHS assembled, size: " << rhs.rows() << std::endl;
 
-    auto result = Research::solve<Eigen::GMRES>(MatrixWrapper{matrix}, rhs, 2000, 1e-2);
+    auto result = Research::solve<Eigen::GMRES>(matrix, rhs, 2000, 1e-2);
 
     // Разбиваем на токи и рисуем на разных многообразиях
     const Research::Lattice::FieldOver field_set(geometry, std::move(result));
 
-    const std::string path = "/home/evgen/Education/MasterDegree/thesis/results/romb/aca/";
-    const std::string dir_name = std::to_string(N1) + "_x_" + std::to_string(N2) + "_lattice/";
-    VTK::set_of_fields_snapshot(field_set, path + std::to_string(N1) + "_x_" + std::to_string(N2) + "_lattice.vtu");
+    const std::string path = "/home/evgen/Education/MasterDegree/thesis/results/fal/super_full/";
+    const std::string dir_name = "FAL/";
+    VTK::set_of_fields_snapshot(field_set, path + dir_name + "2_3_2_lattice.vtu");
 
     getSigmaValuesXZ(k, field_set, path + dir_name);
     getSigmaValuesYZ(k, field_set, path + dir_name);

@@ -20,6 +20,8 @@ endif ()
 set(TARGET_LIBS eigen visual OpenMP::OpenMP_CXX)  #  + OpenMP::OpenMP_CXX
 
 list(APPEND TASKS tests/matrix_comparison.cpp
+        hexogonal/first_attempt.cpp
+        hexogonal/hax_coarse_method.cpp
         shifted_structure.cpp
         lattice_formation_simple.cpp
         lattice_formation_real.cpp

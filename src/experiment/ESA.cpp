@@ -26,7 +26,7 @@ Types::Vector3c sigmaOverCell(Types::complex_d k, const Types::Vector3d &tau, co
         const Types::scalar mul = cell.multiplier(p, q);
         return Helmholtz::sigmaKernel(k, tau, y, j_e, j_m) * mul;
     };
-    return DefiniteIntegrals::integrate<DefiniteIntegrals::NewtonCotess::Quadrature<8, 8>>(phi, {0, 0}, {1, 1});
+    return DefiniteIntegrals::integrate<DefiniteIntegrals::GaussLegendre::Quadrature<2, 2>>(phi, {0, 0}, {1, 1});
 }
 
 Types::scalar calculateESA(const Types::Vector3d &tau, Types::complex_d k, const Math::SurfaceVectorField &j_e,

@@ -72,11 +72,19 @@ template <> struct CalcTraits<CalculationMethod::ACA> {
     using compression = EMW::Math::LinAgl::Decompositions::ComplexACA;
 
     // ПАРАМЕТРЫ ACA
-    static constexpr Types::scalar error_controller = 0.1;
+    static constexpr Types::scalar error_controller = 0.01;
 
     // Функция расчета
     static inline block_t create_a_block(const Mesh::SurfaceMesh &reference_mesh, const Mesh::SurfaceMesh &another_mesh,
                                          Types::complex_d k, Types::scalar a) {
+#define EXCLUDE_SOME_ACA 0
+#if EXCLUDE_SOME_ACA
+        const auto dist = (reference_mesh.getCells()[0].cellStructure.A - another_mesh.getCells()[0].cellStructure.A).norm();
+        if (dist < a) {
+            std::cout << "Full calculation of submatrix, distance = " << dist << std::endl;
+            return {{WaveGuideWithActiveSection::submatrix(another_mesh, reference_mesh, a, k)}, {false}};
+        }
+#endif
         // размеры самых внутренних блоков матрицы (нужня для АСА)
         const Types::index N_cols = reference_mesh.getCells().size();
         const Types::index K_cols =
@@ -114,8 +122,7 @@ template <> struct CalcTraits<CalculationMethod::ACA> {
 };
 
 template <CalculationMethod Calc, typename scene>
-typename CalcTraits<Calc>::ReturnType getMatrix(const scene &geometry, Types::scalar a,
-                                                Types::complex_d k) {
+typename CalcTraits<Calc>::ReturnType getMatrix(const scene &geometry, Types::scalar a, Types::complex_d k) {
     // алиасы для удобного пользования
     using CT = CalcTraits<Calc>;
     using ToeplitzBlock = typename CT::ToeplitzBlock;

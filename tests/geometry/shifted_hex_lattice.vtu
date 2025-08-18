@@ -1,0 +1,15 @@
+<?xml version="1.0"?>
+<VTKFile type="vtkMultiBlockDataSet" version="1.0" byte_order="LittleEndian" header_type="UInt32" compressor="vtkZLibDataCompressor">
+  <vtkMultiBlockDataSet>
+    <DataSet index="0" file="shifted_hex_lattice/shifted_hex_lattice_0.vtu"/>
+    <DataSet index="1" file="shifted_hex_lattice/shifted_hex_lattice_1.vtu"/>
+    <DataSet index="2" file="shifted_hex_lattice/shifted_hex_lattice_2.vtu"/>
+    <DataSet index="3" file="shifted_hex_lattice/shifted_hex_lattice_3.vtu"/>
+    <DataSet index="4" file="shifted_hex_lattice/shifted_hex_lattice_4.vtu"/>
+    <DataSet index="5" file="shifted_hex_lattice/shifted_hex_lattice_5.vtu"/>
+    <DataSet index="6" file="shifted_hex_lattice/shifted_hex_lattice_6.vtu"/>
+    <DataSet index="7" file="shifted_hex_lattice/shifted_hex_lattice_7.vtu"/>
+    <DataSet index="8" file="shifted_hex_lattice/shifted_hex_lattice_8.vtu"/>
+    <DataSet index="9" file="shifted_hex_lattice/shifted_hex_lattice_9.vtu"/>
+  </vtkMultiBlockDataSet>
+</VTKFile>

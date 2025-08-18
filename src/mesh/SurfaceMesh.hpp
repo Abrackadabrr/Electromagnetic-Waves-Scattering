@@ -58,7 +58,7 @@ class SurfaceMesh {
 
     /* Далее идут селекторы */
     [[nodiscard]] constexpr const Containers::vector<IndexedCell> &getCells() const { return cells_; }
-
+    [[nodiscard]] constexpr Containers::vector<IndexedCell> &getCells() { return cells_; }
     [[nodiscard]] constexpr const Containers::vector<point_t> &getNodes() const { return nodes_; }
 
     [[nodiscard]] std::string getName() const { return name; }
@@ -73,6 +73,8 @@ class SurfaceMesh {
     SurfaceMesh getSubmesh(IndexedCell::Tag tag) const;
 
     mesh_info_t getSubmeshInfo(IndexedCell::Tag tag) const;
+
+
 
     };
 }

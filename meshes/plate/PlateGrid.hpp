@@ -57,7 +57,6 @@ namespace EMW::Examples::Plate {
                                                                           std::ranges::end(cellsView)};
         return Mesh::SurfaceMesh{meshgrid, cells};
     }
-
 }
 
 #endif //ELECTROMAGNETIC_WAVES_SCATTERING_PLATEGRID_HPP
