@@ -21,7 +21,7 @@
 
 #include "FieldCalculation.hpp"
 #include "GeneralEquation.hpp"
-#include "GeneralizedEquations.hpp"
+#include "SpecificLatticeEquations.hpp"
 
 #include "math/matrix/Matrix.hpp"
 
@@ -47,17 +47,15 @@ int main() {
                                   "lattice/8000_nodes.csv";
     const std::string cellsFile = "/home/evgen/Education/MasterDegree/thesis/Electromagnetic-Waves-Scattering/meshes/"
                                   "lattice/2000_cells.csv";
-    constexpr EMW::Types::index nNodes = 8000;
-    constexpr EMW::Types::index nCells = 2000;
 
     // собираем сетки
-    const auto parser_out = EMW::Parser::parseMesh(nodesFile, cellsFile, nNodes, nCells);
+    const auto parser_out = EMW::Parser::parseMesh(nodesFile, cellsFile);
     auto mesh_base = Mesh::SurfaceMesh{parser_out.first, parser_out.second};
 
     constexpr Types::index N1 = 1;
     constexpr Types::index N2 = 3;
     constexpr Types::index N1_x_N2 = N1 * N2;
-    const Scene<N1, N2> geometry{0.14, 0.1, mesh_base};
+    const Scene<N1, N2> geometry{{1, 0, 0}, {0, 1, 0},0.1, 0.07, mesh_base};
 
     // Геометрические параметры антенн
     // Короткая сторона волновода
@@ -75,8 +73,7 @@ int main() {
               << std::endl;
 
     // собираем тёплицеву матрицу
-    const auto matrix_toeplitz =
-        Research::Lattice::getMatrix<Research::Lattice::CalculationMethod::Full>(geometry, a, k);
+    const auto matrix = Research::Lattice::getMatrix<Research::Lattice::CalculationMethod::Full>(geometry, a, k);
     std::cout << "Toeplitz matrix is ready" << std::endl;
 
     // собираем общую матрицу (большую и плотную!)
@@ -89,13 +86,13 @@ int main() {
     std::cout << "Factored matrix is ready" << std::endl;
 
     // Считаем ошибку
-    std::cout << (matrix_toeplitz.to_dense() - matrix_full).norm() << std::endl;
+    std::cout << (matrix.to_dense() - matrix_full).norm() << std::endl;
 //    std::cout << (matrix_full - matrix_factored.to_dense()).norm() << std::endl;
 
     // Проверка умножения на матрицу
     for (int i = 0; i < 100; ++i) {
-        const Types::VectorXc vec = Types::VectorXc::Random(matrix_toeplitz.rows());
-        const auto res_toeplitz = matrix_toeplitz * vec;
+        const Types::VectorXc vec = Types::VectorXc::Random(matrix.rows());
+        const auto res_toeplitz = matrix * vec;
         const Types::VectorXc res_full = matrix_full * vec;
         std::cout << "----- Iteration " << i << " -----" << std::endl;
         std::cout << (res_toeplitz - res_full).norm() << std::endl;

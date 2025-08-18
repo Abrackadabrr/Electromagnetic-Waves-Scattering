@@ -8,7 +8,6 @@
 #include <vtkPolygon.h>
 #include <vtkTetra.h>
 #include <vtkUnstructuredGrid.h>
-#include <vtkXMLUnstructuredGridWriter.h>
 
 namespace VTK {
 
@@ -123,51 +122,7 @@ void field_snapshot(const EMW::Math::SurfaceVectorField &field, const std::strin
     writer->Write();
 }
 
-void united_snapshot(const std::vector<EMW::Math::SurfaceVectorField> &vectorFields,
-                     const std::vector<EMW::Math::SurfaceScalarField> &scalarFields, const EMW::Mesh::SurfaceMesh &mesh,
-                     const std::string &path_to_file, int number) {
-    // Создаем поверхность
-    vtkSmartPointer<vtkUnstructuredGrid> unstructuredGrid = detail::formUnstructuredGrid(mesh);
-
-    // Создаем поля
-    for (const auto &field : vectorFields) {
-        detail::dumpField<EMW::Math::SurfaceVectorField>(unstructuredGrid, field);
-    }
-
-    for (const auto &field : scalarFields) {
-        detail::dumpField<EMW::Math::SurfaceScalarField>(unstructuredGrid, field);
-    }
-    // Создаём снапшот в файле с заданным именем
-    std::string fileName = mesh.getName() + (number ? std::to_string(number) : std::string("")) + ".vtu";
-    vtkSmartPointer<vtkXMLUnstructuredGridWriter> writer = vtkSmartPointer<vtkXMLUnstructuredGridWriter>::New();
-    writer->SetFileName((path_to_file + fileName).c_str());
-    writer->SetInputData(unstructuredGrid);
-    writer->Write();
-}
-
-void dumpField(const vtkSmartPointer<vtkUnstructuredGrid> &unstructuredGrid,
-               const EMW::Containers::vector<EMW::Types::Vector3c> &field, const std::string &name) {
-    auto real_field = vtkSmartPointer<vtkDoubleArray>::New();
-
-    real_field->SetName((name + "_real").c_str());
-    real_field->SetNumberOfComponents(EMW::Types::Vector3c{}.rows());
-    auto imag_field = vtkSmartPointer<vtkDoubleArray>::New();
-    imag_field->SetNumberOfComponents(EMW::Types::Vector3c{}.rows());
-    imag_field->SetName((name + "_imag").c_str());
-
-    // Обходим все точки пространственной окружающей расчётной сетки
-    for (const auto &f : field) {
-        double f_real[3] = {f(0).real(), f(1).real(), f(2).real()};
-        double f_imag[3] = {f(0).imag(), f(1).imag(), f(2).imag()};
-        real_field->InsertNextTuple(f_real);
-        imag_field->InsertNextTuple(f_imag);
-    }
-
-    unstructuredGrid->GetPointData()->AddArray(real_field);
-    unstructuredGrid->GetPointData()->AddArray(imag_field);
-    std::cout << "Field " << name << " dumped" << std::endl;
-};
-
+# if 0
 void field_in_points_snapshot(const std::vector<std::vector<EMW::Types::Vector3c>> &fields,
                               const std::vector<std::string> &names,
                               const std::vector<EMW::Types::Vector3d> &points,
@@ -198,7 +153,7 @@ void field_in_points_snapshot(const std::vector<std::vector<EMW::Types::Vector3c
     writer->SetInputData(unstructuredGrid);
     writer->Write();
 }
-
+#endif
 }
 
 

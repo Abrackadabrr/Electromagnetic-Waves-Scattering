@@ -18,7 +18,7 @@ namespace Research {
 template <template <typename, typename> typename method_t, typename matrix_t, typename vector_t>
 vector_t solve(const matrix_t &A, const vector_t &b, EMW::Types::index max_iterations, EMW::Types::scalar tolerance) {
     auto method = method_t<matrix_t, Eigen::IdentityPreconditioner>{};
-
+    std::cout << "GMRES without precond" << std::endl;
     method.setMaxIterations(max_iterations);
     std::cout << method.maxIterations() << std::endl;
     method.setTolerance(tolerance);
@@ -75,7 +75,7 @@ vector_t solve(const EMW::Math::LinAgl::Matrix::Wrappers::MatrixReplacement<matr
     method.setMaxIterations(max_iterations);
     std::cout << method.maxIterations() << std::endl;
     method.setTolerance(tolerance);
-    method.set_restart(200);
+    method.set_restart(1000);
 
     std::cout << "Starting solution with 2ToepMatrix" << std::endl;
 

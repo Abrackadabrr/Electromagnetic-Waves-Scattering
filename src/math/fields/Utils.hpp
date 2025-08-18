@@ -10,7 +10,7 @@
 
 namespace EMW::Math::FieldUtils {
 
-Math::SurfaceScalarField relativeError(const SurfaceVectorField & v1, const SurfaceVectorField & v2);
+Math::SurfaceScalarField<Types::complex_d> relativeError(const SurfaceVectorField & v1, const SurfaceVectorField & v2);
 
 }
 

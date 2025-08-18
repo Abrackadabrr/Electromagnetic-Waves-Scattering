@@ -12,7 +12,7 @@ namespace EMW::Helmholtz {
     // фундаментальное решение уравнения Гельмгольца
     Types::complex_d F(Types::complex_d k, const Types::Vector3d &x, const Types::Vector3d &y);
 
-    // ограниченный кусок от фундаментального решения, вычли 1 / r
+    // ограниченный кусок от фундаментального решения, вычли 1 / (4 pi r)
     Types::complex_d F_bounded_part(Types::complex_d k, const Types::Vector3d &x, const Types::Vector3d &y);
 
     // МИНУС градиент по x фундаментального решения уравнения Гельмгольца
@@ -27,6 +27,16 @@ namespace EMW::Helmholtz {
 
     Types::Vector3c
     reducedK_kernel(Types::complex_d k, const Types::Vector3d &x, const Types::Vector3d &y, const Types::Vector3c &j);
+}
+
+namespace EMW::Laplace {
+
+    // фундаментальное решение уравнения Лапласа
+    Types::scalar F(const Types::Vector3d& x, const Types::Vector3d& y);
+
+    // градиент фундаментального решения уравнения Лапласа
+    Types::Vector3d gradF(const Types::Vector3d& x, const Types::Vector3d& y);
+
 }
 
 #endif //ELECTROMAGNETIC_WAVES_SCATTERING_FUNCTIONS_HPP

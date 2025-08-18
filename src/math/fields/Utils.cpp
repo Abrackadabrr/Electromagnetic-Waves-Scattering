@@ -7,7 +7,7 @@
 
 namespace EMW::Math::FieldUtils {
 
-Math::SurfaceScalarField relativeError(const SurfaceVectorField &v1, const SurfaceVectorField &v2) {
+Math::SurfaceScalarField<EMW::Types::complex_d> relativeError(const SurfaceVectorField &v1, const SurfaceVectorField &v2) {
     using std::begin;
     using std::end;
     const auto data_view = std::views::zip_transform(

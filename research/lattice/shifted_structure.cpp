@@ -14,7 +14,7 @@
 
 #include "research/Solve.hpp"
 
-#include "geometry/ShiftedPeriodicStructure.hpp"
+#include "geometry/PeriodicStructure.hpp"
 
 #include "VTKFunctions.hpp"
 
@@ -35,7 +35,7 @@
 
 namespace eq = WaveGuideWithActiveSection;
 
-template <int N1, int N2> using Scene = Geometry::ShiftedStructure<N1, N2>;
+template <int N1, int N2> using Scene = Geometry::PeriodicStructure<N1, N2>;
 
 template <typename FieldTopology>
 Containers::vector<Types::Vector3c>
@@ -104,15 +104,13 @@ int main() {
                                   "lattice/8000_nodes.csv";
     const std::string cellsFile = "/home/evgen/Education/MasterDegree/thesis/Electromagnetic-Waves-Scattering/meshes/"
                                   "lattice/2000_cells.csv";
-    constexpr EMW::Types::index nNodes = 8000;
-    constexpr EMW::Types::index nCells = 2000;
 
     // собираем сетки
     const auto parser_out = EMW::Parser::parseMesh(nodesFile, cellsFile);
     auto mesh_base = Mesh::SurfaceMesh{parser_out.first, parser_out.second};
 
-    constexpr Types::index N1 = 9;
-    constexpr Types::index N2 = 9;
+    constexpr Types::index N1 = 5;
+    constexpr Types::index N2 = 5;
     constexpr Types::index N1_x_N2 = N1 * N2;
 
     const Types::scalar a_hat = 0.04;  // расстояние между центрами сеток "на диагонали 1"

@@ -25,8 +25,11 @@ struct IntegrationParameters {
     Types::Vector3d b; // ort1 x diff
     Types::Vector3d c; // diff x ort2
 
-    // Parameters for curve integral
+    // Parameters for curve integral (for a flow)
     Containers::array<Types::Vector3d, 4> mul;
+
+    // Parameters for curve integral of a second kind (taus with a multiplier)
+    Containers::array<Types::Vector3d, 4> edge_tau;
 };
 
 struct Cell {
@@ -45,6 +48,8 @@ struct IndexedCell {
         SIGMA = 1,
         WAVEGUIDE_CROSS_SECTION = 2,
         MAGNETIC_CURRENTS = 3,
+        BOUNDARY_CELL = 4,
+        INTERNAL_CELL = 5,
     };
 
     using nodes_t = Containers::array<Types::index, 4>;

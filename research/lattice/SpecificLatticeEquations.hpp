@@ -7,7 +7,7 @@
 
 #include "mesh/SurfaceMesh.hpp"
 
-#include "slae_generation/MatrixGeneration.hpp"
+#include "slae_generation/MatrixInplaceGeneration.hpp"
 
 #include "types/Types.hpp"
 
@@ -51,11 +51,16 @@ inline EMW::Types::MatrixXc diagonal(const Mesh::SurfaceMesh &mesh_all, Types::s
 #endif
 
     // генерируем необходимые подматрицы
-    // TODO: переписать код, чтобы матрицы генерировалась in-place
-    auto K_all = Matrix::getMatrixK(k, mesh_all);
-    auto R_0 = Matrix::getMatrixR(k, mesh_zero, mesh_all);
-    auto K_0 = Matrix::getMatrixK(k, mesh_zero);
-    auto R_all = Matrix::getMatrixR(k, mesh_all, mesh_zero);
+    auto K_all_block = A.block(0, 0, 2 * N, 2 * N);
+    auto R_0_block = A.block(0, 2 * N, 2 * N, 2 * K);
+    auto R_all_block = A.block(2 * N, 0, 2 * K, 2 * N);
+    auto K_0_block = A.block(2 * N, 2 * N, 2 * K, 2 * K);
+
+    Matrix::getMatrixK_inplace(K_all_block, k, mesh_all);
+    Matrix::getMatrixR_inplace(R_0_block, k, mesh_zero, mesh_all);
+    Matrix::getMatrixK_inplace(K_0_block, k, mesh_zero);
+    Matrix::getMatrixR_inplace(R_all_block, k, mesh_all, mesh_zero);
+
     // тривиальные операторы нужных размеров из уравнений
     // оператор векторного умножения на нормаль справа
     const Types::MatrixXc C = 0.5 * Matrix::getMatrixCrossNormal(k, mesh_zero);
@@ -64,17 +69,20 @@ inline EMW::Types::MatrixXc diagonal(const Mesh::SurfaceMesh &mesh_all, Types::s
 
     // 1) Дописываем слагаемые в уравнение на поверхности sigma_0
     // ВНИМАНИЕ: тут идёт существенный упор на то, что мы знаем, что sigma_0 лежит последняя в sigma_all
-    R_0.block(N - K, 0, K, 2 * K) -= C.block(0, 0, K, 2 * K);
-    R_0.block(2 * N - K, 0, K, 2 * K) -= C.block(K, 0, K, 2 * K);
+    R_0_block.block(N - K, 0, K, 2 * K) -= C.block(0, 0, K, 2 * K);
+    R_0_block.block(2 * N - K, 0, K, 2 * K) -= C.block(K, 0, K, 2 * K);
 
-    R_all.block(0, N - K, 2 * K, K) += C.block(0, 0, 2 * K, K);
-    R_all.block(0, 2 * N - K, 2 * K, K) += C.block(0, K, 2 * K, K);
+    R_all_block.block(0, N - K, 2 * K, K) += C.block(0, 0, 2 * K, K);
+    R_all_block.block(0, 2 * N - K, 2 * K, K) += C.block(0, K, 2 * K, K);
+
+    std::cout << "mem control point" << std::endl;
 
     // 2) Собираем матрицу
-    A.block(0, 0, 2 * N, 2 * N) = with_e * K_all;
-    A.block(0, 2 * N, 2 * N, 2 * K) = -R_0;
-    A.block(2 * N, 0, 2 * K, 2 * N) = z * R_all;
-    A.block(2 * N, 2 * N, 2 * K, 2 * K) = z * with_mu * K_0 + I_m;
+    K_all_block *= with_e;
+    R_0_block *= -Types::complex_d{1, 0};
+    R_all_block *= z;
+    K_0_block *= z * with_mu;
+    K_0_block += I_m;
 
     // 3) Готово
     return A;

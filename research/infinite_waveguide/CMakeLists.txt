@@ -17,9 +17,11 @@ if (EIGEN3_FOUND)
     message("Eigen Found")
 endif ()
 
-set(TARGET_LIBS eigen visual OpenMP::OpenMP_CXX)  #  + OpenMP::OpenMP_CXX
+find_package(TBB REQUIRED COMPONENTS tbb)
 
-list(APPEND TASKS infinite_waveguide.cpp)
+set(TARGET_LIBS eigen visual tbb)  #  + OpenMP::OpenMP_CXX
+
+list(APPEND TASKS infinite_waveguide.cpp mesh_convergence.cpp)
 
 foreach (TASK IN LISTS TASKS)
     get_filename_component(FILE_NAME ${TASK} NAME_WE)

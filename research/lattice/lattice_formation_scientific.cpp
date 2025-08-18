@@ -89,11 +89,14 @@ template <typename Fields> void getSigmaValuesYZ(const Types::complex_d k, const
 }
 
 namespace LAMatrix = Math::LinAgl::Matrix;
-using TTBMatrix = LAMatrix::ToeplitzToeplitzDynFactoredBlock<Types::complex_d>;
+// каким методом расчитываем матрицу
+constexpr Research::Lattice::CalculationMethod calc_method = Research::Lattice::CalculationMethod::ACA;
+using TTBMatrix = Research::Lattice::CalcTraits<calc_method>::ReturnType;
+// предобуславливание
 using DiagonalPrec = LAMatrix::Preconditioning::DiagonalPreconditioner<Types::complex_d, TTBMatrix>;
 using BlockDiagPrec = LAMatrix::Preconditioning::BlockDiagonalPreconditioner<Types::complex_d, TTBMatrix>;
 using NoPrec = LAMatrix::Preconditioning::IdentityPreconditioner<Types::complex_d, TTBMatrix>;
-using MatrixWrapper = LAMatrix::Wrappers::MatrixReplacement<TTBMatrix, BlockDiagPrec>;
+using MatrixWrapper = LAMatrix::Wrappers::MatrixReplacement<TTBMatrix, DiagonalPrec>;
 
 int main() {
     // считываем сетку на антенне
@@ -101,17 +104,19 @@ int main() {
                                   "lattice/8000_nodes.csv";
     const std::string cellsFile = "/home/evgen/Education/MasterDegree/thesis/Electromagnetic-Waves-Scattering/meshes/"
                                   "lattice/2000_cells.csv";
-    constexpr EMW::Types::index nNodes = 8000;
-    constexpr EMW::Types::index nCells = 2000;
 
     // собираем сетки
     const auto parser_out = EMW::Parser::parseMesh(nodesFile, cellsFile);
     auto mesh_base = Mesh::SurfaceMesh{parser_out.first, parser_out.second};
 
-    constexpr Types::index N1 = 10;
-    constexpr Types::index N2 = 9;
+    constexpr Types::index N1 = 9;  // количество строк в решетке
+    constexpr Types::index N2 = 7;  // количество столбцов в решетке
     constexpr Types::index N1_x_N2 = N1 * N2;
-    const Scene<N1, N2> geometry{0.1, 0.07, mesh_base};
+    constexpr Types::scalar d1 = 0.04;  // расстояние между строками
+    constexpr Types::scalar d2 = 0.08;   // расстояние между столбцами
+    const Types::Vector3d dir1 = Types::Vector3d{0, -1, 0}.normalized();
+    const Types::Vector3d dir2 = Types::Vector3d{1, 0, 0}.normalized();
+    const Geometry::PeriodicStructure<N1, N2> geometry{dir1, dir2, d1, d2, mesh_base};
 
     // Геометрические параметры антенн
     // Короткая сторона волновода
@@ -129,10 +134,9 @@ int main() {
               << std::endl;
 
     // собираем общую маленькую тёплицеву матрицу
-
     auto start = std::chrono::high_resolution_clock::now();
 
-    const auto matrix = Research::Lattice::getMatrix<Research::Lattice::CalculationMethod::ACA>(geometry, a, k);
+    const auto matrix = Research::Lattice::getMatrix<calc_method>(geometry, a, k);
 
     auto end = std::chrono::high_resolution_clock::now();
     auto elapsed = std::chrono::duration_cast<std::chrono::seconds>(end - start);
@@ -155,7 +159,7 @@ int main() {
     // Разбиваем на токи и рисуем на разных многообразиях
     const Research::Lattice::FieldOver field_set(geometry, std::move(result));
 
-    const std::string path = "/home/evgen/Education/MasterDegree/thesis/results/rsvd_vs_aca/aca/";
+    const std::string path = "/home/evgen/Education/MasterDegree/thesis/my_paper/Toeplitz_structure/numerical_results/9_7_lattice/aca/";
     const std::string dir_name = std::to_string(N1) + "_x_" + std::to_string(N2) + "_lattice/";
     VTK::set_of_fields_snapshot(field_set, path + std::to_string(N1) + "_x_" + std::to_string(N2) + "_lattice.vtu");
 

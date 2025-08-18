@@ -10,6 +10,10 @@
 
 namespace EMW::Concepts {
 
+// hepler consepts
+template <typename T, typename... U>
+concept IsAnyOf = (std::same_as<T, U> || ...);
+
 /** Концепт, генерализирующий сетку */
 template <typename Topology>
 concept manifold_like = requires(Topology topology) {
@@ -19,7 +23,7 @@ concept manifold_like = requires(Topology topology) {
 /** Концепт, генерализирующий множество сеток (полную геометрию) */
 template <typename TopologicalStructure>
 concept GeomtricalStructure = requires(TopologicalStructure structure, Types::index index) {
-    { structure.get(index) } -> std::same_as<const Mesh::SurfaceMesh &>;
+    { structure.get(index) } -> IsAnyOf<const Mesh::SurfaceMesh &, Mesh::SurfaceMesh &> ;
     { structure.size() } -> std::same_as<Types::index>;
 };
 

@@ -34,6 +34,7 @@ IndexedCell::IndexedCell(const Containers::array<Types::index, 4> &points,
     tau[0] = ac.normalized();
     tau[1] = normal.cross(tau[0]);
 
+    // Параметры для поточного интегрирования через контур
     // parameters for integral over A->B
     integrationParameters.mul[0] =
         cellStructure.ort1.norm() *
@@ -48,14 +49,11 @@ IndexedCell::IndexedCell(const Containers::array<Types::index, 4> &points,
     integrationParameters.mul[3] = cellStructure.ort2.norm() *
                                    (normal.cross(cellStructure.ort2)).normalized(); // == omega_i * (ort_1).normalized()
 
-    // костыль для плоской геометрии в OYZ
-    //        if (points[0] % 2 != 0) {
-    //            tau[0] = {0, 1, 0};
-    //            tau[1] = {0, 0, 1};
-    //        } else {
-    //            tau[0] = Types::Vector3d{0, 0, 1}.normalized();
-    //            tau[1] = Types::Vector3d{0, -1, 0}.normalized();
-    //        }
+    // Параметры для контурного интегрирования второго рода
+    integrationParameters.edge_tau[0] = fullPoints[points_[1]] - fullPoints[points_[0]];
+    integrationParameters.edge_tau[1] = fullPoints[points_[2]] - fullPoints[points_[1]];
+    integrationParameters.edge_tau[2] = fullPoints[points_[3]] - fullPoints[points_[2]];
+    integrationParameters.edge_tau[3] = fullPoints[points_[0]] - fullPoints[points_[3]];
 };
 
 Cell IndexedCell::getVertex() const {

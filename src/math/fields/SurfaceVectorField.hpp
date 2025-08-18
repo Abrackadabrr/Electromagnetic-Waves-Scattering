@@ -45,7 +45,7 @@ class SurfaceVectorField : public SurfaceFieldBase<Types::Vector3c> {
      */
     [[nodiscard]] Types::VectorXc asVector() const;
 
-    [[nodiscard]] SurfaceScalarField fieldNorm(const std::string name) const;
+    [[nodiscard]] SurfaceScalarField<Types::complex_d> fieldNorm(const std::string name) const;
 
     [[nodiscard]] SurfaceVectorField
     pointwiseMultiplication(const std::function<Types::scalar(const Types::Vector3d &)> &function) const;
