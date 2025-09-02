@@ -17,7 +17,7 @@ Mesh::SurfaceMesh loadTriangularMesh(int nNodes, int nCells, std::string type) {
 
     auto preMesh = EMW::Parser::parseMesh(nodesFile, cellsFile);
     auto surfaceMesh = EMW::Mesh::SurfaceMesh(
-        preMesh.first, preMesh.second,
+        preMesh.nodes, preMesh.cells,
         [&](const Containers::array<Types::index, 4> &p, const Containers::vector<point_t> &fp) -> point_t {
             return (static_cast<Types::scalar>(1) / static_cast<Types::scalar>(3)) * (fp[p[0]] + fp[p[1]] + fp[p[2]]);
         });

@@ -88,6 +88,8 @@ struct IndexedCell {
     [[nodiscard]] Cell getVertex() const;
 
     [[nodiscard]]Containers::array<Mesh::point_t, 4> getVertexAsArray() const;
+
+    void determineTag(const std::string& tag_name);
 };
 }
 

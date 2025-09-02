@@ -11,9 +11,21 @@
 #include <string>
 
 namespace EMW::Parser {
-std::pair<Containers::vector<Mesh::point_t>, Containers::vector<Containers::array<Types::index, 4>>>
-parseMesh(const std::string &csvNodes, const std::string &csvCells);
 
-}
+struct ParserOutput {
+    Containers::vector<Mesh::point_t> nodes;
+    Containers::vector<Containers::array<Types::index, 4>> cells;
+    Containers::vector<std::string> tags;
+
+    void shrink_to_fit() {
+        nodes.shrink_to_fit();
+        cells.shrink_to_fit();
+        tags.shrink_to_fit();
+    }
+};
+
+ParserOutput parseMesh(const std::string &csvNodes, const std::string &csvCells);
+
+} // namespace EMW::Parser
 
 #endif // ELECTROMAGNETIC_WAVES_SCATTERING_OBJPARSER_H

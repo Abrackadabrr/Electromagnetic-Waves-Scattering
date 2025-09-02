@@ -17,7 +17,6 @@
 #include "experiment/SWC.hpp"
 
 #include "Equations.hpp"
-#include "Utils.hpp"
 #include "VTKFunctions.hpp"
 
 #include "meshes/plate/PlateGrid.hpp"
@@ -31,9 +30,13 @@
 
 #include "experiment/PhysicalCondition.hpp"
 
+#include "Utils.hpp"
+
+#include <math/integration/gauss_quadrature/GaussLegenderPoints.hpp>
+#include "FieldCalculation.hpp"
+
 #include <chrono>
 #include <iostream>
-#include <math/integration/gauss_quadrature/GaussLegenderPoints.hpp>
 
 using namespace EMW;
 
@@ -62,54 +65,41 @@ Types::VectorXc solve(const Types::MatrixXc &A, const Types::VectorXc &b, Types:
     return j_vec;
 }
 
-void getSigmaValuesXZ(const Types::complex_d k, const Math::SurfaceVectorField &j_e,
-                    const Math::SurfaceVectorField &j_m) {
-    int samples = 360;
-    Containers::vector<Types::scalar> esas;
-    esas.reserve(samples);
-    Containers::vector_d angles;
-    angles.reserve(samples);
 
-    for (int i = 0; i < samples; i++) {
-        Types::scalar angle = i * Math::Constants::PI<Types::scalar>() * 2 / samples;
-        Types::Vector3d tau = {std::sin(angle), 0, std::cos(angle)};
-        esas.push_back(ESA::calculateESA(tau, k, j_e, j_m));
-        angles.push_back(angle);
-    }
+template <typename Callable>
+void getSWConAxis(const Math::SurfaceVectorField &j_e, const Math::SurfaceVectorField &j_m, const Types::complex_d k,
+                  const Callable &direct_field) {
+    // собрать точки на оси
+    int N = 2 * 41;
+    Types::scalar h = 0.17 / (N - 1);
+    const auto points_view = std::views::iota(0, N) | std::views::transform([&h](auto p) { return Types::Vector3d{0, 0, -p * h}; });
+    const auto z_values_view = points_view | std::views::transform([&](auto p) { return 0.17 + p.z(); });
+    Containers::vector<Mesh::point_t> points{std::begin(points_view), std::end(points_view)};
+    const Containers::vector<Types::scalar> z_coordinate{std::begin(z_values_view), std::end(z_values_view)};
+
+    const auto inverse_field = [&](Mesh::point_t &point) {
+        Types::Vector3c value = Rupor::getE_in_point(j_e, j_m, k, point) - direct_field(point);
+        //std::cout << value << std::endl;
+        return value;
+    };
+
+    const auto result = EngineeringCoefficients::SWC(direct_field, inverse_field, points);
+
     std::ofstream sigma(
-        "/home/evgen/Education/MasterDegree/thesis/Electromagnetic-Waves-Scattering/vtk_files/studies/rupor/sigmaXZ.csv");
-
-    Utils::to_csv(esas, angles, "sigma", "angle", sigma);
-}
-
-void getSigmaValuesYZ(const Types::complex_d k, const Math::SurfaceVectorField &j_e,
-                    const Math::SurfaceVectorField &j_m) {
-    int samples = 180;
-    Containers::vector<Types::scalar> esas;
-    esas.reserve(samples);
-    Containers::vector_d angles;
-    angles.reserve(samples);
-
-    for (int i = 0; i < samples; i++) {
-        Types::scalar angle = i * Math::Constants::PI<Types::scalar>() / samples;
-        Types::Vector3d tau = {0,  std::sin(angle), std::cos(angle)};
-        esas.push_back(ESA::calculateESA(tau, k, j_e, j_m));
-        angles.push_back(angle);
-    }
-    std::ofstream sigma(
-        "/home/evgen/Education/MasterDegree/thesis/Electromagnetic-Waves-Scattering/vtk_files/studies/rupor/sigmaYZ.csv");
-
-    Utils::to_csv(esas, angles, "sigma", "angle", sigma);
+        "/home/evgen/Education/MasterDegree/thesis/Electromagnetic-Waves-Scattering/vtk_files/studies/rupor/ksv.csv");
+    Utils::to_csv(result, z_coordinate, "ksv", "z", sigma);
 }
 
 int main() {
     // считываем сетку на антенне
     const std::string nodesFile = "/home/evgen/Education/MasterDegree/thesis/Electromagnetic-Waves-Scattering/meshes/"
-                                  "lattice/8000_nodes.csv";
+                                  "rupor/15200_nodes.csv";
     const std::string cellsFile = "/home/evgen/Education/MasterDegree/thesis/Electromagnetic-Waves-Scattering/meshes/"
-                                  "lattice/2000_cells.csv";
+                                  "rupor/3800_cells.csv";
+    const EMW::Types::index nNodes = 15200;
+    const EMW::Types::index nCells = 3800;
 
-    const auto parser_out = EMW::Parser::parseMesh(nodesFile, cellsFile);
+    const auto parser_out = EMW::Parser::parseMesh(nodesFile, cellsFile, nNodes, nCells);
     auto mesh_all = Mesh::SurfaceMesh{parser_out.first, parser_out.second};
     mesh_all.setName("total_mesh");
     auto mesh_sigma = mesh_all.getSubmesh(Mesh::IndexedCell::Tag::SIGMA);
@@ -125,8 +115,8 @@ int main() {
     const Types::complex_d k{Physics::get_k_on_frquency(freq), 0};
     // расчет коэффициента импеданса
     const Types::complex_d beta = std::sqrt(k * k - (EMW::Math::Constants::PI_square<Types::scalar>() / (a * a)));
-    std::cout << "Волновое число в волноводе: " << beta.real() << "; Длина волны в волноводе: " << 2 * Math::Constants::PI<Types::scalar>() / beta.real() << std::endl;
-    std::cout << "Волновое число в свободном пространстве: " << k.real() << "; Длина волны в свободном пространстве: " << 2 * Math::Constants::PI<Types::scalar>() / k.real() << std::endl;
+    std::cout << beta << std::endl;
+    std::cout << k.real() << std::endl;
 
     // тут сделать векторное поле (direct wave в волноводе)
     const auto get_e_h10_mode = [&k, &a, &beta](const Mesh::point_t &x) {
@@ -162,6 +152,5 @@ int main() {
     VTK::united_snapshot({e_c}, {}, mesh_all, path);
     VTK::united_snapshot({m_c}, {}, mesh_zero, path);
 
-    getSigmaValuesXZ(k, e_c, m_c);
-    getSigmaValuesYZ(k, e_c, m_c);
+    getSWConAxis(e_c, m_c, k, get_e_h10_mode);
 }
