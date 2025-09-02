@@ -5,144 +5,235 @@
 #ifndef ELECTROMAGNETIC_WAVES_SCATTERING_VTKFUNCTIONS_HPP
 #define ELECTROMAGNETIC_WAVES_SCATTERING_VTKFUNCTIONS_HPP
 
-#include "mesh/SurfaceMesh.hpp"
 #include "math/fields/SurfaceVectorField.hpp"
+#include "mesh/SurfaceMesh.hpp"
 #include "types/Types.hpp"
 
 #include <vtkCellData.h>
 #include <vtkDoubleArray.h>
+#include <vtkMultiBlockDataSet.h>
 #include <vtkPointData.h>
 #include <vtkSmartPointer.h>
 #include <vtkUnstructuredGrid.h>
-#include <vtkMultiBlockDataSet.h>
 #include <vtkXMLMultiBlockDataWriter.h>
 #include <vtkXMLUnstructuredGridWriter.h>
 
 namespace VTK {
 namespace detail {
 
-template<typename Field_type>
-struct VTKFieldsInitialiser {};
+template <typename Field_type> struct VTKFieldsInitialiser {};
 
-template<>
-struct VTKFieldsInitialiser<EMW::Math::SurfaceScalarField<EMW::Types::scalar>> {
+template <> struct VTKFieldsInitialiser<EMW::Math::SurfaceScalarField<EMW::Types::scalar>> {
     using Field_Type = EMW::Math::SurfaceScalarField<EMW::Types::scalar>;
     using vtkPointer = vtkSmartPointer<vtkDoubleArray>;
-protected:
+    using manifold_type = EMW::Mesh::SurfaceMesh;
+
+  protected:
     static constexpr EMW::Types::index n_fields = 1;
     static constexpr EMW::Types::index n_components = 1;
     EMW::Containers::array<vtkPointer, n_fields> fields;
+    const manifold_type &manifold;
     const std::string name;
 
-public:
-    explicit VTKFieldsInitialiser(const Field_Type& field_to_display): name(field_to_display.getName()) {
+  public:
+    explicit VTKFieldsInitialiser(const Field_Type &field_to_display)
+        : name(field_to_display.getName()), manifold(field_to_display.getManifold()) {
         fields[0] = vtkSmartPointer<vtkDoubleArray>::New();
-        fields[0] ->SetName((field_to_display.getName()).c_str());
-        fields[0] ->SetNumberOfComponents(field_to_display.getNumberOfComponents());
+        fields[0]->SetName((field_to_display.getName()).c_str());
+        fields[0]->SetNumberOfComponents(field_to_display.getNumberOfComponents());
 
         for (const auto &f : field_to_display.getField()) {
             double f_real[1] = {f};
-            fields[0] ->InsertNextTuple(f_real);
+            fields[0]->InsertNextTuple(f_real);
         }
     }
 
-    [[nodiscard]] const EMW::Containers::array<vtkPointer, n_fields>& getFields() const { return fields; }
+    [[nodiscard]] const EMW::Containers::array<vtkPointer, n_fields> &getFields() const { return fields; }
     void dumpField(const vtkSmartPointer<vtkUnstructuredGrid> &unstructuredGrid) const {
-        for (auto&& field : fields)
+        for (auto &&field : fields)
             unstructuredGrid->GetCellData()->AddArray(field);
         std::cout << "Field " << name << " dumped" << std::endl;
     }
 };
 
-template<>
-struct VTKFieldsInitialiser<EMW::Math::SurfaceScalarField<EMW::Types::complex_d>> {
+template <> struct VTKFieldsInitialiser<EMW::Math::SurfaceScalarField<EMW::Types::complex_d>> {
     using Field_Type = EMW::Math::SurfaceScalarField<EMW::Types::complex_d>;
     using vtkPointer = vtkSmartPointer<vtkDoubleArray>;
-protected:
+    using manifold_type = EMW::Mesh::SurfaceMesh;
+
+  protected:
     static constexpr EMW::Types::index n_fields = 2;
     static constexpr EMW::Types::index n_components = 1;
     EMW::Containers::array<vtkPointer, n_fields> fields;
+    const manifold_type &manifold;
     const std::string name;
 
-public:
-    explicit VTKFieldsInitialiser(const Field_Type& field_to_display): name(field_to_display.getName()) {
+  public:
+    explicit VTKFieldsInitialiser(const Field_Type &field_to_display)
+        : name(field_to_display.getName()), manifold(field_to_display.getManifold()) {
         fields[0] = vtkSmartPointer<vtkDoubleArray>::New();
-        fields[0] ->SetName((field_to_display.getName() + "_real").c_str());
-        fields[0] ->SetNumberOfComponents(field_to_display.getNumberOfComponents());
+        fields[0]->SetName((field_to_display.getName() + "_real").c_str());
+        fields[0]->SetNumberOfComponents(field_to_display.getNumberOfComponents());
 
         fields[1] = vtkSmartPointer<vtkDoubleArray>::New();
-        fields[1] ->SetName((field_to_display.getName() + "_imag").c_str());
-        fields[1] ->SetNumberOfComponents(field_to_display.getNumberOfComponents());
+        fields[1]->SetName((field_to_display.getName() + "_imag").c_str());
+        fields[1]->SetNumberOfComponents(field_to_display.getNumberOfComponents());
 
         for (const auto &f : field_to_display.getField()) {
             double f_real[1] = {f.real()};
             double f_imag[3] = {f.imag()};
-            fields[0] ->InsertNextTuple(f_real);
-            fields[1] ->InsertNextTuple(f_imag);
+            fields[0]->InsertNextTuple(f_real);
+            fields[1]->InsertNextTuple(f_imag);
         }
     }
 
-    [[nodiscard]] const EMW::Containers::array<vtkPointer, n_fields>& getFields() const { return fields; }
+    [[nodiscard]] const EMW::Containers::array<vtkPointer, n_fields> &getFields() const { return fields; }
     void dumpField(const vtkSmartPointer<vtkUnstructuredGrid> &unstructuredGrid) const {
-        for (auto&& field : fields)
+        for (auto &&field : fields)
             unstructuredGrid->GetCellData()->AddArray(field);
         std::cout << "Field " << name << " dumped" << std::endl;
     }
 };
 
-template<>
-struct VTKFieldsInitialiser<EMW::Math::SurfaceVectorField> {
+template <> struct VTKFieldsInitialiser<EMW::Math::SurfaceVectorField> {
     using Field_Type = EMW::Math::SurfaceVectorField;
     using vtkPointer = vtkSmartPointer<vtkDoubleArray>;
-protected:
+    using manifold_type = EMW::Mesh::SurfaceMesh;
+
+  protected:
     static constexpr EMW::Types::index n_fields = 2;
     static constexpr EMW::Types::index n_components = 3;
     EMW::Containers::array<vtkPointer, n_fields> fields;
+    const manifold_type &manifold;
     const std::string name;
 
-public:
-    explicit VTKFieldsInitialiser(const Field_Type& field_to_display): name(field_to_display.getName()) {
+  public:
+    explicit VTKFieldsInitialiser(const Field_Type &field_to_display)
+        : name(field_to_display.getName()), manifold(field_to_display.getManifold()) {
         fields[0] = vtkSmartPointer<vtkDoubleArray>::New();
-        fields[0] ->SetName((field_to_display.getName() + "_real").c_str());
-        fields[0] ->SetNumberOfComponents(field_to_display.getNumberOfComponents());
+        fields[0]->SetName((field_to_display.getName() + "_real").c_str());
+        fields[0]->SetNumberOfComponents(field_to_display.getNumberOfComponents());
         fields[1] = vtkSmartPointer<vtkDoubleArray>::New();
-        fields[1] ->SetName((field_to_display.getName() + "_imag").c_str());
-        fields[1] ->SetNumberOfComponents(field_to_display.getNumberOfComponents());
+        fields[1]->SetName((field_to_display.getName() + "_imag").c_str());
+        fields[1]->SetNumberOfComponents(field_to_display.getNumberOfComponents());
 
         for (const auto &f : field_to_display.getField()) {
             double f_real[3] = {f[0].real(), f[1].real(), f[2].real()};
             double f_imag[3] = {f[0].imag(), f[1].imag(), f[2].imag()};
-            fields[0] ->InsertNextTuple(f_real);
-            fields[1] ->InsertNextTuple(f_imag);
+            fields[0]->InsertNextTuple(f_real);
+            fields[1]->InsertNextTuple(f_imag);
         }
     }
 
-    [[nodiscard]] const EMW::Containers::array<vtkPointer, n_fields>& getFields() const { return fields; }
+    [[nodiscard]] const EMW::Containers::array<vtkPointer, n_fields> &getFields() const { return fields; }
     void dumpField(const vtkSmartPointer<vtkUnstructuredGrid> &unstructuredGrid) const {
-        for (auto&& field : fields)
+        if (manifold.getCells().size() != unstructuredGrid->GetNumberOfCells())
+            throw std::runtime_error("VTKFieldsInitialiser: manifold.getCells() size mismatch");
+
+        for (auto &&field : fields)
             unstructuredGrid->GetCellData()->AddArray(field);
         std::cout << "Field " << name << " dumped" << std::endl;
+    }
+};
+
+/**
+ * Загрузка точечных данных векторных полей в формате VTK в сетку
+ * Сетка предполагается набором из точек, НЕ ЯЧЕЙКАМИ!!
+ */
+template <> struct VTKFieldsInitialiser<EMW::Containers::vector<EMW::Types::Vector3c>> {
+    using Field_Type = EMW::Containers::vector<EMW::Types::Vector3c>;
+    using vtkPointer = vtkSmartPointer<vtkDoubleArray>;
+
+protected:
+    static constexpr EMW::Types::index n_fields = 2;
+    static constexpr EMW::Types::index n_components = 3;
+    EMW::Containers::array<vtkPointer, n_fields> fields;
+    const std::string name_;
+
+public:
+    explicit VTKFieldsInitialiser(const Field_Type &field_to_display, const std::string& name)
+        : name_(name) {
+        fields[0] = vtkSmartPointer<vtkDoubleArray>::New();
+        fields[0]->SetName((name_ + "_real").c_str());
+        fields[0]->SetNumberOfComponents(n_components);
+        fields[1] = vtkSmartPointer<vtkDoubleArray>::New();
+        fields[1]->SetName((name_ + "_imag").c_str());
+        fields[1]->SetNumberOfComponents(n_components);
+
+        for (const auto &f : field_to_display) {
+            double f_real[3] = {f[0].real(), f[1].real(), f[2].real()};
+            double f_imag[3] = {f[0].imag(), f[1].imag(), f[2].imag()};
+            fields[0]->InsertNextTuple(f_real);
+            fields[1]->InsertNextTuple(f_imag);
+        }
+    }
+
+    [[nodiscard]] const EMW::Containers::array<vtkPointer, n_fields> &getFields() const { return fields; }
+    void dumpField(const vtkSmartPointer<vtkUnstructuredGrid> &unstructuredGrid) const {
+        for (auto &&field : fields)
+            unstructuredGrid->GetPointData()->AddArray(field);
+        std::cout << "Field " << name_ << " dumped" << std::endl;
+    }
+};
+
+/**
+ * Загрузка точечных данных скалярных полей в формате VTK в сетку
+ * Сетка предполагается набором из точек, НЕ ЯЧЕЙКАМИ!!
+ */
+template <> struct VTKFieldsInitialiser<EMW::Containers::vector<EMW::Types::scalar>> {
+    using Field_Type = EMW::Containers::vector<EMW::Types::scalar>;
+    using vtkPointer = vtkSmartPointer<vtkDoubleArray>;
+
+protected:
+    static constexpr EMW::Types::index n_fields = 1;
+    static constexpr EMW::Types::index n_components = 1;
+    EMW::Containers::array<vtkPointer, n_fields> fields;
+    const std::string name_;
+
+public:
+    explicit VTKFieldsInitialiser(const Field_Type &field_to_display, const std::string& name)
+        : name_(name) {
+        fields[0] = vtkSmartPointer<vtkDoubleArray>::New();
+        fields[0]->SetName((name_).c_str());
+        fields[0]->SetNumberOfComponents(n_components);
+
+        for (const auto &f : field_to_display) {
+            fields[0]->InsertNextTuple(&f);
+        }
+    }
+
+    [[nodiscard]] const EMW::Containers::array<vtkPointer, n_fields> &getFields() const { return fields; }
+    void dumpField(const vtkSmartPointer<vtkUnstructuredGrid> &unstructuredGrid) const {
+        for (auto &&field : fields)
+            unstructuredGrid->GetPointData()->AddArray(field);
+        std::cout << "Field " << name_ << " dumped" << std::endl;
     }
 };
 
 vtkSmartPointer<vtkUnstructuredGrid> formUnstructuredGrid(const EMW::Mesh::SurfaceMesh &mesh);
 
-};
+}; // namespace detail
 
 void surface_snapshot(const EMW::Mesh::SurfaceMesh &mesh, const std::string &part_to_file);
 
 void field_snapshot(const EMW::Math::SurfaceVectorField &field, const std::string &part_to_file);
 
-template<typename ScalarField>
+void field_in_points_snapshot(const std::vector<std::vector<EMW::Types::Vector3c>> &fields,
+                              const std::vector<std::vector<EMW::Types::scalar>> &scalar_fields,
+                              const std::vector<std::string> &vector_names,
+                              const std::vector<std::string> &scalar_names,
+                              const std::vector<EMW::Types::Vector3d> &points, const std::string &mesh_name,
+                              const std::string &path_to_file);
+
+template <typename ScalarField>
 void united_snapshot(const std::vector<ScalarField> &scalarFields,
-                     const std::vector<EMW::Math::SurfaceVectorField> &vectorFields,
-                     const EMW::Mesh::SurfaceMesh &mesh,
+                     const std::vector<EMW::Math::SurfaceVectorField> &vectorFields, const EMW::Mesh::SurfaceMesh &mesh,
                      const std::string &path_to_file, int number = 0) {
     // Создаем поверхность
     vtkSmartPointer<vtkUnstructuredGrid> unstructuredGrid = detail::formUnstructuredGrid(mesh);
 
     // Создаем поля
-    for (auto&& field : vectorFields) {
+    for (auto &&field : vectorFields) {
         const auto dumper = detail::VTKFieldsInitialiser<EMW::Math::SurfaceVectorField>(field);
         dumper.dumpField(unstructuredGrid);
     }
@@ -160,14 +251,8 @@ void united_snapshot(const std::vector<ScalarField> &scalarFields,
     writer->Write();
 }
 
-void field_in_points_snapshot(const std::vector<std::vector<EMW::Types::Vector3c>> &fields,
-                              const std::vector<std::string> &names,
-                              const std::vector<EMW::Types::Vector3d> &points,
-                              const std::string& mesh_name,
-                              const std::string &path_to_file);
-
-template<typename TopologicalStructure>
-void geometry_snapshot(const TopologicalStructure& geometry, const std::string &part_to_file) {
+template <typename TopologicalStructure>
+void geometry_snapshot(const TopologicalStructure &geometry, const std::string &part_to_file) {
     vtkSmartPointer<vtkMultiBlockDataSet> multiBlockDataSet = vtkSmartPointer<vtkMultiBlockDataSet>::New();
     // add each data set
     for (int i = 0; i != geometry.size(); ++i) {
@@ -181,8 +266,8 @@ void geometry_snapshot(const TopologicalStructure& geometry, const std::string &
     writer->Write();
 }
 
-template<typename field_set_t>
-void set_of_fields_snapshot(const field_set_t& fields, const std::string &part_to_file) {
+template <typename field_set_t>
+void set_of_fields_snapshot(const field_set_t &fields, const std::string &part_to_file) {
     vtkSmartPointer<vtkMultiBlockDataSet> multiBlockDataSet = vtkSmartPointer<vtkMultiBlockDataSet>::New();
     // дампим сначала все сетки и соответвующие поля
     // электрические

@@ -1,7 +1,4 @@
 //
-// Created by evgen on 10.01.2025.
-//
-//
 // Created by evgen on 24.12.2024.
 //
 
@@ -17,13 +14,11 @@
 #include "experiment/SWC.hpp"
 
 #include "Equations.hpp"
-#include "Utils.hpp"
 #include "VTKFunctions.hpp"
 
 #include "meshes/plate/PlateGrid.hpp"
 
-#include "operators/OperatorK.hpp"
-#include "operators/OperatorR.hpp"
+#include "FieldCalculation.hpp"
 
 #include <Eigen/Dense>
 #include <Eigen/IterativeLinearSolvers>
@@ -33,14 +28,13 @@
 
 #include <chrono>
 #include <iostream>
-#include <math/integration/gauss_quadrature/GaussLegenderPoints.hpp>
 
 using namespace EMW;
 
 Types::VectorXc solve(const Types::MatrixXc &A, const Types::VectorXc &b, Types::scalar tolerance) {
     auto method = Eigen::GMRES<Types::MatrixXc>{};
 
-    Types::index max_iterations = 500;
+    Types::index max_iterations = 1000;
 
     method.setMaxIterations(max_iterations);
     std::cout << method.maxIterations() << std::endl;
@@ -62,54 +56,16 @@ Types::VectorXc solve(const Types::MatrixXc &A, const Types::VectorXc &b, Types:
     return j_vec;
 }
 
-void getSigmaValuesXZ(const Types::complex_d k, const Math::SurfaceVectorField &j_e,
-                    const Math::SurfaceVectorField &j_m) {
-    int samples = 360;
-    Containers::vector<Types::scalar> esas;
-    esas.reserve(samples);
-    Containers::vector_d angles;
-    angles.reserve(samples);
-
-    for (int i = 0; i < samples; i++) {
-        Types::scalar angle = i * Math::Constants::PI<Types::scalar>() * 2 / samples;
-        Types::Vector3d tau = {std::sin(angle), 0, std::cos(angle)};
-        esas.push_back(ESA::calculateESA(tau, k, j_e, j_m));
-        angles.push_back(angle);
-    }
-    std::ofstream sigma(
-        "/home/evgen/Education/MasterDegree/thesis/Electromagnetic-Waves-Scattering/vtk_files/studies/rupor/sigmaXZ.csv");
-
-    Utils::to_csv(esas, angles, "sigma", "angle", sigma);
-}
-
-void getSigmaValuesYZ(const Types::complex_d k, const Math::SurfaceVectorField &j_e,
-                    const Math::SurfaceVectorField &j_m) {
-    int samples = 180;
-    Containers::vector<Types::scalar> esas;
-    esas.reserve(samples);
-    Containers::vector_d angles;
-    angles.reserve(samples);
-
-    for (int i = 0; i < samples; i++) {
-        Types::scalar angle = i * Math::Constants::PI<Types::scalar>() / samples;
-        Types::Vector3d tau = {0,  std::sin(angle), std::cos(angle)};
-        esas.push_back(ESA::calculateESA(tau, k, j_e, j_m));
-        angles.push_back(angle);
-    }
-    std::ofstream sigma(
-        "/home/evgen/Education/MasterDegree/thesis/Electromagnetic-Waves-Scattering/vtk_files/studies/rupor/sigmaYZ.csv");
-
-    Utils::to_csv(esas, angles, "sigma", "angle", sigma);
-}
-
 int main() {
     // считываем сетку на антенне
     const std::string nodesFile = "/home/evgen/Education/MasterDegree/thesis/Electromagnetic-Waves-Scattering/meshes/"
-                                  "lattice/8000_nodes.csv";
+                                  "rupor/15200_nodes.csv";
     const std::string cellsFile = "/home/evgen/Education/MasterDegree/thesis/Electromagnetic-Waves-Scattering/meshes/"
-                                  "lattice/2000_cells.csv";
+                                  "rupor/3800_cells.csv";
+    const EMW::Types::index nNodes = 15200;
+    const EMW::Types::index nCells = 3800;
 
-    const auto parser_out = EMW::Parser::parseMesh(nodesFile, cellsFile);
+    const auto parser_out = EMW::Parser::parseMesh(nodesFile, cellsFile, nNodes, nCells);
     auto mesh_all = Mesh::SurfaceMesh{parser_out.first, parser_out.second};
     mesh_all.setName("total_mesh");
     auto mesh_sigma = mesh_all.getSubmesh(Mesh::IndexedCell::Tag::SIGMA);
@@ -117,11 +73,14 @@ int main() {
     auto mesh_zero = mesh_all.getSubmesh(Mesh::IndexedCell::Tag::WAVEGUIDE_CROSS_SECTION);
     mesh_zero.setName("zero_mesh");
 
+    const Types::scalar value_of_shift = mesh_zero.getCells().front().collPoint_.z();
+    std::cout << value_of_shift << std::endl;
+
     // Короткая сторона волновода
     const Types::scalar a = 0.07;
     // Физика волны в пространстве
     // частота в гигагерцах
-    const Types::scalar freq = 3;
+    const Types::scalar freq = Math::Constants::c / 1e8;
     const Types::complex_d k{Physics::get_k_on_frquency(freq), 0};
     // расчет коэффициента импеданса
     const Types::complex_d beta = std::sqrt(k * k - (EMW::Math::Constants::PI_square<Types::scalar>() / (a * a)));
@@ -129,16 +88,20 @@ int main() {
     std::cout << "Волновое число в свободном пространстве: " << k.real() << "; Длина волны в свободном пространстве: " << 2 * Math::Constants::PI<Types::scalar>() / k.real() << std::endl;
 
     // тут сделать векторное поле (direct wave в волноводе)
-    const auto get_e_h10_mode = [&k, &a, &beta](const Mesh::point_t &x) {
+    const auto get_e_h10_mode = [&k, &a, &beta, &value_of_shift](const Mesh::point_t &x) {
         const auto pi = Math::Constants::PI<Types::scalar>();
         const Types::complex_d mult = Math::Constants::i * (a / pi) * k / Math::Constants::e_0_c;
-        const Types::complex_d exp = std::exp(Math::Constants::i * beta * (x.z() + 0.17));
-        const Types::scalar sin = std::cos(pi * (x.x()) / a);
+        const Types::complex_d exp = std::exp(Math::Constants::i * beta * (x.z() - value_of_shift));
+        const Types::scalar sin = std::cos(pi * x.x() / a);
         return Types::Vector3c{Types::complex_d{0, 0}, mult * sin * exp, Types::complex_d{0, 0}};
     };
 
     // Считаем матрицу и правую часть и решаем СЛАУ
     const auto rhs = Rupor::getRhs(mesh_all, mesh_zero, get_e_h10_mode);
+
+    const auto R_matrix_on_zero_mesh = Matrix::getMatrixR(k, mesh_zero, mesh_zero);
+
+    std::cout << "Норма матрицы оператора R на активном сечении: " << R_matrix_on_zero_mesh.norm() << std::endl;
 
     const auto matrix = Rupor::getMatrix(mesh_all, mesh_sigma, mesh_zero, a, k);
 
@@ -162,6 +125,19 @@ int main() {
     VTK::united_snapshot({e_c}, {}, mesh_all, path);
     VTK::united_snapshot({m_c}, {}, mesh_zero, path);
 
-    getSigmaValuesXZ(k, e_c, m_c);
-    getSigmaValuesYZ(k, e_c, m_c);
+    // Рисуем картину поля в плоскости y = 0
+    int N1 = 100;
+    Types::scalar h1 = 1. / (N1 - 1);
+    int N2 = 200;
+    Types::scalar h2 = 2. / (N2 - 1);
+
+    std::vector<Mesh::point_t> points;
+    points.reserve(N1 * N2);
+    Mesh::Utils::cartesian_product_unevenXZ(std::ranges::views::iota(0, N1), std::ranges::views::iota(0, N2),
+                             std::back_inserter(points), N1, N2, h1, h2);
+
+    const auto calculated_field_view = points | std::views::transform([&](auto p) {return Rupor::getE_in_point(e_c, m_c, k, p);});
+    const Containers::vector<Types::Vector3c> calculated_field{calculated_field_view.begin(), calculated_field_view.end()};
+
+    VTK::field_in_points_snapshot({calculated_field}, {"E"}, points, "surrounding_mesh", path);
 }

@@ -4,10 +4,10 @@
 
 #include "VTKFunctions.hpp"
 
-#include "gtest/gtest.h"
-#include "types/Types.hpp"
 #include "mesh/SurfaceMesh.hpp"
 #include "mesh/Utils.hpp"
+#include "types/Types.hpp"
+#include "gtest/gtest.h"
 
 #include "mesh/Parser.hpp"
 #include <ranges>
@@ -38,7 +38,8 @@ TEST_F(MESH_TESTING_WITH_DUPLICATED_NODES, SIMPLE_TEST) {
             const auto i_p_j_p_point = EMW::Types::Vector3d{i + 1, j + 1, 0};
             const auto i_p_j_point = EMW::Types::Vector3d{i + 1, j, 0};
 
-            cells.push_back(EMW::Containers::array<EMW::Types::index, 4>{current, current + 1, current + 2, current + 3});
+            cells.push_back(
+                EMW::Containers::array<EMW::Types::index, 4>{current, current + 1, current + 2, current + 3});
 
             meshgrid.push_back(ij_point);
             meshgrid.push_back(ij_p_point);
@@ -52,16 +53,20 @@ TEST_F(MESH_TESTING_WITH_DUPLICATED_NODES, SIMPLE_TEST) {
 
     EMW::Math::SurfaceVectorField normal = EMW::Math::SurfaceVectorField::NormalField(mesh);
 
-    VTK::united_snapshot({normal}, {},mesh, "/home/evgen/Education/MasterDegree/thesis/"
-                                "Electromagnetic-Waves-Scattering/tests/visualisation/test.vtk");
+    VTK::united_snapshot<EMW::Math::SurfaceScalarField<EMW::Types::scalar>>(
+        {}, {normal}, mesh,
+        "/home/evgen/Education/MasterDegree/thesis/"
+        "Electromagnetic-Waves-Scattering/tests/visualisation/test.vtk");
 }
 
 /**
  * Хочу проверить тезис о том, что в сетку можно загрузить совпадающие узлы и она корректно отобразится
  */
 TEST_F(MESH_TESTING_WITH_DUPLICATED_NODES, RUPOR_MESH_TEST) {
-    const std::string nodesFile = "/home/evgen/Education/MasterDegree/thesis/objects/mobuis/2000_nodes.csv";
-    const std::string cellsFile = "/home/evgen/Education/MasterDegree/thesis/objects/mobuis/1881_cells.csv";
+    const std::string nodesFile = "/home/evgen/Education/MasterDegree/thesis/Electromagnetic-Waves-Scattering/meshes/"
+                                  "waveguide/infinite/one_wave/6728_nodes.csv";
+    const std::string cellsFile = "/home/evgen/Education/MasterDegree/thesis/Electromagnetic-Waves-Scattering/meshes/"
+                                  "waveguide/infinite/one_wave/6726_cells.csv";
 
     const auto parser_out = EMW::Parser::parseMesh(nodesFile, cellsFile);
     std::cout << 'f' << std::endl;
@@ -70,10 +75,10 @@ TEST_F(MESH_TESTING_WITH_DUPLICATED_NODES, RUPOR_MESH_TEST) {
     auto submesh = surfaceMesh.getSubmesh(EMW::Mesh::IndexedCell::Tag::WAVEGUIDE_CROSS_SECTION);
     std::cout << 'f' << std::endl;
 
-    EMW::Math::SurfaceScalarField tag_field = EMW::Math::SurfaceScalarField::tagField(surfaceMesh);
+    auto tag_field = EMW::Math::SurfaceScalarField<EMW::Types::scalar>::tagField(surfaceMesh);
     tag_field.setName("tag");
-    EMW::Math::SurfaceScalarField number_field = EMW::Math::SurfaceScalarField::sequenceNumberField(surfaceMesh);
+    auto number_field = EMW::Math::SurfaceScalarField<EMW::Types::scalar>::sequenceNumberField(surfaceMesh);
     number_field.setName("number");
-    VTK::united_snapshot({}, {tag_field, number_field}, surfaceMesh, "/home/evgen/Education/MasterDegree/thesis/"
+    VTK::united_snapshot<EMW::Math::SurfaceScalarField<EMW::Types::scalar>>({tag_field, number_field}, {}, surfaceMesh, "/home/evgen/Education/MasterDegree/thesis/"
                                "Electromagnetic-Waves-Scattering/tests/visualisation/");
 }

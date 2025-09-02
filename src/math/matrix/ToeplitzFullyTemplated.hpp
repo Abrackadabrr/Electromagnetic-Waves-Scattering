@@ -157,6 +157,7 @@ ToeplitzStructure<scalar_t, block_t>::matvec(const vector_t &vec) const noexcept
             // Теперь умножаем на соответствующий подвектор
             const vector_t &sub_vector = vec.block(j * cols_in_block_, 0, cols_in_block_, 1);
             // тут пришлось скопировать, потому что block -- это не вектор, а block-expression внутри Eigen
+            // тут просто получилось несоответствие типов для вызова матвека
             vector_t local_res = current_block * sub_vector;
             // Складываем результат
 #pragma omp critical

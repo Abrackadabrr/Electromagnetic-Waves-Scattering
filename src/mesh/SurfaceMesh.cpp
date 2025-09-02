@@ -15,7 +15,7 @@ SurfaceMesh::SurfaceMesh(Containers::vector<point_t> nodes,
                    [&nodes](const Containers::array<Types::index, 4> &indexes) -> IndexedCell {
                        return IndexedCell(indexes, nodes);
                    });
-#define WAVEGUIDE_CALCULATION 0
+#define WAVEGUIDE_CALCULATION 1
     std::cout << "Waveguide submesh creation:" << WAVEGUIDE_CALCULATION << std::endl;
 #if WAVEGUIDE_CALCULATION
     // БОЛЬШУЩИЙ КОСТЫЛЬ ДЛЯ РАСЧЕТА ВОЛНОВОДА
@@ -23,13 +23,27 @@ SurfaceMesh::SurfaceMesh(Containers::vector<point_t> nodes,
     // где есть матгнитный ток и задается импедансное условие
     // эти точки помечаются отдельно, чтобы в дальнейшем их вынуть
     // в своем формате сетки я точно знаю, что эти точки лежат в конце
-    int amount_of_cells_in_active_surface = 200;
+    int amount_of_cells_in_active_surface = 5 * 11 * 2;
     std::cout << "amount_of_cells_in_active_surface " << amount_of_cells_in_active_surface << std::endl;
     for (int i = 1; i <= amount_of_cells_in_active_surface; i++) {
-        cells_[cells_.size() - i].tag =
-            IndexedCell::Tag::WAVEGUIDE_CROSS_SECTION;
+        cells_[cells_.size() - i].tag = IndexedCell::Tag::WAVEGUIDE_CROSS_SECTION;
     }
 #endif
+};
+
+SurfaceMesh::SurfaceMesh(Containers::vector<point_t> nodes,
+                         Containers::vector<Containers::array<Types::index, 4>> cells,
+                         Containers::vector<std::string> tags)
+    : nodes_(nodes) {
+    std::transform(cells.begin(), cells.end(), std::back_inserter(cells_),
+                   [&nodes](const Containers::array<Types::index, 4> &indexes) -> IndexedCell {
+                       return IndexedCell(indexes, nodes);
+                   });
+    for (auto &&[index, cell] : std::ranges::enumerate_view(cells_))
+        cell.determineTag(tags[index]);
+
+    std::cout << "Size of waveguide cross-section is "
+              << this->getSubmeshInfo(IndexedCell::Tag::WAVEGUIDE_CROSS_SECTION).cells_size << std::endl;
 };
 
 SurfaceMesh::SurfaceMesh(Containers::vector<point_t> nodes,

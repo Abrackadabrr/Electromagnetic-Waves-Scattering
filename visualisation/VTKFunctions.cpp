@@ -6,7 +6,6 @@
 #include <ranges>
 #include <vtkPoints.h>
 #include <vtkPolygon.h>
-#include <vtkTetra.h>
 #include <vtkUnstructuredGrid.h>
 
 namespace VTK {
@@ -122,11 +121,11 @@ void field_snapshot(const EMW::Math::SurfaceVectorField &field, const std::strin
     writer->Write();
 }
 
-# if 0
 void field_in_points_snapshot(const std::vector<std::vector<EMW::Types::Vector3c>> &fields,
-                              const std::vector<std::string> &names,
-                              const std::vector<EMW::Types::Vector3d> &points,
-                              const std::string& mesh_name,
+                              const std::vector<std::vector<EMW::Types::scalar>> &scalar_fields,
+                              const std::vector<std::string> &vector_names,
+                              const std::vector<std::string> &scalar_names,
+                              const std::vector<EMW::Types::Vector3d> &points, const std::string &mesh_name,
                               const std::string &path_to_file) {
     // 1) формируем сетку из никак не соединенных точек
     vtkSmartPointer<vtkUnstructuredGrid> unstructuredGrid = vtkSmartPointer<vtkUnstructuredGrid>::New();
@@ -143,8 +142,13 @@ void field_in_points_snapshot(const std::vector<std::vector<EMW::Types::Vector3c
     unstructuredGrid->SetPoints(dumpPoints);
 
     // 2) Записываем поля в эту сетку
-    for (const auto [field, name] : std::views::zip(fields, names))
-        dumpField(unstructuredGrid, field, name);
+    for (const auto [field, name] : std::views::zip(fields, vector_names)) {
+        detail::VTKFieldsInitialiser<std::vector<EMW::Types::Vector3c>>(field, name).dumpField(unstructuredGrid);
+    }
+
+    for (const auto [field, name] : std::views::zip(scalar_fields, scalar_names)) {
+        detail::VTKFieldsInitialiser<std::vector<EMW::Types::scalar>>(field, name).dumpField(unstructuredGrid);
+    }
 
     // 3) Делаем запись
     std::string fileName = mesh_name + ".vtu";
@@ -153,7 +157,8 @@ void field_in_points_snapshot(const std::vector<std::vector<EMW::Types::Vector3c
     writer->SetInputData(unstructuredGrid);
     writer->Write();
 }
-#endif
+
+
 }
 
 

@@ -15,9 +15,9 @@ namespace EMW::Mesh {
 class SurfaceMesh {
 
     struct mesh_info_t {
-       Types::index nodes_size;
-       Types::index cells_size;
-       std::string name;
+        Types::index nodes_size;
+        Types::index cells_size;
+        std::string name;
     };
 
     Containers::vector<point_t> nodes_;
@@ -38,6 +38,11 @@ class SurfaceMesh {
      * Конструирование сетки по узлам и индексным ячейкам
      */
     SurfaceMesh(Containers::vector<point_t> nodes, Containers::vector<IndexedCell::nodes_t> cells);
+
+    /**
+     * Конструирование сетки по узлам и индексным ячейкам с заданием тэгов
+     */
+    SurfaceMesh(Containers::vector<point_t> nodes, Containers::vector<IndexedCell::nodes_t> cells, Containers::vector<std::string> tags);
 
     /**
      * Конструирование поверхностной сетки со специальными точками коллокации

@@ -74,4 +74,11 @@ Containers::array<Mesh::point_t, 4> IndexedCell::getVertexAsArray() const {
         return {result.a, result.b, result.c, result.d};
 }
 
+void IndexedCell::determineTag(const std::string& tag_name) {
+    if (tag_name == "ImpedanceCondition")
+        tag = Tag::WAVEGUIDE_CROSS_SECTION;
+    if (tag_name == "PerfectCondCondition")
+        tag = Tag::SIGMA;
+}
+
 }

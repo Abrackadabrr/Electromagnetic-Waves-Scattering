@@ -38,31 +38,6 @@
 
 #define FIELD_CALCULATION 1
 
-template <typename Callable>
-void getSWConAxis(const Math::SurfaceVectorField &j_e, const Math::SurfaceVectorField &j_m, const Types::complex_d k,
-                  const Callable &direct_field, const std::string path) {
-    // собрать точки на оси
-    int N = 2 * 41;
-    Types::scalar h = 0.5 / (N - 1);
-    const auto points_view = std::views::iota(0, N) | std::views::transform([&h](auto p) {
-                                 return Types::Vector3d{0, 0, p * h};
-                             });
-    const auto z_values_view = points_view | std::views::transform([&](auto p) { return p.z(); });
-    Containers::vector<Mesh::point_t> points{std::begin(points_view), std::end(points_view)};
-    const Containers::vector<Types::scalar> z_coordinate{std::begin(z_values_view), std::end(z_values_view)};
-
-    const auto inverse_field = [&](Mesh::point_t &point) {
-        Types::Vector3c value = InfiniteWaveguide::getE_in_point(j_e, j_m, k, point) - direct_field(point);
-        // std::cout << value << std::endl;
-        return value;
-    };
-
-    const auto result = EngineeringCoefficients::SWC(direct_field, inverse_field, points);
-
-    std::ofstream sigma(path + "/ksv.csv");
-    Utils::to_csv(result, z_coordinate, "ksv", "z", sigma);
-}
-
 void getAmplitudeOverAxis(const Math::SurfaceVectorField &j_e, const Math::SurfaceVectorField &j_m,
                           const Types::complex_d k, const std::string path) {
     // собрать точки на оси
