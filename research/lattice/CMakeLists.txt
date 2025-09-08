@@ -17,7 +17,7 @@ if (EIGEN3_FOUND)
     message("Eigen Found")
 endif ()
 
-set(TARGET_LIBS eigen visual OpenMP::OpenMP_CXX)  #  + OpenMP::OpenMP_CXX
+set(TARGET_LIBS eigen visual)  #  + OpenMP::OpenMP_CXX
 
 list(APPEND TASKS tests/matrix_comparison.cpp
         hexogonal/first_attempt.cpp

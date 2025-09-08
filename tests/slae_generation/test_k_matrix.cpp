@@ -2,12 +2,12 @@
 // Created by evgen on 20.01.2025.
 //
 #include "mesh/MeshTypes.hpp"
+#include "mesh/Parser.hpp"
 #include "mesh/SurfaceMesh.hpp"
 #include "meshes/plate/PlateGrid.hpp"
 #include "slae_generation/MatrixGeneration.hpp"
 #include "types/Types.hpp"
 #include "gtest/gtest.h"
-#include "mesh/Parser.hpp"
 
 #include <filesystem>
 
@@ -28,11 +28,11 @@ class K_MATRIX : public testing::Test {
     Mesh::SurfaceMesh cylinder_mesh;
 
     void SetUp() override {
-        auto parser_output = EMW::Parser::parseMesh(nodes, cells, nNodes, nCells);
-        for(auto& arr : parser_output.second)
-            for (auto& el: arr)
+        auto parser_output = EMW::Parser::parse_mesh_without_tag(nodes, cells);
+        for (auto &arr : parser_output.cells)
+            for (auto &el : arr)
                 el = el - 1;
-        cylinder_mesh = Mesh::SurfaceMesh{parser_output.first, parser_output.second};
+        cylinder_mesh = Mesh::SurfaceMesh{parser_output.nodes, parser_output.cells};
     }
 };
 
@@ -56,8 +56,22 @@ TEST_F(K_MATRIX, COINSIDANCE_BETWEEN_2_IMPLEMENTATION_ON_CYLINDER) {
     const MatrixXc diff = m - new_m;
     std::cout << diff.norm() << std::endl;
     for (int i = 0; i < m.rows(); i++) {
-        for (int j = 0; j <  m.rows(); j++) {
+        for (int j = 0; j < m.rows(); j++) {
             ASSERT_NEAR(std::abs(m(i, j) - new_m(i, j)), 0, tolerance) << i << " " << j << std::endl;
         }
+    }
+}
+
+TEST_F(K_MATRIX, CHECK_ROW_AND_COL_SEPARATE_CALCULATION) {
+    const auto m = Matrix::getMatrixK(k, cylinder_mesh, cylinder_mesh);
+
+    for (int i = 0; i < m.rows(); i++) {
+        const auto row_real = m.row(i);
+        const auto col_real = m.col(i);
+        const auto row_to_check = Matrix::getRowInMatrixK(i, k, cylinder_mesh.getCells(), cylinder_mesh.getCells());
+        const auto col_to_check = Matrix::getColumnInMatrixK(i, k, cylinder_mesh.getCells(), cylinder_mesh.getCells());
+
+        ASSERT_NEAR((row_to_check - row_real).norm(), 0, 1e-12);
+        ASSERT_NEAR((col_to_check - col_real).norm(), 0, 1e-12);
     }
 }

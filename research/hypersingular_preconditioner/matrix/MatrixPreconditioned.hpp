@@ -40,8 +40,7 @@ class MatrixReplacementReal : public Eigen::EigenBase<MatrixReplacementReal<Matr
 
     // Custom API:
     MatrixReplacementReal() = default;
-    MatrixReplacementReal(const MatrixType &matrix, Types::index N, Types::index M, Types::scalar h1, Types::scalar h2)
-        : mp_mat(&matrix), precond(matrix, N, M, h1, h2) {}
+    MatrixReplacementReal(const MatrixType &matrix, const Mesh::SurfaceMesh &mesh) : mp_mat(&matrix), precond(mesh) {}
 
     const MatrixType &my_matrix() const { return *mp_mat; }
     const PreconditionerType &get_preconditioner() const { return precond; }
@@ -70,11 +69,11 @@ struct generic_product_impl<matrix_replacement_real<MatrixType, PreconditionerTy
                               const Rhs &rhs, const Scalar &alpha) {
         // This method should implement "dst += alpha * lhs * rhs" inplace,
         // however, for iterative solvers, alpha is always equal to 1, so let's not bother about it.
-        const Types::VectorXd inter_result = lhs.my_matrix() * lhs.get_preconditioner().solve(rhs);
+        const auto inter_result = lhs.my_matrix() * lhs.get_preconditioner().solve(rhs);
         dst.noalias() += alpha * inter_result;
     }
 };
-}
+} // namespace Eigen::internal
 
 namespace Research::Matrix::Wrappers {
 /**
@@ -104,8 +103,8 @@ class MatrixReplacementComplex : public Eigen::EigenBase<MatrixReplacementComple
 
     // Custom API:
     MatrixReplacementComplex() = default;
-    MatrixReplacementComplex(const MatrixType &matrix, Types::complex_d k, Types::index N, Types::index M, Types::scalar h1, Types::scalar h2)
-        : mp_mat(&matrix), precond(matrix, N, M, h1, h2) {}
+    MatrixReplacementComplex(const MatrixType &matrix, const MatrixType &direct_precond_inv)
+        : mp_mat(&matrix), precond(direct_precond_inv) {}
 
     const MatrixType &my_matrix() const { return *mp_mat; }
     const PreconditionerType &get_preconditioner() const { return precond; }
@@ -134,7 +133,7 @@ struct generic_product_impl<matrix_replacement_complex<MatrixType, Preconditione
                               const Rhs &rhs, const Scalar &alpha) {
         // This method should implement "dst += alpha * lhs * rhs" inplace,
         // however, for iterative solvers, alpha is always equal to 1, so let's not bother about it.
-        const Types::VectorXc inter_result = lhs.my_matrix() *  lhs.get_preconditioner().solve(rhs);
+        const auto inter_result = lhs.my_matrix() *  lhs.get_preconditioner().solve(rhs);
         dst.noalias() += alpha * inter_result;
     }
 };

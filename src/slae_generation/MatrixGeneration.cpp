@@ -25,7 +25,7 @@ Types::scalar compare(const MatrixCoefs &a, const MatrixCoefs &b) {
 
 Types::complex_d getFirstPartIntegral(const Mesh::IndexedCell &cell_i, const Mesh::IndexedCell &cell_j,
                                       Types::complex_d k) {
-    if ((cell_i.collPoint_ - cell_j.collPoint_).norm() < 1e-15) {
+    if ((cell_i.collPoint_ - cell_j.collPoint_).norm() < 1e-10) {
         // std::cout << "Self affecting" << std::endl;
         return EMW::OperatorK::detail::K1OverSingularCellRnDWithSingularityExtraction<
             DefiniteIntegrals::GaussLegendre::Quadrature<4, 4>>(cell_i.collPoint_, cell_j, k);
@@ -41,7 +41,7 @@ Types::complex_d getFirstPartIntegral(Types::index i, Types::index j, Types::com
 
 Types::Matrix3c getZeroPartIntegral(const Mesh::IndexedCell &cell_i, const Mesh::IndexedCell &cell_j,
                                     Types::complex_d k) {
-    return EMW::OperatorK::detail::K0TensorOverSingularCell<DefiniteIntegrals::GaussLegendre::Quadrature<8>>(
+    return EMW::OperatorK::detail::K0TensorOverSingularCell<DefiniteIntegrals::GaussLegendre::Quadrature<4>>(
         cell_i.collPoint_, cell_j, k);
 }
 
@@ -80,11 +80,17 @@ MatrixCoefs getMatrixCoefs(Types::index i, Types::index j, Types::complex_d k,
 } // namespace DiscreteK
 
 namespace DiscreteR {
-
+/**
+ * Честный расчет коэффициентов матрицы
+ * @param cell_i ячейка с точкой коллокации
+ * @param cell_j ячейка, по которой интегрируем
+ * @param k волновое число
+ * @return коэффициенты в матрице (4 штуки) в специальной структуре
+ */
 MatrixCoefs getMatrixCoefs(const Mesh::IndexedCell &cell_i, const Mesh::IndexedCell &cell_j, Types::complex_d k) {
     // честно рассчитываем
     const Types::Vector3c integral =
-        OperatorR::detail::forMatrix::commonIntegralPart<DefiniteIntegrals::NewtonCotess::Quadrature<2, 2>>(
+        OperatorR::detail::forMatrix::commonIntegralPart<DefiniteIntegrals::GaussLegendre::Quadrature<2, 2>>(
             cell_j, cell_i.collPoint_, k);
 #if 1
     const Types::complex_d a11 = Math::quasiDot(integral, cell_j.tau[0].cross(cell_i.tau[0]));
@@ -140,26 +146,6 @@ Types::MatrixXc getMatrixK(Types::complex_d k, const Mesh::SurfaceMesh &surface_
     return result;
 }
 
-template<typename MatrixLike>
-void getMatrixK_inplace(MatrixLike& result, Types::complex_d k, const Mesh::SurfaceMesh &surface_mesh) {
-    const auto &cells = surface_mesh.getCells();
-    const long N = static_cast<long>(cells.size());
-    if (result.rows() != 2 * N && result.cols() != 2 * N)
-        throw std::invalid_argument("Matrix size for result is not compatible with the surface mesh in calculation "
-                                    "of operator R matrix with one mesh");
-
-#pragma omp parallel for num_threads(14) collapse(2)
-    for (long i = 0; i < N; ++i) {
-        for (long j = 0; j < N; ++j) {
-            const auto coefs = DiscreteK::getMatrixCoefs(i, j, k, cells);
-            result(i, j) = coefs.a11;
-            result(i + N, j) = coefs.a21;
-            result(i, j + N) = coefs.a12;
-            result(i + N, j + N) = coefs.a22;
-        }
-    }
-}
-
 Types::MatrixXc getMatrixK(Types::complex_d k, const Mesh::SurfaceMesh &integration_mesh,
                            const Mesh::SurfaceMesh &mesh_with_coll_points) {
     const auto &cells = mesh_with_coll_points.getCells();
@@ -177,6 +163,46 @@ Types::MatrixXc getMatrixK(Types::complex_d k, const Mesh::SurfaceMesh &integrat
             result(i, j + M) = coefs.a12;
             result(i + N, j + M) = coefs.a22;
         }
+    }
+    return result;
+}
+
+Types::VectorXc getRowInMatrixK(Types::index number_of_a_row, Types::complex_d k,
+                                const Containers::vector<Mesh::IndexedCell> &cells_to_integrate,
+                                const Containers::vector<Mesh::IndexedCell> &cells_with_points) {
+    const auto N = static_cast<Types::index>(cells_with_points.size());
+    const auto M = static_cast<Types::index>(cells_to_integrate.size());
+
+    Types::VectorXc result = Types::VectorXc::Zero(2 * M);
+    // 0 или 1 в зависимости от того, в какой части матрицы находится строка
+    Types::index special_multiplier = number_of_a_row / N;
+    Types::index number_of_reference_cell = number_of_a_row - special_multiplier * N;
+    const auto &reference_cell = cells_with_points[number_of_reference_cell];
+
+    for (Types::index i = 0; i < M; ++i) {
+        const auto coefs = DiscreteK::getMatrixCoefsInArray(reference_cell, cells_to_integrate[i], k);
+        result(i) = coefs[0 + 2 * special_multiplier];
+        result(i + M) = coefs[1 + 2 * special_multiplier];
+    }
+    return result;
+}
+
+Types::VectorXc getColumnInMatrixK(Types::index number_of_a_col, Types::complex_d k,
+                                   const Containers::vector<Mesh::IndexedCell> &cells_to_integrate,
+                                   const Containers::vector<Mesh::IndexedCell> &cells_with_points) {
+    const auto N = static_cast<Types::index>(cells_with_points.size());
+    const auto M = static_cast<Types::index>(cells_to_integrate.size());
+
+    Types::VectorXc result = Types::VectorXc::Zero(2 * N);
+    // 0 или 1 в зависимости от того, в какой части матрицы находится строка
+    Types::index special_multiplier = number_of_a_col / M;
+    Types::index number_of_reference_cell = number_of_a_col - special_multiplier * M;
+    const auto &reference_cell = cells_to_integrate[number_of_reference_cell];
+
+    for (Types::index j = 0; j < N; ++j) {
+        const auto coefs = DiscreteK::getMatrixCoefsInArray(cells_with_points[j], reference_cell, k);
+        result(j) = coefs[0 + special_multiplier];
+        result(j + N) = coefs[2 + special_multiplier];
     }
     return result;
 }
@@ -218,6 +244,46 @@ Types::MatrixXc getMatrixR(Types::complex_d k, const Mesh::SurfaceMesh &integrat
             result(i, j + M) = coefs.a12;
             result(i + N, j + M) = coefs.a22;
         }
+    }
+    return result;
+}
+
+Types::VectorXc getRowInMatrixR(Types::index number_of_a_row, Types::complex_d k,
+                                const Containers::vector<Mesh::IndexedCell> &cells_to_integrate,
+                                const Containers::vector<Mesh::IndexedCell> &cells_with_points) {
+    const auto N = static_cast<Types::index>(cells_with_points.size());
+    const auto M = static_cast<Types::index>(cells_to_integrate.size());
+
+    Types::VectorXc result = Types::VectorXc::Zero(2 * M);
+    // 0 или 1 в зависимости от того, в какой части матрицы находится строка
+    Types::index special_multiplier = number_of_a_row / N;
+    Types::index number_of_reference_cell = number_of_a_row - special_multiplier * N;
+    const auto &reference_cell = cells_with_points[number_of_reference_cell];
+
+    for (Types::index i = 0; i < M; ++i) {
+        const auto coefs = DiscreteR::getMatrixCoefsInArray(reference_cell, cells_to_integrate[i], k);
+        result(i) = coefs[0 + 2 * special_multiplier];
+        result(i + M) = coefs[1 + 2 * special_multiplier];
+    }
+    return result;
+}
+
+Types::VectorXc getColumnInMatrixR(Types::index number_of_a_col, Types::complex_d k,
+                                   const Containers::vector<Mesh::IndexedCell> &cells_to_integrate,
+                                   const Containers::vector<Mesh::IndexedCell> &cells_with_points) {
+    const auto N = cells_with_points.size();
+    const auto M = cells_to_integrate.size();
+
+    Types::VectorXc result = Types::VectorXc::Zero(2 * N);
+    // 0 или 1 в зависимости от того, в какой части матрицы находится строка
+    Types::index special_multiplier = number_of_a_col / M;
+    Types::index number_of_reference_cell = number_of_a_col - special_multiplier * M;
+    const auto &reference_cell = cells_to_integrate[number_of_reference_cell];
+
+    for (Types::index j = 0; j < N; ++j) {
+        const auto coefs = DiscreteR::getMatrixCoefsInArray(cells_with_points[j], reference_cell, k);
+        result(j) = coefs[0 + special_multiplier];
+        result(j + N) = coefs[2 + special_multiplier];
     }
     return result;
 }

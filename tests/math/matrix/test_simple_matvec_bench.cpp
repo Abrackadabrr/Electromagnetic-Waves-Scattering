@@ -19,7 +19,7 @@ TEST(MATVEC, RESHAPE_TEST) {
 
 TEST(MATVEC, SIMPLE_TEST) {
     const int N = 3000;
-    const int K = 40;
+    const int K = 20;
     const Eigen::MatrixXd A = Eigen::MatrixXd::Random(N, N);
     const Eigen::VectorXd B = Eigen::VectorXd::Random(K * N);
 
@@ -39,7 +39,9 @@ TEST(MATVEC, SIMPLE_TEST) {
     // 2) Решейп в матрицу и перемножение
     start = std::chrono::high_resolution_clock::now();
 
-    const Eigen::VectorXd res_2 = (A * B.reshaped(N, K)).reshaped(N * K, 1);
+    const Eigen::MatrixXd B_reshaped = B.reshaped(N, K);
+    const Eigen::MatrixXd A_B = A * B_reshaped;
+    const Eigen::VectorXd res_2 = A_B.reshaped(N * K, 1);
 
     end = std::chrono::high_resolution_clock::now();
     auto elapsed_2 = std::chrono::duration_cast<std::chrono::microseconds>(end - start);

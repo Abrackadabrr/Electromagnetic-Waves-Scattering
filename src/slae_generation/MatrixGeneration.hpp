@@ -71,11 +71,20 @@ Containers::array<Types::complex_d, 4> getMatrixCoefsInArray(const Mesh::Indexed
 } // namespace DiscreteK
 
 namespace DiscreteR {
+/**
+ * Умный расчет коэффиуиентов в матрице с учетом нуля для самодействия
+ * @param i номер ячейки с точкой коллокации
+ * @param j номер ячейки по которой интегрируем
+ * @param k волновое число
+ * @param cells набор ячеек в сетке
+ * @return четыре коэффициента матрицы в специальной структуре
+ */
 MatrixCoefs getMatrixCoefs(Types::index i, Types::index j, Types::complex_d k,
                            const Containers::vector<Mesh::IndexedCell> &cells);
 
+// УДАЛИТЬ ЭТУ ФУНКЦИЮ ИЗ ХЕДЕРА
 /**
- * Расчет коэффициентов матрицы от ячейки cell_j в точке cell_i.collPoint_
+ * Расчет коэффициентов матрицы от ячейки cell_j в точке cell_i.collPoint_ по обычной формуле (без учета самодействия)
  * @param cell_i ячейка, в которой есть точка коллокации
  * @param cell_j ячейка, по которой производится расчет интеграла
  * @param k волновое число
@@ -86,6 +95,9 @@ MatrixCoefs getMatrixCoefs(Types::index i, Types::index j, Types::complex_d k,
  */
 MatrixCoefs getMatrixCoefs(const Mesh::IndexedCell &cell_i, const Mesh::IndexedCell &cell_j, Types::complex_d k);
 
+/**
+ * Как и предыдущая, только возвращает массив
+ */
 Containers::array<Types::complex_d, 4> getMatrixCoefsInArray(const Mesh::IndexedCell &cell_i, const Mesh::IndexedCell &cell_j, Types::complex_d k);
 
 } // namespace DiscreteR
@@ -103,6 +115,21 @@ Types::MatrixXc getMatrixK(Types::complex_d k, const Mesh::SurfaceMesh &surface_
 Types::MatrixXc getMatrixK(Types::complex_d k, const Mesh::SurfaceMesh &integration_mesh,
                                                const Mesh::SurfaceMesh &mesh_with_coll_points);
 
+/**
+* Расчет строки в матрице оператора К для двух различных поверхностей (функция для адаптивного креста)
+*/
+Types::VectorXc getRowInMatrixK(Types::index number_of_a_row, Types::complex_d k,
+                                const Containers::vector<Mesh::IndexedCell> &cells_to_integrate,
+                                const Containers::vector<Mesh::IndexedCell> &cells_with_points);
+
+/**
+* Расчет строки в матрице оператора К для двух различных поверхностей (функция для адаптивного креста)
+*/
+Types::VectorXc getColumnInMatrixK(Types::index number_of_a_col, Types::complex_d k,
+                                const Containers::vector<Mesh::IndexedCell> &cells_to_integrate,
+                                const Containers::vector<Mesh::IndexedCell> &cells_with_points);
+
+
 // ---------------- Оператор R ------------ //
 
 /**
@@ -115,6 +142,21 @@ Types::MatrixXc getMatrixR(Types::complex_d k, const Mesh::SurfaceMesh &surface_
 */
 Types::MatrixXc getMatrixR(Types::complex_d k, const Mesh::SurfaceMesh &integration_mesh,
                                                const Mesh::SurfaceMesh &mesh_with_coll_points);
+
+/**
+* Расчет строки в матрице оператора R для двух различных поверхностей (функция для адаптивного креста)
+*/
+Types::VectorXc getRowInMatrixR(Types::index number_of_a_row, Types::complex_d k,
+                                const Containers::vector<Mesh::IndexedCell> &cells_to_integrate,
+                                const Containers::vector<Mesh::IndexedCell> &cells_with_points);
+
+/**
+* Расчет строки в матрице оператора R для двух различных поверхностей (функция для адаптивного креста)
+*/
+Types::VectorXc getColumnInMatrixR(Types::index number_of_a_col, Types::complex_d k,
+                                const Containers::vector<Mesh::IndexedCell> &cells_to_integrate,
+                                const Containers::vector<Mesh::IndexedCell> &cells_with_points);
+
 
 // ----------- Вспомогательные операторы ------------- //
 

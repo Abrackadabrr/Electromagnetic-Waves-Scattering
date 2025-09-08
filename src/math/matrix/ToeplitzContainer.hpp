@@ -66,7 +66,7 @@ template <typename data_type> class ToeplitzContainer {
     /** Доступ к элементу контейнера по линейному индексу */
     data_type &operator()(Types::index index) noexcept;
     /** Доступ на чтение к внутренней структуре */
-    Containers::vector<data_type> get_values() const noexcept { return values; }
+    const Containers::vector<data_type>& get_values() const noexcept { return values; }
 };
 
 template <typename data_type>
@@ -120,12 +120,16 @@ ToeplitzContainer<data_type>::ToeplitzContainer(Types::index rows, Types::index 
 template <typename data_type>
 const data_type &ToeplitzContainer<data_type>::operator[](Types::index row_index,
                                                           Types::index col_index) const noexcept {
-    return col_index >= row_index ? values[col_index - row_index] : values[row_index - col_index + cols_ - 1];
+    if (col_index >= row_index)
+        return values[col_index - row_index];
+    return values[row_index - col_index + cols_ - 1];
 }
 
 template <typename data_type>
 data_type &ToeplitzContainer<data_type>::operator[](Types::index row_index, Types::index col_index) noexcept {
-    return col_index >= row_index ? values[col_index - row_index] : values[row_index - col_index + cols_ - 1];
+    if (col_index >= row_index)
+        return values[col_index - row_index];
+    return values[row_index - col_index + cols_ - 1];
 }
 
 template <typename data_type>

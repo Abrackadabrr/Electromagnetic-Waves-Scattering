@@ -16,28 +16,28 @@ TEST_F(MATRIX_DECOMPOSITIONS_TESTS, ACA_AUX_TEST1) {
 
     // Совпадение стоблцов
     for (int i = 0; i < M; i++) {
-        const auto&& col = Math::LinAgl::Decompositions::RealACA::get_col(i, N, M, function_for_element);
+        const auto &&col = Math::LinAgl::Decompositions::RealACA::get_col(i, N, M, function_for_element);
         ASSERT_NEAR((col - mat.col(i)).norm(), 0, 1e-14);
     }
 
     // Совпадение строк
     for (int i = 0; i < N; i++) {
-        const auto&& row = Math::LinAgl::Decompositions::RealACA::get_row(i, N, M, function_for_element);
+        const auto &&row = Math::LinAgl::Decompositions::RealACA::get_row(i, N, M, function_for_element);
         ASSERT_NEAR((row - mat.row(i).transpose()).norm(), 0, 1e-14);
     }
 
     // 1. Проверка расчета строчек и столбцов от произведения матриц
-    const Types::MatrixXd UVT = mat * (mat.transpose());  // матрицы N x N
+    const Types::MatrixXd UVT = mat * (mat.transpose()); // матрицы N x N
 
     // Совпадение стоблцов (всего в итоговой матрице N стоблцов)
     for (int i = N; i < N; i++) {
-        const auto&& col = Math::LinAgl::Decompositions::RealACA::get_col_UV(mat, mat, i);
+        const auto &&col = Math::LinAgl::Decompositions::RealACA::get_col_UV(mat, mat, i);
         ASSERT_NEAR((col - UVT.col(i)).norm() / col.norm(), 0, 1e-14);
     }
 
     // Совпадение строк
     for (int i = 0; i < N; i++) {
-        const auto&& row =  Math::LinAgl::Decompositions::RealACA::get_row_UV(mat, mat, i);
+        const auto &&row = Math::LinAgl::Decompositions::RealACA::get_row_UV(mat, mat, i);
         ASSERT_NEAR((row - UVT.row(i).transpose()).norm() / row.norm(), 0, 1e-14);
     }
 
@@ -73,7 +73,7 @@ TEST_F(MATRIX_DECOMPOSITIONS_TESTS, ACA_HILBERT) {
     std::cout << "Rank = " << factored_matrix.get<0>().cols() << std::endl;
 
     const Types::scalar err = (factored_matrix.compute() - mat).norm() / mat.norm();
-    std::cout << "Relative error: " <<  err << std::endl;
+    std::cout << "Relative error: " << err << std::endl;
     std::cout << "Full mem usage: " << N * N * 8. / (1024 * 1024) << " Mb" << std::endl;
     std::cout << "Compressed mem usage: " << factored_matrix.memory_usage() * 8 / (1024 * 1024) << " Mb" << std::endl;
 }
@@ -103,8 +103,8 @@ TEST_F(MATRIX_DECOMPOSITIONS_TESTS, ACA_REAL_CASE_TEST) {
                                   "lattice/2000_cells.csv";
 
     // собираем сетки
-    const auto parser_out = EMW::Parser::parseMesh(nodesFile, cellsFile);
-    auto mesh_base = Mesh::SurfaceMesh{parser_out.first, parser_out.second};
+    const auto parser_out = EMW::Parser::parse_mesh_without_tag(nodesFile, cellsFile);
+    auto mesh_base = Mesh::SurfaceMesh{parser_out.nodes, parser_out.cells};
 
     // сделаем ещё одну сетку для анализа внедиагонлаьных элементов
     const auto &mesh_1 = mesh_base;
@@ -136,15 +136,24 @@ TEST_F(MATRIX_DECOMPOSITIONS_TESTS, ACA_REAL_CASE_TEST) {
 
     // Вспомогательная функция для эмулирвоания функционального задания матрциы
     const auto element = [&out_diagonal_block](Types::index i, Types::index j) { return out_diagonal_block(i, j); };
+
+    const auto compute_col = [&out_diagonal_block](Types::index i) -> Types::VectorXc {
+        return out_diagonal_block.col(i);
+    };
+    const auto compute_row = [&out_diagonal_block](Types::index i) -> Types::VectorXc {
+        return out_diagonal_block.row(i);
+    };
+
     Types::scalar error_control = 0.1;
 
     start = std::chrono::system_clock::now();
-
-    const auto out_factored_matrix = Math::LinAgl::Decompositions::ComplexACA::compute(element,
-                                                                                       out_diagonal_block.rows(),
-                                                                                         out_diagonal_block.cols(),
-                                                                                         error_control);
-
+#if 1
+    const auto out_factored_matrix = Math::LinAgl::Decompositions::ComplexACA::compute(
+        compute_row, compute_col, out_diagonal_block.rows(), out_diagonal_block.cols(), error_control);
+#else
+    const auto out_factored_matrix = Math::LinAgl::Decompositions::ComplexACA::compute(
+        element, out_diagonal_block.rows(), out_diagonal_block.cols(), error_control);
+#endif
     end = std::chrono::system_clock::now();
     elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(end - start);
 
@@ -156,7 +165,8 @@ TEST_F(MATRIX_DECOMPOSITIONS_TESTS, ACA_REAL_CASE_TEST) {
 
     std::cout << "Память для хранения общего блока: " << out_diagonal_block.size() * 16. / (1024 * 1024 * 1024)
               << std::endl;
-    std::cout << "Память для хранения фактора: " << out_factored_matrix.memory_usage() * 16. / (1024 * 1024 * 1024) << std::endl;
+    std::cout << "Память для хранения фактора: " << out_factored_matrix.memory_usage() * 16. / (1024 * 1024 * 1024)
+              << std::endl;
 
     // Проверка всего что можно проверить у матрицы с факторами
     ASSERT_EQ(out_factored_matrix.rows(), out_diagonal_block.rows());

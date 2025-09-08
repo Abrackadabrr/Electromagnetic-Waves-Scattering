@@ -28,12 +28,12 @@ class R_MATRIX : public testing::Test {
     Mesh::SurfaceMesh cylinder_mesh;
 
     void SetUp() override {
-        auto parser_output = EMW::Parser::parseMesh(nodes, cells, nNodes, nCells);
+        auto parser_output = EMW::Parser::parse_mesh_without_tag(nodes, cells);
         // специальная обработка для цилиндра, потому что там нумерация узлов с ЕДИНИЦЫ
-        for(auto& arr : parser_output.second)
+        for(auto& arr : parser_output.cells)
             for (auto& el: arr)
                 el = el - 1;
-        cylinder_mesh = Mesh::SurfaceMesh{parser_output.first, parser_output.second};
+        cylinder_mesh = Mesh::SurfaceMesh{parser_output.nodes, parser_output.cells};
     }
 };
 
@@ -62,5 +62,19 @@ TEST_F(R_MATRIX, COINSIDANCE_BETWEEN_2_IMPLEMENTATION_ON_CYLINDER) {
         for (int j = 0; j <  m.rows(); j++) {
             ASSERT_NEAR(std::abs(m(i, j) - new_m(i, j)), 0, tolerance);
         }
+    }
+}
+
+TEST_F(R_MATRIX, CHECK_ROW_AND_COL_SEPARATE_CALCULATION) {
+    const auto m = Matrix::getMatrixR(k, cylinder_mesh, cylinder_mesh);
+
+    for (int i = 0; i < m.rows(); i++) {
+        const auto row_real = m.row(i);
+        const auto col_real = m.col(i);
+        const auto row_to_check = Matrix::getRowInMatrixR(i, k, cylinder_mesh.getCells(), cylinder_mesh.getCells());
+        const auto col_to_check = Matrix::getColumnInMatrixR(i, k, cylinder_mesh.getCells(), cylinder_mesh.getCells());
+
+        ASSERT_NEAR((row_to_check - row_real).norm(), 0, 1e-12);
+        ASSERT_NEAR((col_to_check - col_real).norm(), 0, 1e-12);
     }
 }

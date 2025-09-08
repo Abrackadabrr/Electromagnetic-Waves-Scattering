@@ -102,3 +102,40 @@ TEST_F(TOEPLITZ_MATRIX_TESTS, TOEPLITZ_BLOCK_MATRIX_OPRATION) {
     ASSERT_EQ(real_diag.size(), toeplitz_diag.size());
     ASSERT_NEAR((real_diag - toeplitz_diag).norm(), 0, 0) << "diagonal method does not work";
 }
+
+TEST_F(TOEPLITZ_MATRIX_TESTS, WISE_MULTIPLICATION_TEST) {
+    // Создание матрицы через функцию
+    Types::index tl_rows = 20;
+    Types::index tl_cols = 20;
+    Types::index block_size = 3000;
+    const Math::LinAgl::Matrix::ToeplitzBlock<complex_d> matrix(
+        tl_rows, tl_cols, [block_size](Types::index i, Types::index j) -> Types::MatrixXc {
+            return MatrixXc::Random(block_size, block_size);
+        });
+    // тестовый вектор
+    const Types::VectorXc vec = Types::VectorXc::Random(matrix.cols());
+
+    // 2) Умное умножение
+    auto start = std::chrono::steady_clock::now();
+
+    const auto res_2 = matrix.matvec_wise(vec);
+
+    auto end = std::chrono::steady_clock::now();
+    const auto elapsed_2 = std::chrono::duration_cast<std::chrono::milliseconds>(end - start);
+
+    // 1) Обычное умножение
+#if 1
+    start = std::chrono::steady_clock::now();
+
+    const auto res_1 = matrix.matvec(vec);
+
+    end = std::chrono::steady_clock::now();
+    const auto elapsed_1 = std::chrono::duration_cast<std::chrono::milliseconds>(end - start);
+
+    // 3) Анализ результатов
+    const Types::scalar err = (res_1 - res_2).norm();
+    std::cout << "Absolute error : " << err << std::endl;
+    std::cout << "Elapsed time in simple alg : " << elapsed_1.count() << " milliseconds" << std::endl;
+#endif
+    std::cout << "Elapsed time in wise alg : " << elapsed_2.count() << " milliseconds" << std::endl;
+}
