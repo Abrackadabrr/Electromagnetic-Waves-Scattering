@@ -19,8 +19,10 @@ namespace EMW::Math::LinAgl::Matrix {
 template <typename scalar_t, typename block_t> class ToeplitzStructure {
     // Проверка на дефолт контруирование
     static_assert(std::is_default_constructible_v<block_t>);
+
   public:
     using vector_t = Types::VectorX<scalar_t>;
+    using dense_matrix_t = Types::MatrixX<scalar_t>;
     using block_type = block_t;
     using scalar_type = scalar_t;
 
@@ -51,6 +53,8 @@ template <typename scalar_t, typename block_t> class ToeplitzStructure {
 
     /** Умножение матрицы на вектор */
     [[nodiscard]] vector_t matvec(const vector_t &vec) const noexcept;
+    /** Умное умножение матрицы на вектор */
+    [[nodiscard]] vector_t matvec_wise(const vector_t &vec) const noexcept;
     /** Умножение матрицы на число с возвращением копии */
     [[nodiscard]] ToeplitzStructure mull(scalar_t value) const noexcept;
     /** Умножение себя на число */
@@ -78,8 +82,8 @@ template <typename scalar_t, typename block_t> class ToeplitzStructure {
     [[nodiscard]] Types::index rows() const noexcept { return rows_in_block_ * blocks.rows(); }
     [[nodiscard]] Types::index cols() const noexcept { return cols_in_block_ * blocks.cols(); }
 
-    [[nodiscard]] Types::index rows_in_toeplitrz() { return blocks.rows(); };
-    [[nodiscard]] Types::index cols_in_toeplitrz() { return blocks.cols(); };
+    [[nodiscard]] Types::index rows_in_toeplitrz() const { return blocks.rows(); };
+    [[nodiscard]] Types::index cols_in_toeplitrz() const { return blocks.cols(); };
 
     // --- Доступ к элементам на чтение --- //
 
@@ -149,7 +153,7 @@ ToeplitzStructure<scalar_t, block_t>::matvec(const vector_t &vec) const noexcept
     vector_t result = vector_t::Zero(rows());
 
     // Далее итерируемся по всем блокам (потому что обычное умножение, а не потому что бесструктурная матрица!)
-#pragma omp parallel for schedule(static) collapse(2) num_threads(14)
+// #pragma omp parallel for schedule(static) collapse(2) num_threads(14)
     for (Types::index i = 0; i < blocks.rows(); ++i) {
         for (Types::index j = 0; j < blocks.cols(); ++j) {
             // Достаем ссылку на текущий блок (тут как раз проявляется тёплицевость)
@@ -160,9 +164,43 @@ ToeplitzStructure<scalar_t, block_t>::matvec(const vector_t &vec) const noexcept
             // тут просто получилось несоответствие типов для вызова матвека
             vector_t local_res = current_block * sub_vector;
             // Складываем результат
-#pragma omp critical
+// #pragma omp critical
             { result.block(i * rows_in_block_, 0, rows_in_block_, 1) += local_res; }
         }
+    }
+    return result;
+}
+
+template <typename scalar_t, typename block_t>
+typename ToeplitzStructure<scalar_t, block_t>::vector_t
+ToeplitzStructure<scalar_t, block_t>::matvec_wise(const vector_t &vec) const noexcept {
+
+    assert(vec.size() == cols());
+    // создаем нулевой вектор результата, в который будем записывать ответ
+    vector_t result = vector_t::Zero(rows());
+
+    const Types::index cols_in_toeplitz_structure = cols_in_toeplitrz();
+
+    // 1) Сделали решейпнутую правую часть (и копируем её?)
+    const dense_matrix_t reshaped_rhs = vec.reshaped(cols_in_block_, cols_in_toeplitz_structure);
+
+    // 2) Далее цикл по блокам с умножением нужного количества "подвекторов из правой части"
+// #pragma omp parallel for schedule(static) num_threads(14)
+    for (Types::index i = 0; i < blocks.get_actual_size(); i++) {
+        // Сначала понимаем какой это блок: строчный или столбцовый
+        const bool shift_sign = (i < cols_in_toeplitz_structure);
+        // Затем понимаем сколько надо отступить, чтобы не умножать лишнего
+        const Types::index shift_module = shift_sign ? i : i - cols_in_toeplitz_structure + 1;
+        // Затем рассчитываем блок, который надо вытащить из решейпнутой правой части
+        const Types::index col_to_start = shift_sign ? shift_module : 0;
+        const Types::index n_cols_to_get = cols_in_toeplitz_structure - shift_module;
+        // Затем вырезаем этот блок,
+        const dense_matrix_t rhs_block_to_mull = reshaped_rhs.block(0, col_to_start, cols_in_block_, n_cols_to_get);
+        // умножаем на внутренний блок,
+        const vector_t local_res = (blocks.get_values()[i] * rhs_block_to_mull).reshaped(n_cols_to_get * rows_in_block_, 1);
+        // и складываем в нужное место
+        const Types::index first_row_where_to_add = shift_sign ? 0 : shift_module;
+        result.block(cols_in_block_ * first_row_where_to_add, 0, n_cols_to_get * rows_in_block_, 1) += local_res;
     }
     return result;
 }

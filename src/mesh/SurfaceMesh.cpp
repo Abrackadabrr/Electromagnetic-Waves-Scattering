@@ -16,15 +16,15 @@ SurfaceMesh::SurfaceMesh(Containers::vector<point_t> nodes,
                        return IndexedCell(indexes, nodes);
                    });
 #define WAVEGUIDE_CALCULATION 1
-    std::cout << "Waveguide submesh creation:" << WAVEGUIDE_CALCULATION << std::endl;
+   // std::cout << "Waveguide submesh creation:" << WAVEGUIDE_CALCULATION << std::endl;
 #if WAVEGUIDE_CALCULATION
     // БОЛЬШУЩИЙ КОСТЫЛЬ ДЛЯ РАСЧЕТА ВОЛНОВОДА
     // этот параметр показывает количество ячеек в плоскости,
     // где есть матгнитный ток и задается импедансное условие
     // эти точки помечаются отдельно, чтобы в дальнейшем их вынуть
     // в своем формате сетки я точно знаю, что эти точки лежат в конце
-    int amount_of_cells_in_active_surface = 5 * 11 * 2;
-    std::cout << "amount_of_cells_in_active_surface " << amount_of_cells_in_active_surface << std::endl;
+    int amount_of_cells_in_active_surface = 200;
+   // std::cout << "amount_of_cells_in_active_surface " << amount_of_cells_in_active_surface << std::endl;
     for (int i = 1; i <= amount_of_cells_in_active_surface; i++) {
         cells_[cells_.size() - i].tag = IndexedCell::Tag::WAVEGUIDE_CROSS_SECTION;
     }
@@ -77,12 +77,12 @@ void SurfaceMesh::customCollocationPpoints(const std::function<Types::Vector3d(c
 }
 
 SurfaceMesh SurfaceMesh::getSubmesh(IndexedCell::Tag tag) const {
-    const auto predicate = [&tag](const IndexedCell &cell) { return cell.tag == tag; };
+    const auto predicate = [tag](const IndexedCell &cell) { return cell.tag == tag; };
     std::vector<IndexedCell> subcells;
     Types::index size = std::count_if(cells_.begin(), cells_.end(), predicate);
     subcells.reserve(size);
     std::copy_if(cells_.begin(), cells_.end(), std::back_inserter(subcells), predicate);
-    return {nodes_, subcells};
+    return {nodes_, std::move(subcells)};
 }
 
 SurfaceMesh::mesh_info_t SurfaceMesh::getSubmeshInfo(IndexedCell::Tag tag) const {

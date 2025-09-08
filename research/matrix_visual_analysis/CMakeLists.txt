@@ -1,4 +1,4 @@
-project(preconditioning)
+project(matrix_visual_analysis)
 cmake_minimum_required(VERSION 3.22)
 message("MATRIX VISUAL ANALYSIS BUILDING\n")
 set(CMAKE_CXX_STANDARD 23)
@@ -10,8 +10,8 @@ add_subdirectory(../../visualisation visualisation)
 #find_package(OpenMP)
 #set (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${OpenMP_CXX_FLAGS}")
 
-set(EXE_NAME matrix_visual_analysis)
-add_executable(${EXE_NAME} singular_values_range.cpp)
+set(EXE_NAME dump_matrix_to_txt)
+add_executable(${EXE_NAME} dump_matrix_to_txt.cpp)
 
 find_package(OpenMP)
 if (OPENMP_FOUND)

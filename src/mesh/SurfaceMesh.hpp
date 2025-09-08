@@ -27,6 +27,9 @@ class SurfaceMesh {
     SurfaceMesh(const Containers::vector<point_t> &nodes, const Containers::vector<IndexedCell> &cells)
         : nodes_(nodes), cells_(cells) {}
 
+    SurfaceMesh(const Containers::vector<point_t> &nodes, Containers::vector<IndexedCell> &&cells)
+        : nodes_(nodes), cells_(std::move(cells)) {};
+
   public:
     /**
      * Дефолт-конструирование пустой поверхности
@@ -42,7 +45,8 @@ class SurfaceMesh {
     /**
      * Конструирование сетки по узлам и индексным ячейкам с заданием тэгов
      */
-    SurfaceMesh(Containers::vector<point_t> nodes, Containers::vector<IndexedCell::nodes_t> cells, Containers::vector<std::string> tags);
+    SurfaceMesh(Containers::vector<point_t> nodes, Containers::vector<IndexedCell::nodes_t> cells,
+                Containers::vector<std::string> tags);
 
     /**
      * Конструирование поверхностной сетки со специальными точками коллокации

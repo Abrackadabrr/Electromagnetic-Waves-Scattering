@@ -23,7 +23,9 @@ list(APPEND TASKS straight_problem.cpp preconditioned_problem.cpp
         tests/tests.cpp stupid_inverse.cpp
         helmholtz/straight_problem_for_h.cpp
         helmholtz/stupid_inverse_for_h.cpp
-        helmholtz/preconditioned_problem_for_h.cpp)
+        helmholtz/preconditioned_problem_for_h.cpp
+       # laplace_case/directly_preconditioned.cpp
+        helmholtz/directly_preconditioned.cpp)
 
 foreach (TASK IN LISTS TASKS)
     get_filename_component(FILE_NAME ${TASK} NAME_WE)

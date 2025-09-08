@@ -25,6 +25,7 @@ struct ParserOutput {
 };
 
 ParserOutput parseMesh(const std::string &csvNodes, const std::string &csvCells);
+ParserOutput parse_mesh_without_tag(const std::string &csvNodes, const std::string &csvCells);
 
 } // namespace EMW::Parser
 

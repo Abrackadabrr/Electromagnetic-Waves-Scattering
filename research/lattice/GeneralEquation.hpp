@@ -72,43 +72,48 @@ template <> struct CalcTraits<CalculationMethod::ACA> {
     using compression = EMW::Math::LinAgl::Decompositions::ComplexACA;
 
     // ПАРАМЕТРЫ ACA
-    static constexpr Types::scalar error_controller = 0.01;
+    static constexpr Types::scalar error_controller = 1;
 
     // Функция расчета
     static inline block_t create_a_block(const Mesh::SurfaceMesh &reference_mesh, const Mesh::SurfaceMesh &another_mesh,
                                          Types::complex_d k, Types::scalar a) {
 #define EXCLUDE_SOME_ACA 0
 #if EXCLUDE_SOME_ACA
-        const auto dist = (reference_mesh.getCells()[0].cellStructure.A - another_mesh.getCells()[0].cellStructure.A).norm();
+        const auto dist =
+            (reference_mesh.getCells()[0].cellStructure.A - another_mesh.getCells()[0].cellStructure.A).norm();
         if (dist < a) {
             std::cout << "Full calculation of submatrix, distance = " << dist << std::endl;
             return {{WaveGuideWithActiveSection::submatrix(another_mesh, reference_mesh, a, k)}, {false}};
         }
 #endif
+        // submeshes for calculation
+        const auto ref_mesh_zero = reference_mesh.getSubmesh(Mesh::IndexedCell::Tag::WAVEGUIDE_CROSS_SECTION);
+        const auto another_mesh_zero = another_mesh.getSubmesh(Mesh::IndexedCell::Tag::WAVEGUIDE_CROSS_SECTION);
         // размеры самых внутренних блоков матрицы (нужня для АСА)
         const Types::index N_cols = reference_mesh.getCells().size();
-        const Types::index K_cols =
-            reference_mesh.getSubmesh(Mesh::IndexedCell::Tag::WAVEGUIDE_CROSS_SECTION).getCells().size();
+        const Types::index K_cols = ref_mesh_zero.getCells().size();
         const Types::index cols = 2 * (N_cols + K_cols);
         const Types::index rows = cols;
 
         // тут дурацкая функция для расчета элемента матрицы
-        const auto &ref_mesh_zero = reference_mesh.getSubmesh(Mesh::IndexedCell::Tag::WAVEGUIDE_CROSS_SECTION);
-        const auto &another_mesh_zero = another_mesh.getSubmesh(Mesh::IndexedCell::Tag::WAVEGUIDE_CROSS_SECTION);
         // cells extraction
         const auto &ref_cells = reference_mesh.getCells();
         const auto &ref_zero_cells = ref_mesh_zero.getCells();
         const auto &an_cells = another_mesh.getCells();
         const auto &an_zero_cells = another_mesh_zero.getCells();
-        const auto element_function = [&ref_cells, &ref_zero_cells, &an_cells, &an_zero_cells, k,
-                                       a](Types::index row, Types::index col) -> Types::complex_d {
-            return WaveGuideWithActiveSection::element_of_submatrix(row, col, an_cells, an_zero_cells, ref_cells,
-                                                                    ref_zero_cells, a, k);
+        const auto compute_row = [&ref_cells, &ref_zero_cells, &an_cells, &an_zero_cells, a, k](Types::index i) {
+            return WaveGuideWithActiveSection::row_of_submatrix(i, an_cells, an_zero_cells, ref_cells, ref_zero_cells,
+                                                                a, k);
+        };
+
+        const auto compute_col = [&ref_cells, &ref_zero_cells, &an_cells, &an_zero_cells, a, k](Types::index i) {
+            return WaveGuideWithActiveSection::col_of_submatrix(i, an_cells, an_zero_cells, ref_cells, ref_zero_cells,
+                                                                a, k);
         };
 
         // тут непосредственно делаем адаптивный крест
         const auto result =
-            Math::LinAgl::Decompositions::ComplexACA::compute(element_function, rows, cols, error_controller);
+            Math::LinAgl::Decompositions::ComplexACA::compute(compute_row, compute_col, rows, cols, error_controller);
         std::cout << "Rank = " << result.get<0>().cols() << std::endl;
 #if COMPUTE_ERRORS_OF_APPROXIMATION
         const auto full_block = CalcTraits<CalculationMethod::Full>::create_a_block(reference_mesh, another_mesh, k, a);
@@ -171,9 +176,9 @@ typename CalcTraits<Calc>::ReturnType getMatrix(const scene &geometry, Types::sc
                 // надо найти сетку, по которой считаем
                 int col = reference_col + m;
                 const auto &another_mesh = expanded_geometry.get(row_current_line, col);
-                std::cout << row_current_line << ' ' << col << std::endl;
+                // std::cout << row_current_line << ' ' << col << std::endl;
                 // Расчет в зависимости от метода сжатия
-                blocks[m] = CT::create_a_block(reference_mesh, another_mesh, k, a);
+                blocks[m] = std::move(CT::create_a_block(reference_mesh, another_mesh, k, a));
             }
         }
         // заполняем вертикальную часть вектора, отвечающего за внутреннюю теплицевость
@@ -182,10 +187,10 @@ typename CalcTraits<Calc>::ReturnType getMatrix(const scene &geometry, Types::sc
             // надо найти сетку, по которой считаем
             int col = reference_col - m;
             const int index_to_insert = first_layer_cols + m - 1;
-            std::cout << row_current_line << ' ' << col << std::endl;
+            // std::cout << row_current_line << ' ' << col << std::endl;
             const auto &another_mesh = expanded_geometry.get(row_current_line, col);
             // Расчет в зависимости от метода сжатия
-            blocks[index_to_insert] = CT::create_a_block(reference_mesh, another_mesh, k, a);
+            blocks[index_to_insert] = std::move(CT::create_a_block(reference_mesh, another_mesh, k, a));
         }
         internal_blocks[i] = std::move(ToeplitzBlock{first_layer_rows, first_layer_cols, std::move(blocks)});
         // Проверка на то, что все корректно мувнулось куда нужно, а не скопировалось
@@ -204,9 +209,9 @@ typename CalcTraits<Calc>::ReturnType getMatrix(const scene &geometry, Types::sc
             // надо найти сетку, по которой считаем
             int col = reference_col + m;
             const auto &another_mesh = expanded_geometry.get(row_current_line, col);
-            std::cout << row_current_line << ' ' << col << std::endl;
+            // std::cout << row_current_line << ' ' << col << std::endl;
             // Расчет в зависимости от метода сжатия
-            blocks[m] = CT::create_a_block(reference_mesh, another_mesh, k, a);
+            blocks[m] = std::move(CT::create_a_block(reference_mesh, another_mesh, k, a));
             }
             // заполняем вертикальную часть вектора, отвечающего за внутреннюю теплицевость
             for (int m = 1; m < first_layer_rows; m++) {
@@ -215,9 +220,9 @@ typename CalcTraits<Calc>::ReturnType getMatrix(const scene &geometry, Types::sc
                 int col = reference_col - m;
                 const int index_to_insert = first_layer_cols + m - 1;
                 const auto &another_mesh = expanded_geometry.get(row_current_line, col);
-                std::cout << row_current_line << ' ' << col << std::endl;
+                // std::cout << row_current_line << ' ' << col << std::endl;
                 // Расчет в зависимости от метода сжатия
-                blocks[index_to_insert] = CT::create_a_block(reference_mesh, another_mesh, k, a);
+                blocks[index_to_insert] = std::move(CT::create_a_block(reference_mesh, another_mesh, k, a));
             }
             internal_blocks[second_layer_cols + i] =
                 ToeplitzBlock{first_layer_rows, first_layer_cols, std::move(blocks)};
