@@ -16,7 +16,7 @@ SurfaceMesh::SurfaceMesh(Containers::vector<point_t> nodes,
                        return IndexedCell(indexes, nodes);
                    });
 #define WAVEGUIDE_CALCULATION 1
-   // std::cout << "Waveguide submesh creation:" << WAVEGUIDE_CALCULATION << std::endl;
+    // std::cout << "Waveguide submesh creation:" << WAVEGUIDE_CALCULATION << std::endl;
 #if WAVEGUIDE_CALCULATION
     // БОЛЬШУЩИЙ КОСТЫЛЬ ДЛЯ РАСЧЕТА ВОЛНОВОДА
     // этот параметр показывает количество ячеек в плоскости,
@@ -24,23 +24,40 @@ SurfaceMesh::SurfaceMesh(Containers::vector<point_t> nodes,
     // эти точки помечаются отдельно, чтобы в дальнейшем их вынуть
     // в своем формате сетки я точно знаю, что эти точки лежат в конце
     int amount_of_cells_in_active_surface = 200;
-   // std::cout << "amount_of_cells_in_active_surface " << amount_of_cells_in_active_surface << std::endl;
+    // std::cout << "amount_of_cells_in_active_surface " << amount_of_cells_in_active_surface << std::endl;
     for (int i = 1; i <= amount_of_cells_in_active_surface; i++) {
         cells_[cells_.size() - i].tag = IndexedCell::Tag::WAVEGUIDE_CROSS_SECTION;
     }
 #endif
 };
 
-SurfaceMesh::SurfaceMesh(Containers::vector<point_t> nodes,
-                         Containers::vector<Containers::array<Types::index, 4>> cells,
-                         Containers::vector<std::string> tags)
+SurfaceMesh::SurfaceMesh(const Containers::vector<point_t> &nodes,
+                         const Containers::vector<Containers::array<Types::index, 4>> &cells,
+                         const Containers::vector<IndexedCell::Tag> &tags)
+    : nodes_(std::move(nodes)) {
+    // создаем
+    std::transform(cells.begin(), cells.end(), std::back_inserter(cells_),
+                   [&nodes](const Containers::array<Types::index, 4> &indexes) -> IndexedCell {
+                       return IndexedCell(indexes, nodes);
+                   });
+
+    for (auto &&[tag_of_cell, cell] : std::ranges::zip_view(tags, cells_))
+        cell.tag = tag_of_cell;
+
+    std::cout << "Size of waveguide cross-section is "
+              << this->getSubmeshInfo(IndexedCell::Tag::WAVEGUIDE_CROSS_SECTION).cells_size << std::endl;
+};
+
+SurfaceMesh::SurfaceMesh(const Containers::vector<point_t>& nodes,
+                         const Containers::vector<Containers::array<Types::index, 4>>& cells,
+                         const Containers::vector<std::string>& tags)
     : nodes_(nodes) {
     std::transform(cells.begin(), cells.end(), std::back_inserter(cells_),
                    [&nodes](const Containers::array<Types::index, 4> &indexes) -> IndexedCell {
                        return IndexedCell(indexes, nodes);
                    });
-    for (auto &&[index, cell] : std::ranges::enumerate_view(cells_))
-        cell.determineTag(tags[index]);
+    for (auto &&[tag_string, cell] : std::ranges::zip_view(tags, cells_))
+        cell.determineTag(tag_string);
 
     std::cout << "Size of waveguide cross-section is "
               << this->getSubmeshInfo(IndexedCell::Tag::WAVEGUIDE_CROSS_SECTION).cells_size << std::endl;
@@ -78,10 +95,10 @@ void SurfaceMesh::customCollocationPpoints(const std::function<Types::Vector3d(c
 
 SurfaceMesh SurfaceMesh::getSubmesh(IndexedCell::Tag tag) const {
     const auto predicate = [tag](const IndexedCell &cell) { return cell.tag == tag; };
-    std::vector<IndexedCell> subcells;
     Types::index size = std::count_if(cells_.begin(), cells_.end(), predicate);
+    std::vector<IndexedCell> subcells{};
     subcells.reserve(size);
-    std::copy_if(cells_.begin(), cells_.end(), std::back_inserter(subcells), predicate);
+    std::ranges::copy_if(cells_, std::back_inserter(subcells), predicate);
     return {nodes_, std::move(subcells)};
 }
 
@@ -91,4 +108,3 @@ SurfaceMesh::mesh_info_t SurfaceMesh::getSubmeshInfo(IndexedCell::Tag tag) const
     return {nodes_.size(), size, std::string{"submesh_of_"} + name};
 }
 }
-

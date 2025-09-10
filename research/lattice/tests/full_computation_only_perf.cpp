@@ -28,12 +28,12 @@ using TTBMatrix = LAMatrix::ToeplitzToeplitzDynFactoredBlock<Types::complex_d>;
 int main() {
     // считываем сетку на антенне
     const std::string nodesFile = "/home/evgen/Education/MasterDegree/thesis/Electromagnetic-Waves-Scattering/meshes/"
-                                  "lattice/8000_nodes.csv";
+                                  "open_waveguide/200_nodes.csv";
     const std::string cellsFile = "/home/evgen/Education/MasterDegree/thesis/Electromagnetic-Waves-Scattering/meshes/"
-                                  "lattice/2000_cells.csv";
+                                  "open_waveguide/192_cells.csv";
     // собираем сетки
-    const auto parser_out = EMW::Parser::parse_mesh_without_tag(nodesFile, cellsFile);
-    auto mesh_base = Mesh::SurfaceMesh{parser_out.nodes, parser_out.cells};
+    const auto parser_out = EMW::Parser::parseMesh(nodesFile, cellsFile);
+    auto mesh_base = Mesh::SurfaceMesh{parser_out.nodes, parser_out.cells, parser_out.tags};
 
     // Необходимые коэффициенты для расчета
     const Types::scalar a = 0.07;
@@ -48,4 +48,5 @@ int main() {
     const auto result = WaveGuideWithActiveSection::submatrix(ref_mesh, an_mesh, a, k);
 
     std::cout << "Rank = " << result.cols() << std::endl;
+
 }
