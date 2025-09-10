@@ -28,7 +28,7 @@ class SurfaceMesh {
         : nodes_(nodes), cells_(cells) {}
 
     SurfaceMesh(const Containers::vector<point_t> &nodes, Containers::vector<IndexedCell> &&cells)
-        : nodes_(nodes), cells_(std::move(cells)) {};
+        : nodes_(nodes), cells_(std::move(cells)){};
 
   public:
     /**
@@ -45,13 +45,20 @@ class SurfaceMesh {
     /**
      * Конструирование сетки по узлам и индексным ячейкам с заданием тэгов
      */
-    SurfaceMesh(Containers::vector<point_t> nodes, Containers::vector<IndexedCell::nodes_t> cells,
-                Containers::vector<std::string> tags);
+    SurfaceMesh(const Containers::vector<point_t> &nodes,
+                const Containers::vector<Containers::array<Types::index, 4>> &cells,
+                const Containers::vector<IndexedCell::Tag> &tags);
+
+    /**
+     * Конструирование сетки по узлам и индексным ячейкам с заданием тэгов
+     */
+    SurfaceMesh(const Containers::vector<point_t>& nodes, const Containers::vector<IndexedCell::nodes_t>& cells,
+                const Containers::vector<std::string>& tags);
 
     /**
      * Конструирование поверхностной сетки со специальными точками коллокации
      */
-    SurfaceMesh(Containers::vector<point_t> nodes, Containers::vector<Containers::array<Types::index, 4>> cells,
+    SurfaceMesh(Containers::vector<point_t> nodes, Containers::vector<IndexedCell::nodes_t> cells,
                 const std::function<point_t(const Containers::array<Types::index, 4> &,
                                             const Containers::vector<point_t> &)> &getPoint);
 
@@ -82,8 +89,6 @@ class SurfaceMesh {
     SurfaceMesh getSubmesh(IndexedCell::Tag tag) const;
 
     mesh_info_t getSubmeshInfo(IndexedCell::Tag tag) const;
-
-
 
     };
 }

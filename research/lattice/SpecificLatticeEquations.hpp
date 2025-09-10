@@ -51,7 +51,7 @@ inline EMW::Types::MatrixXc diagonal(const Mesh::SurfaceMesh &mesh_all, Types::s
     const Types::complex_d with_mu = Math::Constants::i / (k * mu);
 #endif
 
-    // генерируем необходимые подматрицы
+    // генерируем необходимые подматрицы (это ссылки внутрь блоков)
     auto K_all_block = A.block(0, 0, 2 * N, 2 * N);
     auto R_0_block = A.block(0, 2 * N, 2 * N, 2 * K);
     auto R_all_block = A.block(2 * N, 0, 2 * K, 2 * N);

@@ -5,6 +5,8 @@
 #include "mesh/Utils.hpp"
 #include "Parser.hpp"
 
+#include <research/lattice/SpecificLatticeEquations.hpp>
+
 namespace EMW::Mesh::Utils {
 
 Mesh::SurfaceMesh loadTriangularMesh(int nNodes, int nCells, std::string type) {
@@ -34,7 +36,11 @@ Mesh::SurfaceMesh move_by_vector(const Mesh::SurfaceMesh &mesh, const Types::Vec
     // собираем старое их объединение в ячейки
     const auto new_cells_view = mesh.getCells() | std::views::transform([](auto &cell) {return cell.points_;});
     const Containers::vector<IndexedCell::nodes_t> cells{new_cells_view.begin(), new_cells_view.end()};
-    return {nodes, cells};
+    // собираем тэги теперь
+    Containers::vector<IndexedCell::Tag> tags; tags.reserve(cells.size());
+    std::ranges::transform(mesh.getCells(), std::back_inserter(tags), [&](auto &cell) {return cell.tag;});
+    // здесь такой же вывод как и из парсера с тэгами
+    return SurfaceMesh{nodes, cells, tags};
 }
 
 } // namespace EMW::Mesh::Utils
