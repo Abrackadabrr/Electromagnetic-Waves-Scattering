@@ -13,6 +13,8 @@
 
 namespace EMW::Math::LinAgl::Decompositions {
 template <typename matrix_t, typename vector_t, typename value_t> struct ACA {
+    using vector_transpose_t = Eigen::RowVectorXcd;
+
     struct maxvol_solution {
         Types::index i, j;
         value_t value;
@@ -97,12 +99,14 @@ template <typename matrix_t, typename vector_t, typename value_t> struct ACA {
     }
 
     // --------- Функции для поиска хорошего креста в остаточной матрице А - U_r V_r^T
-    static vector_t get_col_UV(const matrix_t &U, const matrix_t &V, Types::index j) {
-        return U * (V.row(j).transpose());
+    template <typename MatrixU, typename MatrixV>
+    static vector_t get_col_UV(const MatrixU &U, const MatrixV &V, Types::index j) {
+        return U * V.row(j).transpose();
     }
 
-    static vector_t get_row_UV(const matrix_t &U, const matrix_t &V, Types::index i) {
-        return V * (U.row(i).transpose());
+    template <typename MatrixU, typename MatrixV>
+    static vector_t get_row_UV(const MatrixU &U, const MatrixV &V, Types::index i) {
+        return V * U.row(i).transpose();
     }
 
     /**
@@ -111,9 +115,9 @@ template <typename matrix_t, typename vector_t, typename value_t> struct ACA {
      *
      *  Пока что неясно нужна она или нет
      */
-    template <typename MatrixRowFunction, typename MatrixColumnFunсtion>
+    template <typename MatrixRowFunction, typename MatrixColumnFunсtion, typename MatrixU, typename MatrixV>
     static maxvol_solution iterate_residual_matrix(MatrixRowFunction &&compute_row, MatrixColumnFunсtion &&compute_col,
-                                                   const matrix_t &U, const matrix_t &V, Types::index start_column) {
+                                                   const MatrixU &U, const MatrixV &V, Types::index start_column) {
         constexpr Types::index iterations = 2; // это подкручиваемый параметр
         Types::index current_column = start_column;
         Types::index current_row = 0;
@@ -122,13 +126,13 @@ template <typename matrix_t, typename vector_t, typename value_t> struct ACA {
         vector_t col;
         for (int i = 0; i < iterations; ++i) {
             // Проходка вдоль столбца
-            col =  std::forward<MatrixColumnFunсtion>(compute_col)(current_column) - get_col_UV(U, V, current_column);
+            col = std::forward<MatrixColumnFunсtion>(compute_col)(current_column) - get_col_UV(U, V, current_column);
             const Types::VectorXd col_abs = col.cwiseAbs();
             // Нашли строку максимального элемента в столбце
             current_row = std::ranges::max_element(col_abs) - col_abs.begin();
 
             // Проходка вдоль строки
-            row =  std::forward<MatrixRowFunction>(compute_row)(current_row) - get_row_UV(U, V, current_row);
+            row = std::forward<MatrixRowFunction>(compute_row)(current_row) - get_row_UV(U, V, current_row);
             const Types::VectorXd row_abs = row.cwiseAbs();
             // Нашли столбец максимального элемента в строке
             const Types::index new_column = std::ranges::max_element(row_abs) - row_abs.begin();
@@ -143,21 +147,25 @@ template <typename matrix_t, typename vector_t, typename value_t> struct ACA {
         return {current_row, current_column, row(current_column), std::move(row), std::move(col)};
     }
 
-    static Types::scalar squared_norm_update(Types::scalar past_norm_square, const matrix_t &U, const matrix_t &V,
+    template <typename MatrixU, typename MatrixV>
+    static Types::scalar squared_norm_update(Types::scalar past_norm_square, const MatrixU &U, const MatrixV &V,
                                              const vector_t &u_new, const vector_t &v_new) {
-        const vector_t vec1 = (U.transpose() * u_new);
-        const vector_t vec2 = (V.transpose() * v_new);
-
         const Types::scalar u_new_sq_norm = u_new.squaredNorm();
         const Types::scalar v_new_sq_norm = v_new.squaredNorm();
         // Обновляем норму по аналитической формуле
-        return (past_norm_square + 2 * std::real(vec1.dot(vec2)) + u_new_sq_norm * v_new_sq_norm);
+        return (past_norm_square + 2 * std::real((u_new.transpose() * U).dot((v_new.transpose() * V))) + u_new_sq_norm * v_new_sq_norm);
     }
 
     template <typename MatrixRowFunction, typename MatrixColumnFunсtion>
     static Matrix::DynamicFactoredMatrix<matrix_t> compute(MatrixRowFunction &&compute_row,
                                                            MatrixColumnFunсtion &&compute_col, Types::index n,
                                                            Types::index m, Types::scalar error_control_parameter) {
+        // странный параметер, который получается из соображения, что если матрица размером больше,
+        // то посчитать её полностью будет дешевле, чем строить крест
+        // А ещё это помогает не релоцировать память для матриц евери тайм
+        Types::index max_rank = std::min(n, m) / 8;
+
+        // Начало алгоритма
         Containers::vector<Types::index> I;
         I.resize(n);
         Containers::vector<Types::index> J;
@@ -166,7 +174,7 @@ template <typename matrix_t, typename vector_t, typename value_t> struct ACA {
         I_z.reserve(n);
         Containers::vector<Types::index> J_z;
         J_z.reserve(m);
-        Eigen::Matrix<value_t, Eigen::Dynamic, Eigen::Dynamic, Eigen::ColMajor> U(n, 1), V(m, 1);
+        matrix_t U(n, 1), V(m, 1);
 
         std::iota(I.begin(), I.end(), 0);
         std::iota(J.begin(), J.end(), 0);
@@ -176,7 +184,7 @@ template <typename matrix_t, typename vector_t, typename value_t> struct ACA {
         // в матрице (решение задачи максвола с k = 1)
 
         // 1) Семплинг некоторого случайного количества колонок
-        const int N_SAMPLES = 1; // как раз эта константа
+        constexpr int N_SAMPLES = 2; // как раз эта константа
         std::array<Types::index, N_SAMPLES> initial_cols;
 
         std::random_device rd;  // a seed source for the random number engine
@@ -200,13 +208,13 @@ template <typename matrix_t, typename vector_t, typename value_t> struct ACA {
         U.col(0) = col / std::abs(ij_element);
         V.col(0) = row * std::abs(ij_element) / ij_element;
 
-
         // Основной цикл работы
         Types::index rank = 1;
         Types::scalar sq_norm = U.col(0).squaredNorm() * V.col(0).squaredNorm();
         while (!stop_criterion(std::sqrt(sq_norm), error_control_parameter, n, m, rank, ij_element)) {
             // Поиск элемента "максимального объема" (maxvol для 1d)
-            const auto maxvol_sol = iterate_residual_matrix(compute_row, compute_col, U, V, J.front());
+            const auto maxvol_sol = iterate_residual_matrix(compute_row, compute_col, U,
+                                                            V, J.front());
             i = maxvol_sol.i;
             j = maxvol_sol.j;
             ij_element = maxvol_sol.value;
@@ -221,15 +229,16 @@ template <typename matrix_t, typename vector_t, typename value_t> struct ACA {
             const vector_t v = maxvol_sol.row * std::abs(ij_element) / ij_element;
             // Апдейтим норму
             sq_norm = squared_norm_update(sq_norm, U, V, u, v);
+
             // И дальше цикл заново, но сначала обновим матрицы
-            U.conservativeResize(Eigen::NoChange_t::NoChange, U.cols() + 1);
-            V.conservativeResize(Eigen::NoChange_t::NoChange, V.cols() + 1);
-            U.col(U.cols() - 1) = u;
-            V.col(V.cols() - 1) = v;
+            U.conservativeResize(Eigen::NoChange, U.cols() + 1);
+            V.conservativeResize(Eigen::NoChange, V.cols() + 1);
+            U.col(rank) = u;
+            V.col(rank) = v;
             rank += 1;
         }
-
-        return {Containers::vector<matrix_t>{std::move(U), V.transpose()}, Containers::vector{false, false}};
+        // вот и кончился алгоритм
+        return {Containers::vector<matrix_t>{std::move(U), std::move(V)}, Containers::vector{false, true}};
     }
 
     template<typename MatrixElementFunction>

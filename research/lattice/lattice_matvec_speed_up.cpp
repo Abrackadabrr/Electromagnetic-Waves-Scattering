@@ -52,7 +52,7 @@ template <typename matrix_t, typename matrix_full_t>
 void final_check_for_vectors(const matrix_full_t &matrix, const matrix_t &toeplitz,
                              const Types::VectorX<Types::complex_d> &vec) {
 
-    Types::index n_repeat = 50;
+    Types::index n_repeat = 5;
     Types::scalar time_1 = 0;
     Types::scalar time_2 = 0;
 
@@ -123,7 +123,7 @@ int main() {
 
     // замеряем время на сбор аппроксимации
     Types::scalar approximation_calculation_time = 0;
-    Types::index n_repeats = 10;
+    Types::index n_repeats = 20;
 
     for (int i = 0; i < n_repeats; i++) {
         auto start = std::chrono::steady_clock::now();

@@ -20,6 +20,9 @@ endif ()
 set(TARGET_LIBS eigen visual)  #  + OpenMP::OpenMP_CXX
 
 list(APPEND TASKS tests/matrix_comparison.cpp
+        tests/aca_comparative_benchmark.cpp
+        tests/aca_only_perf.cpp
+        tests/full_computation_only_perf.cpp
         hexogonal/first_attempt.cpp
         hexogonal/hax_coarse_method.cpp
         shifted_structure.cpp
@@ -31,7 +34,6 @@ list(APPEND TASKS tests/matrix_comparison.cpp
         lattice_formation_analysis_of_blocks.cpp
         lattice_formation_compressed_matrix.cpp
         lattice_formation.cpp)
-
 
 foreach (TASK IN LISTS TASKS)
     get_filename_component(FILE_NAME ${TASK} NAME_WE)

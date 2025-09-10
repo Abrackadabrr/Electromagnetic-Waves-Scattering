@@ -12,12 +12,12 @@ Types::complex_d F(Types::complex_d k, const Types::Vector3d &x, const Types::Ve
     // добавляю функцию cглаживания
     // тут хардкод, потому что я знаю что я сейчас считаю рупор на грубой сетке
     // чтобы выключить сглаживание надо е поставить нулем.
-    const Types::scalar e = 0; // это 2 * h
-    const auto smooth_factor = smoother(e, x, y);
+    // const Types::scalar e = 0; // это 2 * h
+    // const auto smooth_factor = smoother(e, x, y);
 
     const Types::Vector3d rVec = x - y;
-    const Types::scalar r = std::sqrt(Math::quasiDot(rVec, rVec));
-    return smooth_factor * Math::Constants::inverse_4PI<Types::scalar>() * (std::exp(Math::Constants::i * k * r) / r);
+    const Types::scalar r = rVec.norm();
+    return  Math::Constants::inverse_4PI<Types::scalar>() * (std::exp(Math::Constants::i * k * r) / r);
 }
 
 Types::complex_d F_bounded_part(Types::complex_d k, const Types::Vector3d &x, const Types::Vector3d &y) {
