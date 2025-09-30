@@ -1,9 +1,9 @@
 //
-// Created by evgen on 04.09.2025.
+// Created by evgen on 29.09.2025.
 //
 
-#ifndef OPERATORS_SIMPLE_HPP
-#define OPERATORS_SIMPLE_HPP
+#ifndef OPERATORS_HPP
+#define OPERATORS_HPP
 
 #include "math/Productions.hpp"
 #include "math/integration/Quadrature.hpp"
@@ -53,7 +53,7 @@ class S_operator {
             const auto analytic_part = Math::Constants::inverse_4PI<Types::scalar>() *
                                        Math::AnalyticalIntegration::integrate_1_div_r(point, cell);
 
-            return k_ * k_ * (numeric_part + analytic_part);
+            return 2. * k_ * k_ * (numeric_part + analytic_part);
         }
 
         const auto phi_full = [&](Types::scalar p, Types::scalar q) -> Types::complex_d {
@@ -62,7 +62,7 @@ class S_operator {
             return Helmholtz::F(k_, point, y) * mul;
         };
 
-        return k_ * k_ * DefiniteIntegrals::integrate<Quadrature>(phi_full, {0, 0}, {1., 1.});
+        return 2. * k_ * k_ * DefiniteIntegrals::integrate<Quadrature>(phi_full, {0, 0}, {1., 1.});
     }
 
   public:
@@ -90,31 +90,5 @@ class S_operator {
 
 } // namespace EMW::Operators
 
-namespace EMW::OperatorS::LaplaceEquation {
-/**
- * Расчет поверхностного интеграла оператора S по ячейке
- */
-inline Types::scalar S_over_single_cell(const Types::Vector3d point, const Mesh::IndexedCell &cell) {
-    return Math::Constants::inverse_4PI<Types::scalar>() * Math::AnalyticalIntegration::integrate_1_div_r(point, cell);
-}
 
-Types::MatrixXd S_over_mesh(const Mesh::SurfaceMesh &mesh_with_collocation_point,
-                            const Mesh::SurfaceMesh &mesh_to_integrate) {
-    const Types::index N = mesh_with_collocation_point.getCells().size();
-    const Types::index M = mesh_to_integrate.getCells().size();
-    Types::MatrixXd result = Types::MatrixXd::Zero(N, M);
-
-    const auto &cells_int = mesh_to_integrate.getCells();
-    const auto &cells_col = mesh_with_collocation_point.getCells();
-
-#pragma omp parallel for collapse(2)
-    for (int i = 0; i < N; i++) {
-        for (int j = 0; j < M; j++) {
-            result(i, j) = S_over_single_cell(cells_col[i].collPoint_, cells_int[j]);
-        }
-    }
-    return result;
-}
-} // namespace EMW::OperatorS::LaplaceEquation
-
-#endif //OPERATORS_SIMPLE_HPP
+#endif //OPERATORS_HPP

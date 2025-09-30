@@ -17,12 +17,14 @@ if (EIGEN3_FOUND)
     message("Eigen Found")
 endif ()
 
-set(TARGET_LIBS eigen visual)  #  + OpenMP::OpenMP_CXX
+set(TARGET_LIBS eigen visual OpenMP::OpenMP_CXX)  #  + OpenMP::OpenMP_CXX
 
 list(APPEND TASKS straight_problem.cpp preconditioned_problem.cpp
         tests/tests.cpp stupid_inverse.cpp
         helmholtz/straight_problem_for_h.cpp
         helmholtz/stupid_inverse_for_h.cpp
+        helmholtz/cumstom_prek_1.cpp
+        helmholtz/eigen_decomposition.cpp
         helmholtz/preconditioned_problem_for_h.cpp
        # laplace_case/directly_preconditioned.cpp
         helmholtz/directly_preconditioned.cpp)

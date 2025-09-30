@@ -184,7 +184,7 @@ template <typename matrix_t, typename vector_t, typename value_t> struct ACA {
         // в матрице (решение задачи максвола с k = 1)
 
         // 1) Семплинг некоторого случайного количества колонок
-        constexpr int N_SAMPLES = 2; // как раз эта константа
+        constexpr int N_SAMPLES = 1; // как раз эта константа
         std::array<Types::index, N_SAMPLES> initial_cols;
 
         std::random_device rd;  // a seed source for the random number engine

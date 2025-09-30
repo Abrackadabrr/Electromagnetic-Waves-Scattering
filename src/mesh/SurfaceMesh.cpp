@@ -15,7 +15,7 @@ SurfaceMesh::SurfaceMesh(Containers::vector<point_t> nodes,
                    [&nodes](const Containers::array<Types::index, 4> &indexes) -> IndexedCell {
                        return IndexedCell(indexes, nodes);
                    });
-#define WAVEGUIDE_CALCULATION 1
+#define WAVEGUIDE_CALCULATION 0
     // std::cout << "Waveguide submesh creation:" << WAVEGUIDE_CALCULATION << std::endl;
 #if WAVEGUIDE_CALCULATION
     // БОЛЬШУЩИЙ КОСТЫЛЬ ДЛЯ РАСЧЕТА ВОЛНОВОДА
@@ -43,9 +43,10 @@ SurfaceMesh::SurfaceMesh(const Containers::vector<point_t> &nodes,
 
     for (auto &&[tag_of_cell, cell] : std::ranges::zip_view(tags, cells_))
         cell.tag = tag_of_cell;
-
+#if 0
     std::cout << "Size of waveguide cross-section is "
               << this->getSubmeshInfo(IndexedCell::Tag::WAVEGUIDE_CROSS_SECTION).cells_size << std::endl;
+#endif
 };
 
 SurfaceMesh::SurfaceMesh(const Containers::vector<point_t>& nodes,
@@ -58,9 +59,10 @@ SurfaceMesh::SurfaceMesh(const Containers::vector<point_t>& nodes,
                    });
     for (auto &&[tag_string, cell] : std::ranges::zip_view(tags, cells_))
         cell.determineTag(tag_string);
-
+#if 0
     std::cout << "Size of waveguide cross-section is "
               << this->getSubmeshInfo(IndexedCell::Tag::WAVEGUIDE_CROSS_SECTION).cells_size << std::endl;
+#endif
 };
 
 SurfaceMesh::SurfaceMesh(Containers::vector<point_t> nodes,

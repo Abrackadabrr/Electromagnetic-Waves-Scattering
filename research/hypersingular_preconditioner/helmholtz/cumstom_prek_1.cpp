@@ -13,7 +13,7 @@
 #include "visualisation/VTKFunctions.hpp"
 
 #include "../Solve.hpp"
-#include "../matrix/DirectSolutionPreconditioner.hpp"
+#include "../matrix/CustomPreconditioner.hpp"
 
 #include "unsupported/Eigen/IterativeSolvers"
 
@@ -21,7 +21,7 @@
 
 using namespace EMW;
 
-using Preconditioner = Research::Matrix::Preconditioning::DirectPreconditioner<Types::complex_d, Types::MatrixXc>;
+using Preconditioner = Research::Matrix::Preconditioning::CustomPreconditioner<Types::complex_d, Types::MatrixXc>;
 using SpecialMatrixType = Research::Matrix::Wrappers::MatrixReplacementComplex<Types::MatrixXc, Preconditioner>;
 
 int main() {
@@ -36,7 +36,7 @@ int main() {
     // делаем сетку
     const auto [nodes, cells, tag] = EMW::Parser::parse_mesh_without_tag(file_nodes, file_cells);
     auto mesh = EMW::Mesh::SurfaceMesh(nodes, cells);
-    mesh.setName("Helmholtz");
+    mesh.setName("Helmholtz_curtom_prec");
     const Types::index n_cells = mesh.getCells().size();
 
     // задаем волновое число
@@ -52,12 +52,12 @@ int main() {
     // собираем матрицу, обратную к предобуславливателю
     const Types::MatrixXc S_matrix = EMW::OperatorS::Helmholtz::S_over_mesh(k, mesh, mesh);
 
-    const auto special_matrix = SpecialMatrixType{T_matrix, S_matrix};
+    const auto special_matrix = SpecialMatrixType{T_matrix, S_matrix, N_POINTS, 2. / (N_POINTS-1), k};
 
     // I. обычное решение уравнения Tg = f
     const auto res_ordinary = Research::solve_without_precond<Eigen::GMRES>(T_matrix, rhs, 1000, 1e-14);
 
-    // II. решение уравнения с левым предобуславливателем: T S^{-1} g = f
+    // II. решение уравнения с левым предобуславливателем:
     const auto res_precond = Research::solve<Eigen::GMRES>(special_matrix, rhs, 1000, 1e-14);
 
     // собираем поверхностное поле
