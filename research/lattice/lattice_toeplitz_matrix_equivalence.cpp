@@ -8,8 +8,7 @@
 #include "mesh/Parser.hpp"
 #include "mesh/SurfaceMesh.hpp"
 
-#include "math/fields/SurfaceVectorField.hpp"
-#include "math/matrix/iterative_solvers_coverage/DiagonalPreconditioner.hpp"
+
 #include "math/matrix/iterative_solvers_coverage/MatrixReplacement.hpp"
 #include "math/matrix/iterative_solvers_coverage/MatrixTraits.hpp"
 

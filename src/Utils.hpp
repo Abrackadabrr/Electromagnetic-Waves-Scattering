@@ -21,10 +21,10 @@ template <typename T> class reverse {
 
 template <typename Container1, typename Container2>
 void to_csv(const Container1 &cont1, const Container2 &cont2, const std::string &name1, const std::string &name2,
-            std::ostream &str) {
-    str << name1 << "," << name2 << "\n";
+            std::ostream &str, char delimiter=',') {
+    str << name1 << delimiter << name2 << "\n";
     for (int i = 0; i < cont1.size(); i++) {
-        str << cont1[i] << ',' << cont2[i] << '\n';
+        str << cont1[i] << delimiter << cont2[i] << '\n';
     }
 }
 
@@ -100,6 +100,7 @@ MemoryUsage get_memory_usage(const Math::LinAgl::Matrix::ToeplitzToeplitzDynFact
 
     return {memory_for_full_matrix, memory_for_toeplitz_matrix, toeplitz_factored_matrix * element_in_gb};
 }
+
 } // namespace EMW::Utils
 
 #endif // UTILS_HPP

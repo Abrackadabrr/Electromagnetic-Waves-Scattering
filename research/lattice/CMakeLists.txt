@@ -7,6 +7,10 @@ add_subdirectory(../../src src)
 add_subdirectory(../../third_party third_party)
 add_subdirectory(../../visualisation visualisation)
 
+# Setting some flags
+set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} -march=native -flto -ffast-math")
+message(${CMAKE_CXX_FLAGS_RELEASE})
+
 find_package(OpenMP)
 if (OPENMP_FOUND)
     message("OpenMP Found")
@@ -23,6 +27,7 @@ list(APPEND TASKS tests/matrix_comparison.cpp
         tests/aca_comparative_benchmark.cpp
         tests/aca_only_perf.cpp
         tests/full_computation_only_perf.cpp
+        tests/toeplitz_multiplication_only_perf.cpp
         hexogonal/first_attempt.cpp
         hexogonal/hax_coarse_method.cpp
         shifted_structure.cpp

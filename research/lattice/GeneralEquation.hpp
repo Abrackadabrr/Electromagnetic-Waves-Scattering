@@ -72,7 +72,7 @@ template <> struct CalcTraits<CalculationMethod::ACA> {
     using compression = EMW::Math::LinAgl::Decompositions::ComplexACA;
 
     // ПАРАМЕТРЫ ACA
-    static constexpr Types::scalar error_controller = 1;
+    static Types::scalar error_controller;
 
     // Функция расчета
     static inline block_t create_a_block(const Mesh::SurfaceMesh &reference_mesh, const Mesh::SurfaceMesh &another_mesh,
@@ -114,7 +114,7 @@ template <> struct CalcTraits<CalculationMethod::ACA> {
         // тут непосредственно делаем адаптивный крест
         const auto result =
             Math::LinAgl::Decompositions::ComplexACA::compute(compute_row, compute_col, rows, cols, error_controller);
-        std::cout << "Rank = " << result.get<0>().cols() << std::endl;
+        // std::cout << "Rank = " << result.get<0>().cols() << std::endl;
 #if COMPUTE_ERRORS_OF_APPROXIMATION
         const auto full_block = CalcTraits<CalculationMethod::Full>::create_a_block(reference_mesh, another_mesh, k, a);
         const auto approximation = result.compute();
@@ -125,6 +125,8 @@ template <> struct CalcTraits<CalculationMethod::ACA> {
         return result;
     }
 };
+
+Types::scalar CalcTraits<CalculationMethod::ACA>::error_controller = 1;
 
 template <CalculationMethod Calc, typename scene>
 typename CalcTraits<Calc>::ReturnType getMatrix(const scene &geometry, Types::scalar a, Types::complex_d k) {

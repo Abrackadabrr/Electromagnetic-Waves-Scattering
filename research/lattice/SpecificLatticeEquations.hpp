@@ -76,8 +76,6 @@ inline EMW::Types::MatrixXc diagonal(const Mesh::SurfaceMesh &mesh_all, Types::s
     R_all_block.block(0, N - K, 2 * K, K) += C.block(0, 0, 2 * K, K);
     R_all_block.block(0, 2 * N - K, 2 * K, K) += C.block(0, K, 2 * K, K);
 
-    std::cout << "mem control point" << std::endl;
-
     // 2) Собираем матрицу
     K_all_block *= with_e;
     R_0_block *= -Types::complex_d{1, 0};
