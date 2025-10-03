@@ -40,7 +40,7 @@ class S_operator {
     /**
      * Расчет поверхностного интеграла оператора S по ячейке
      */
-    template <typename Quadrature> Types::complex_d S_over_cell(const point_t point, const cell_t &cell) const {
+    template <typename Quadrature> Types::complex_d S_over_cell(const point_t& point, const cell_t &cell) const {
         if ((cell.collPoint_ - point).norm() < h_) {
 
             const auto phi_bounded = [&](Types::scalar p, Types::scalar q) -> Types::complex_d {
@@ -53,7 +53,7 @@ class S_operator {
             const auto analytic_part = Math::Constants::inverse_4PI<Types::scalar>() *
                                        Math::AnalyticalIntegration::integrate_1_div_r(point, cell);
 
-            return 2. * k_ * k_ * (numeric_part + analytic_part);
+            return (numeric_part + analytic_part);
         }
 
         const auto phi_full = [&](Types::scalar p, Types::scalar q) -> Types::complex_d {
@@ -62,7 +62,7 @@ class S_operator {
             return Helmholtz::F(k_, point, y) * mul;
         };
 
-        return 2. * k_ * k_ * DefiniteIntegrals::integrate<Quadrature>(phi_full, {0, 0}, {1., 1.});
+        return DefiniteIntegrals::integrate<Quadrature>(phi_full, {0, 0}, {1., 1.});
     }
 
   public:
@@ -81,11 +81,11 @@ class S_operator {
 #pragma omp parallel for collapse(2)
         for (int i = 0; i < N; i++) {
             for (int j = 0; j < M; j++) {
-                result(i, j) = S_over_cell<quadrature_2d>(cells_col[i].collPoint_, cells_int[j]);
+                result(i, j) = 2. * S_over_cell<quadrature_2d>(cells_col[i].collPoint_, cells_int[j]);
             }
         }
         return result;
-    };
+    }
 };
 
 } // namespace EMW::Operators

@@ -14,7 +14,7 @@
 #include "VTKFunctions.hpp"
 
 #include <Eigen/Eigenvalues>
-#include <ranges>
+
 #include <string>
 
 #include <fstream>
@@ -61,7 +61,7 @@ template <typename Matrix> void dump(const Matrix &matrix, const std::string &fi
     file.close();
 }
 
-#define PLATE 1
+#define PLATE 0
 
 int main() {
 #if PLATE
@@ -70,9 +70,9 @@ int main() {
 #else
     // считываем сетку
     const std::string nodesFile = "/home/evgen/Education/MasterDegree/thesis/Electromagnetic-Waves-Scattering/meshes/"
-                                  "cube/168_nodes.csv";
+                                  "sphere/quad/557_nodes.csv";
     const std::string cellsFile = "/home/evgen/Education/MasterDegree/thesis/Electromagnetic-Waves-Scattering/meshes/"
-                                  "cube/144_cells.csv";
+                                  "sphere/quad/555_cells.csv";
     // собираем сетки
     const auto parser_out = EMW::Parser::parseMesh(nodesFile, cellsFile);
     auto mesh = Mesh::SurfaceMesh{parser_out.nodes, parser_out.cells, parser_out.tags};
@@ -87,14 +87,14 @@ int main() {
     const Types::complex_d k = {10, 0};
 
     // дискретизация оператора T по заданной сетке
-    const EMW::Operators::T_operator operator_T(k, 40);
+    const EMW::Operators::T_operator operator_T(k, 1e-6);
     const Types::MatrixXc T_matrix = operator_T.matrix(mesh, mesh);
     // дискретизация оператора S по заданной сетке
-    const EMW::Operators::S_operator operator_S(k, 40);
+    const EMW::Operators::S_operator operator_S(k, 1e-6);
     const Types::MatrixXc S_matrix = operator_S.matrix(mesh, mesh);
     // дискретизация оператора К' по заданной сетке
     const Operators::K_operator operator_K(k);
-    const Types::MatrixXc K_dash_matrix = operator_K.matrix(mesh, mesh).transpose();
+    const Types::MatrixXc K_dash_matrix = operator_K.matrix(mesh, mesh);
 
     // 1) Считаем разложение Шура матрицы T
     Eigen::ComplexSchur<Types::MatrixXc> eigen_T;
@@ -110,7 +110,6 @@ int main() {
               << std::endl;
 
     write_result(eig_t_straight, path_to_res + "preconditioning/spectral/", "sphere");
-    dump(eigen_T.matrixT(), path_to_res + "preconditioning/spectral/sphere_schur_matrix_T.txt");
 #if 1
     // 2) Считаем разложение Шура T * S;
     Eigen::ComplexSchur<Types::MatrixXc> eigen_ST;
@@ -122,14 +121,12 @@ int main() {
     eigen_ST.compute(TS_matrix);
     const Types::VectorXc eig_vals_straight = eigen_ST.matrixT().diagonal();
 
-    std::cout << "Разность между собственными чиcлами ST и (ST)^T: "
+    std::cout << "Разность между собственными чиcлами TS и (TS)^T: "
               << (eig_vals_straight - eig_vals_transpose.conjugate().reshaped(eig_t_transpose.size(), 1)).norm() /
                      eig_vals_straight.norm()
               << std::endl;
 
     write_result(eig_vals_straight, path_to_res + "preconditioning/spectral/", "sphere_prec");
-
-    dump(eigen_ST.matrixT(), path_to_res + "preconditioning/spectral/sphere_prec_schur_matrix_T.txt");
 #endif
 #if 1
     // 3) Считаем собственное разложение матрицы T * S * (I - K'^2)^{-1}
@@ -152,6 +149,5 @@ int main() {
               << std::endl;
 
     write_result(eig_vals_kolton_straight, path_to_res + "preconditioning/spectral/", "sphere_prec_kolton");
-    dump(eigen_kolton.matrixT(), path_to_res + "preconditioning/spectral/sphere_prec_kolton_schur_matrix_T.txt");
 #endif
 }
