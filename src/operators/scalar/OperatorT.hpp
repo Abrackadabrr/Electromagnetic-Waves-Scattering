@@ -109,7 +109,7 @@ template <OperatorType OP = HELMHOLTZ> class T_operator {
     T_operator(Types::complex_d k, Types::scalar h) : k_(k), h_(h){};
 
     matrix_t matrix(const mesh_t &mesh_with_point, const mesh_t &mesh_to_integrate) const {
-        using quadrature_1d = DefiniteIntegrals::GaussLegendre::Quadrature<4>;
+        using quadrature_1d = DefiniteIntegrals::GaussLegendre::Quadrature<5>;
         using quadrature_2d = DefiniteIntegrals::GaussLegendre::Quadrature<4, 4>;
         Types::index N = mesh_with_point.getCells().size();
         const Types::index M = mesh_to_integrate.getCells().size();

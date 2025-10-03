@@ -48,7 +48,7 @@ class K_operator {
             return Math::quasiDot(Helmholtz::V(k_, point, y), cell.normal) * mul;
         };
 
-        return -2. * DefiniteIntegrals::integrate<Quadrature>(phi, {0, 0}, {1, 1});
+        return -DefiniteIntegrals::integrate<Quadrature>(phi, {0, 0}, {1, 1});
     }
 
   public:
@@ -66,12 +66,11 @@ class K_operator {
 #pragma omp parallel for collapse(2)
         for (int i = 0; i < N; i++) {
             for (int j = 0; j < M; j++) {
-                result(i, j) = K_over_cell<quadrature_2d>(cells_col[i].collPoint_, cells_int[j]);
+                result(i, j) = 2. * K_over_cell<quadrature_2d>(cells_col[i].collPoint_, cells_int[j]);
             }
         }
         return result;
     }
-
 };
 }
 
