@@ -103,8 +103,8 @@ class MatrixReplacementComplex : public Eigen::EigenBase<MatrixReplacementComple
 
     // Custom API:
     MatrixReplacementComplex() = default;
-    MatrixReplacementComplex(const MatrixType &matrix, const MatrixType &direct_precond_inv, Types::index N, Types::scalar h, Types::complex_d k)
-        : mp_mat(&matrix), precond(direct_precond_inv, N, h, k) {}
+    MatrixReplacementComplex(const MatrixType &matrix, const MatrixType &direct_precond_inv)
+        : mp_mat(&matrix), precond(direct_precond_inv) {}
 
     const MatrixType &my_matrix() const { return *mp_mat; }
     const PreconditionerType &get_preconditioner() const { return precond; }

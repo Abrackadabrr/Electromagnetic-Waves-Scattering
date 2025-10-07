@@ -27,7 +27,8 @@ list(APPEND TASKS straight_problem.cpp preconditioned_problem.cpp
         helmholtz/eigen_decomposition.cpp
         helmholtz/preconditioned_problem_for_h.cpp
        # laplace_case/directly_preconditioned.cpp
-        helmholtz/directly_preconditioned.cpp)
+        helmholtz/directly_preconditioned.cpp
+        helmholtz/comparison_of_precs.cpp)
 
 foreach (TASK IN LISTS TASKS)
     get_filename_component(FILE_NAME ${TASK} NAME_WE)
