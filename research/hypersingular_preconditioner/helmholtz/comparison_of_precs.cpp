@@ -1,7 +1,6 @@
 //
-// Created by evgen on 08.08.2025.
+// Created by evgen on 03.10.2025.
 //
-
 #include "operators/scalar/OperatorK.hpp"
 #include "operators/scalar/OperatorS.hpp"
 #include "operators/scalar/OperatorT.hpp"
@@ -45,7 +44,7 @@ Mesh::SurfaceMesh read_plate_mesh(Types::index N_POINTS) {
 
 int main() {
 #if PLATE
-    long unsigned int N_POINTS = 10;
+    long unsigned int N_POINTS = 50;
     const auto mesh = read_plate_mesh(N_POINTS);
 #else
     // считываем сетку
@@ -66,11 +65,33 @@ int main() {
         mesh, Types::VectorXc::Ones(mesh.getCells().size()));
     const Types::VectorXc rhs = rhs_field.formVector();
 
+    // дискретизация оператора T по заданной сетке
+    const Operators::T_operator_on_plane operator_T(k, 1e-3);
+    const Types::MatrixXc T_matrix = operator_T.matrix(mesh, mesh);
+    const Operators::T_operator new_operator_T(k, 1e-3);
+    const Types::MatrixXc new_T_matrix = new_operator_T.matrix(mesh, mesh);
+
+    std::cout << (new_T_matrix.transpose() - new_T_matrix).norm() / new_T_matrix.norm() << std::endl;
+
     // дискретизация оператора S по заданной сетке
     const EMW::Operators::S_operator operator_S(k, 1e-3);
     const Types::MatrixXc S_matrix = OperatorS::Helmholtz::S_over_mesh(k, mesh, mesh);
 
+    // собираем матрицы с двумя разными предобуславливателями
+    const auto special_matrix_1 = SpecialMatrixType{T_matrix, S_matrix};
+
     std::cout << "det(S) = " << S_matrix.determinant() << std::endl;
 
-    std::cout << "(S - S^T).norm() = " << (S_matrix - S_matrix.transpose()).norm() << std::endl;
+    // I. обычное решение уравнения Tg = f
+    const auto res_ordinary = Research::solve_without_precond<Eigen::GMRES>(T_matrix, rhs, 1000, 1e-14);
+
+    // II. решение уравнения с левым предобуславливателем: T (S g) = f (пердобуславилватель А = S^{-1})
+    const auto res_precond = Research::solve<Eigen::GMRES>(special_matrix_1, rhs, 1000, 1e-14);
+
+    // Сравнение решений
+    const Types::scalar err1 = (res_ordinary - res_precond).norm();
+    const Types::scalar rel_err1 = (res_ordinary - res_precond).norm() / res_ordinary.norm();
+
+    std::cout << "Абсолютная онрма ошибки: " << err1 << "; Относительная норма ошибки: " << rel_err1 << std::endl;
+    std::cout << "Норма прямого решения: " << res_ordinary.norm() << "; Норма кривого решения: " << res_precond.norm();
 }

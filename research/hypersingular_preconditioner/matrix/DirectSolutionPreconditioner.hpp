@@ -27,7 +27,7 @@ template <typename scalar_t, typename matrix_t> class DirectPreconditioner {
     const matrix_t& operator_S;
 
   public:
-    DirectPreconditioner(const matrix_t& S)
+    explicit DirectPreconditioner(const matrix_t& S)
         : operator_S(S) {}
 
     vector_t solve(const vector_t &rhs) const {

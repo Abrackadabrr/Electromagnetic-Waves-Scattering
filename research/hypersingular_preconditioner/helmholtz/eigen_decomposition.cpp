@@ -70,9 +70,9 @@ int main() {
 #else
     // считываем сетку
     const std::string nodesFile = "/home/evgen/Education/MasterDegree/thesis/Electromagnetic-Waves-Scattering/meshes/"
-                                  "sphere/quad/557_nodes.csv";
+                                  "cube/168_nodes.csv";
     const std::string cellsFile = "/home/evgen/Education/MasterDegree/thesis/Electromagnetic-Waves-Scattering/meshes/"
-                                  "sphere/quad/555_cells.csv";
+                                  "cube/144_cells.csv";
     // собираем сетки
     const auto parser_out = EMW::Parser::parseMesh(nodesFile, cellsFile);
     auto mesh = Mesh::SurfaceMesh{parser_out.nodes, parser_out.cells, parser_out.tags};
@@ -129,7 +129,7 @@ int main() {
     write_result(eig_vals_straight, path_to_res + "preconditioning/spectral/", "sphere_prec");
 #endif
 #if 1
-    // 3) Считаем собственное разложение матрицы T * S * (I - K'^2)^{-1}
+    // 3) Считаем разложение Шура матрицы T * S * (I - K'^2)^{-1}
     const Types::MatrixXc inversed_term =
         (Types::MatrixXc::Identity(K_dash_matrix.rows(), K_dash_matrix.cols()) - (K_dash_matrix * K_dash_matrix))
             .inverse();
@@ -142,7 +142,7 @@ int main() {
     eigen_kolton.compute(TSinv_matrix);
     const Types::VectorXc eig_vals_kolton_straight = eigen_kolton.matrixT().diagonal();
 
-    std::cout << "Разность между собственными чиcлами TS(I - K^2)^{-1} и (TS(I - K^2)^{-1})^T: "
+    std::cout << "Разность между собственными чиcлами TS(I + K^2) и (TS(I + K^2))^T: "
               << (eig_vals_kolton_straight -
                   eig_vals_kolton_transpose.conjugate().reshaped(eig_vals_kolton_transpose.size(), 1)).norm() /
                      eig_vals_kolton_straight.norm()

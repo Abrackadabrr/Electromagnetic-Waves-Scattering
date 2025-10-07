@@ -65,7 +65,6 @@ Types::complex_d S_over_single_cell(const Types::complex_d k, const Types::Vecto
     return DefiniteIntegrals::integrate<Quadrature>(phi, {0, 0}, {1., 1.}) +
             Math::Constants::inverse_4PI<Types::scalar>() *
                 Math::AnalyticalIntegration::integrate_1_div_r(point, cell);
-
 }
 
 Types::MatrixXc S_over_mesh(const Types::complex_d k, const Mesh::SurfaceMesh &mesh_with_collocation_point,
@@ -79,7 +78,7 @@ Types::MatrixXc S_over_mesh(const Types::complex_d k, const Mesh::SurfaceMesh &m
 
     using quadrature_2d = DefiniteIntegrals::GaussLegendre::Quadrature<4, 4>;
 
-#pragma omp parallel for collapse(2)
+//#pragma omp parallel for collapse(2)
     for (int i = 0; i < N; i++) {
         for (int j = 0; j < M; j++) {
             result(i, j) = S_over_single_cell<quadrature_2d>(k, cells_col[i].collPoint_, cells_int[j]);

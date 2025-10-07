@@ -29,9 +29,8 @@
  */
 namespace EMW::Operators {
 
-enum OperatorType { LAPLACE, HELMHOLTZ };
 
-template <OperatorType OP = HELMHOLTZ> class T_operator {
+class T_operator_on_plane {
     using mesh_t = Mesh::SurfaceMesh;
     using cell_t = Mesh::IndexedCell;
     using point_t = Mesh::point_t;
@@ -107,9 +106,9 @@ template <OperatorType OP = HELMHOLTZ> class T_operator {
     }
 
   public:
-    T_operator(Types::complex_d k, Types::scalar h) : k_(k), h_(h){};
+    T_operator_on_plane(Types::complex_d k, Types::scalar h) : k_(k), h_(h){};
 
-    matrix_t matrix(const mesh_t &mesh_with_point, const mesh_t &mesh_to_integrate) const {
+    [[nodiscard]] matrix_t matrix(const mesh_t &mesh_with_point, const mesh_t &mesh_to_integrate) const {
         using quadrature_1d = DefiniteIntegrals::GaussLegendre::Quadrature<4>;
         using quadrature_2d = DefiniteIntegrals::GaussLegendre::Quadrature<4, 4>;
         Types::index N = mesh_with_point.getCells().size();
@@ -124,7 +123,7 @@ template <OperatorType OP = HELMHOLTZ> class T_operator {
             for (int j = 0; j < M; j++) {
                 const auto fp = T_curved_part_over_cell<quadrature_1d>(cells_col[i].collPoint_, cells_int[j]);
                 const auto sp = T_surface_part_over_cell<quadrature_2d>(cells_col[i].collPoint_, cells_int[j]);
-                result(i, j) = fp - sp;
+                result(i, j) = 2. * (fp - sp);
                 if (std::isnan(fp.real()))
                     std::cout << "fp " << i << ' ' << j << std::endl;
                 if (std::isnan(sp.real()))

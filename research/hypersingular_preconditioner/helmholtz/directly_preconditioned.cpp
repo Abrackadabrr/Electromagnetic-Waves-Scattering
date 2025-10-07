@@ -25,7 +25,7 @@ using Preconditioner = Research::Matrix::Preconditioning::DirectPreconditioner<T
 using SpecialMatrixType = Research::Matrix::Wrappers::MatrixReplacementComplex<Types::MatrixXc, Preconditioner>;
 
 int main() {
-    long unsigned int N_POINTS = 100;
+    long unsigned int N_POINTS = 20;
 
     const std::string file_nodes =
         "/home/evgen/Education/Schools/Sirius2025/meshes/" + std::to_string(N_POINTS) + "/nodes.csv";
@@ -48,9 +48,17 @@ int main() {
     const Types::VectorXc rhs = rhs_field.formVector();
 
     // дискретизация гиперсингулярного интеграла по заданной сетке
-    const Types::MatrixXc T_matrix = EMW::OperatorT::HelmholtzEquation::T_over_mesh(k, mesh, mesh);
+    const Operators::T_operator_on_plane t_op(k, 1e-6);
+    const Types::MatrixXc T_matrix = t_op.matrix(mesh, mesh);
+
+    std::cout << "det(T) = " << T_matrix.determinant() << std::endl;
+
     // собираем матрицу, обратную к предобуславливателю
     const Types::MatrixXc S_matrix = EMW::OperatorS::Helmholtz::S_over_mesh(k, mesh, mesh);
+
+    std::cout << "det(S) = " << S_matrix.determinant() << std::endl;
+
+    std::cout << "det(TS) = " << (T_matrix * S_matrix).determinant() << std::endl;
 
     const auto special_matrix = SpecialMatrixType{T_matrix, S_matrix};
 
