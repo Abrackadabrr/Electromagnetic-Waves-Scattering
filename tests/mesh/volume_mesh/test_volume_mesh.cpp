@@ -1,0 +1,38 @@
+//
+// Created by evgen on 17.01.2026.
+//
+
+#include <gtest/gtest.h>
+
+#include "types/Types.hpp"
+
+#include "mesh/volume_mesh/CubeMesh.hpp"
+#include "mesh/volume_mesh/VolumeCells.hpp"
+
+#include <consepts/Consepts.hpp>
+
+using namespace EMW;
+
+TEST(VOLUME_MESH_TESTS, GET_FACE_ON_CUBE) {
+    const Containers::vector<Types::point_t> full_points{
+        Types::point_t{0, 0, 0},
+        Types::point_t{1, 0, 0},
+        Types::point_t{0, 1, 0},
+        Types::point_t{1, 1, 0},
+        Types::point_t{0, 0, 1},
+        Types::point_t{1, 0, 1},
+        Types::point_t{0, 1, 1},
+        Types::point_t{1, 1, 1},
+    };
+
+    const Containers::array<Types::index, 8> idx = {0, 1, 2, 3, 4, 5, 6, 7};
+
+    Mesh::VolumeCells::IndexedCube test_cell{full_points, idx};
+
+    const auto xface = test_cell.getFace(Mesh::VolumeCells::IndexedCube::Axis::Z,
+                                                    Mesh::VolumeCells::IndexedCube::Direction::Plus, full_points);
+
+    std::cout << xface.normal << std::endl;
+    const auto vertecies = xface.getVertex();
+    std::cout << vertecies.d << std::endl;
+}

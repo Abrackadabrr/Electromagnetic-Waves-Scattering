@@ -1,0 +1,57 @@
+//
+// Created by evgen on 17.01.2026.
+//
+
+#include "VolumeCells.hpp"
+
+#include <bitset>
+
+namespace EMW::Mesh::VolumeCells {
+IndexedCube::IndexedCube(const Containers::vector<point_t> &full_points, const nodes_t &full_indices)
+    : nodes_(full_indices){};
+
+Mesh::IndexedCell IndexedCube::getFace(Axis ax, Direction dir, const full_points_t &fp) const {
+    switch (ax) {
+    case Axis::X:
+        return getXface(dir, fp);
+        break;
+    case Axis::Y:
+        return getYface(dir, fp);
+        break;
+    case Axis::Z:
+        return getZface(dir, fp);
+        break;
+    }
+}
+
+Mesh::IndexedCell IndexedCube::getXface(Direction dir, const full_points_t &fp) const {
+    Containers::array<Types::index, 4> xface{
+        nodes_[dir],
+        nodes_[static_cast<Types::index>(4 - dir)],
+        nodes_[6 + dir],
+        nodes_[static_cast<Types::index>(2 + 3 * dir)],
+    };
+    return IndexedCell{xface, fp};
+};
+
+Mesh::IndexedCell IndexedCube::getYface(Direction dir, const full_points_t &fp) const {
+    Containers::array<Types::index, 4> xface{
+        nodes_[2 * dir],
+        nodes_[1 + 5 * dir],
+        nodes_[5 + 2 * dir],
+        nodes_[4 - dir],
+    };
+    return IndexedCell{xface, fp};
+};
+
+Mesh::IndexedCell IndexedCube::getZface(Direction dir, const full_points_t &fp) const {
+    Containers::array<Types::index, 4> xface{
+        nodes_[4 * dir],
+        nodes_[2 + 3 * dir],
+        nodes_[3 + 4 * dir],
+        nodes_[1 + 5 * dir],
+    };
+    return IndexedCell{xface, fp};
+};
+
+} // namespace EMW::Mesh::VolumeCells

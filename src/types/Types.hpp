@@ -21,6 +21,7 @@ namespace EMW::Types {
     using Vector3 = Eigen::Matrix<t, 3, 1>;
 
     using Vector3d = Vector3<scalar>;
+    using point_t = Vector3d;
     using Vector2d = Eigen::Matrix<scalar, 2, 1>;
     using Vector3c = Vector3<complex_d>;
     template<typename t> using VectorX = Eigen::Matrix<t, Eigen::Dynamic, 1>;
