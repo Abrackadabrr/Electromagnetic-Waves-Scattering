@@ -50,6 +50,7 @@ class CubeMesh {
     const cells_container_t &getCells() const { return cells_; }
     const nodes_container_t &getNodes() const { return nodes_; }
     const std::string getName() const { return name; }
+    const Types::scalar h() const { return std::sqrt(dx_*dx_ + dy_*dy_ + dz_*dz_); }
 };
 } // namespace EMW::Mesh::VolumeMesh
 
