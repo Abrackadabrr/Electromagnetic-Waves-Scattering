@@ -70,8 +70,7 @@ template <typename factor_t>
 typename DynamicFactoredMatrix<factor_t>::factor_traits::vector_t DynamicFactoredMatrix<factor_t>::diagonal() const {
     if (factor_number() == 1)
         return factors_.front().diagonal();
-    std::cout << "diagonal() is potentially long operation while running with more that 1 factor numbers" << std::endl;
-    return compute().diagonal();
+    throw std::runtime_error("diagonal() is time-consuming operation while running with more that 1 factor numbers");
 }
 
 template <typename factor_t>

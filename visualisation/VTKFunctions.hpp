@@ -273,13 +273,13 @@ void set_of_fields_snapshot(const field_set_t &fields, const std::string &part_t
     // электрические
     for (int i = 0; i != fields.get_electric_fields().size(); ++i) {
         const auto pointer_to_mesh = detail::formUnstructuredGrid(fields.get_electric_fields()[i].getManifold());
-        detail::VTKFieldsInitialiser(fields.get_electric_fields()[i]).dumpField(pointer_to_mesh);
+        detail::VTKFieldsInitialiser<EMW::Math::SurfaceVectorField>(fields.get_electric_fields()[i]).dumpField(pointer_to_mesh);
         multiBlockDataSet->SetBlock(i, pointer_to_mesh);
     }
     // магнитные
     for (int i = 0; i != fields.get_magnetic_fields().size(); ++i) {
         const auto pointer_to_mesh = detail::formUnstructuredGrid(fields.get_magnetic_fields()[i].getManifold());
-        detail::VTKFieldsInitialiser(fields.get_magnetic_fields()[i]).dumpField(pointer_to_mesh);
+        detail::VTKFieldsInitialiser<EMW::Math::SurfaceVectorField>(fields.get_magnetic_fields()[i]).dumpField(pointer_to_mesh);
         multiBlockDataSet->SetBlock(i + fields.get_electric_fields().size(), pointer_to_mesh);
     }
     // write the result

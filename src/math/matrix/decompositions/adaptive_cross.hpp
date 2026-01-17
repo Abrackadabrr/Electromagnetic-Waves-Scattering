@@ -13,7 +13,6 @@
 
 namespace EMW::Math::LinAgl::Decompositions {
 template <typename matrix_t, typename vector_t, typename value_t> struct ACA {
-    using vector_transpose_t = Eigen::RowVectorXcd;
 
     struct maxvol_solution {
         Types::index i, j;
@@ -29,6 +28,12 @@ template <typename matrix_t, typename vector_t, typename value_t> struct ACA {
      */
     static inline bool stop_criterion(Types::scalar uv_prev_norm, Types::scalar e, Types::index n, Types::index m,
                                       Types::index rank, value_t ij_element) {
+        // std::cout << uv_prev_norm << std::endl;
+        // std::cout << e << std::endl;
+        // std::cout << n << std::endl;
+        // std::cout << m << std::endl;
+        // std::cout << rank << std::endl;
+        // std::cout << ij_element << std::endl;
         return e * uv_prev_norm >= std::abs(ij_element) * std::sqrt((m - rank) * (n - rank));
     }
 
@@ -184,13 +189,14 @@ template <typename matrix_t, typename vector_t, typename value_t> struct ACA {
         // в матрице (решение задачи максвола с k = 1)
 
         // 1) Семплинг некоторого случайного количества колонок
-        constexpr int N_SAMPLES = 1; // как раз эта константа
-        std::array<Types::index, N_SAMPLES> initial_cols;
+        constexpr int N_SAMPLES = 2; // как раз эта константа
+        std::array<Types::index, N_SAMPLES> initial_cols{};
 
         std::random_device rd;  // a seed source for the random number engine
         std::mt19937 gen(rd()); // mersenne_twister_engine seeded with rd()
         std::uniform_int_distribution<> distrib(0, m);
         initial_cols[0] = distrib(gen);
+        initial_cols[1] = distrib(gen);
 
         // Расчет максвола для каждой их этих колонок
         Containers::set<maxvol_solution> initial_samples;

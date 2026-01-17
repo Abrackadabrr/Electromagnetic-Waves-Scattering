@@ -90,7 +90,7 @@ namespace DiscreteR {
 MatrixCoefs getMatrixCoefs(const Mesh::IndexedCell &cell_i, const Mesh::IndexedCell &cell_j, Types::complex_d k) {
     // честно рассчитываем
     const Types::Vector3c integral =
-        OperatorR::detail::forMatrix::commonIntegralPart<DefiniteIntegrals::GaussLegendre::Quadrature<2, 2>>(
+        OperatorR::detail::forMatrix::commonIntegralPart<DefiniteIntegrals::GaussLegendre::Quadrature<4, 4>>(
             cell_j, cell_i.collPoint_, k);
 #if 1
     const Types::complex_d a11 = Math::quasiDot(integral, cell_j.tau[0].cross(cell_i.tau[0]));
@@ -133,7 +133,7 @@ Types::MatrixXc getMatrixK(Types::complex_d k, const Mesh::SurfaceMesh &surface_
     const long N = static_cast<long>(cells.size());
     Types::MatrixXc result = Types::MatrixXc::Zero(2 * N, 2 * N);
 
-#pragma omp parallel for num_threads(14) collapse(2)
+#pragma omp parallel for num_threads(14)
     for (long i = 0; i < N; ++i) {
         for (long j = 0; j < N; ++j) {
             const auto coefs = DiscreteK::getMatrixCoefs(i, j, k, cells);
@@ -154,7 +154,7 @@ Types::MatrixXc getMatrixK(Types::complex_d k, const Mesh::SurfaceMesh &integrat
     const long M = static_cast<long>(cells_to_integrate.size());
     Types::MatrixXc result = Types::MatrixXc::Zero(2 * N, 2 * M);
 
-#pragma omp parallel for num_threads(14) collapse(2)
+#pragma omp parallel for num_threads(14)
     for (long i = 0; i < N; ++i) {
         for (long j = 0; j < M; ++j) {
             const auto coefs = DiscreteK::getMatrixCoefs(cells[i], cells_to_integrate[j], k);
@@ -212,7 +212,7 @@ Types::MatrixXc getMatrixR(Types::complex_d k, const Mesh::SurfaceMesh &surface_
     const long N = static_cast<long>(cells.size());
     Types::MatrixXc result = Types::MatrixXc::Zero(2 * N, 2 * N);
 
-#pragma omp parallel for num_threads(14) collapse(2)
+#pragma omp parallel for num_threads(14)
     for (long i = 0; i < N; ++i) {
         for (long j = 0; j < N; ++j) {
             const auto coefs = DiscreteR::getMatrixCoefs(i, j, k, cells);
@@ -233,7 +233,7 @@ Types::MatrixXc getMatrixR(Types::complex_d k, const Mesh::SurfaceMesh &integrat
     const long M = static_cast<long>(cells_to_integrate.size());
     Types::MatrixXc result = Types::MatrixXc::Zero(2 * N, 2 * M);
 
-#pragma omp parallel for num_threads(14) collapse(2)
+#pragma omp parallel for num_threads(14)
     for (long i = 0; i < N; ++i) {
         for (long j = 0; j < M; ++j) {
             const auto coefs = DiscreteR::getMatrixCoefs(cells[i], cells_to_integrate[j], k);
@@ -259,7 +259,6 @@ Types::VectorXc getRowInMatrixR(Types::index number_of_a_row, Types::complex_d k
     Types::index special_multiplier = number_of_a_row / N;
     Types::index number_of_reference_cell = number_of_a_row - special_multiplier * N;
     const auto &reference_cell = cells_with_points[number_of_reference_cell];
-
     for (Types::index i = 0; i < M; ++i) {
         const auto coefs = DiscreteR::getMatrixCoefsInArray(reference_cell, cells_to_integrate[i], k);
         result(i) = coefs[0 + 2 * special_multiplier];
@@ -279,7 +278,6 @@ Types::VectorXc getColumnInMatrixR(Types::index number_of_a_col, Types::complex_
     Types::index special_multiplier = number_of_a_col / M;
     Types::index number_of_reference_cell = number_of_a_col - special_multiplier * M;
     const auto &reference_cell = cells_to_integrate[number_of_reference_cell];
-
     for (Types::index j = 0; j < N; ++j) {
         const auto coefs = DiscreteR::getMatrixCoefsInArray(cells_with_points[j], reference_cell, k);
         result(j) = coefs[0 + special_multiplier];

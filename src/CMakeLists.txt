@@ -13,11 +13,16 @@ if (OPENMP_FOUND)
     message("OpenMP Found")
 endif()
 
-target_link_libraries(${PROJECT_NAME} PUBLIC OpenMP::OpenMP_CXX) # OpenMP::OpenMP_CXX)
+find_package(LAPACK REQUIRED)
+if (LAPACK_FOUND)
+    message("Lapack found")
+endif()
+
+target_link_libraries(${PROJECT_NAME} PUBLIC OpenMP::OpenMP_CXX LAPACK::LAPACK -llapacke) # OpenMP::OpenMP_CXX)
 target_link_libraries(${PROJECT_NAME} PUBLIC ${TARGET_LIBS})
 target_include_directories(${PROJECT_NAME} PUBLIC ${CMAKE_CURRENT_SOURCE_DIR} "${CMAKE_CURRENT_SOURCE_DIR}/..")
 
-target_compile_options(${PROJECT_NAME} PUBLIC)
+# target_compile_options(${PROJECT_NAME} PUBLIC)
 
 # ENABLING PGO
 # target_compile_options(${PROJECT_NAME} PUBLIC -fprofile-generate)
