@@ -49,17 +49,17 @@ inline Types::Vector3c getE_in_point(const Math::SurfaceVectorField &j_e, const 
 
 
 int main() {
-    const std::string nodesFile = "/home/evgen/Education/MasterDegree/thesis/objects/mobuis/2000_nodes.csv";
-    const std::string cellsFile = "/home/evgen/Education/MasterDegree/thesis/objects/mobuis/1881_cells.csv";
+    const std::string nodesFile = "/home/evgen/Education/MasterDegree/thesis/Electromagnetic-Waves-Scattering/meshes/plate/triangulated/1_1/nodes/1440_nodes.csv";
+    const std::string cellsFile = "/home/evgen/Education/MasterDegree/thesis/Electromagnetic-Waves-Scattering/meshes/plate/triangulated/1_1/cells/2742_cells.csv";
 
-    const auto parser_out = EMW::Parser::parseMesh(nodesFile, cellsFile);
-    auto mesh_base = Mesh::SurfaceMesh{parser_out.first, parser_out.second};
-    mesh_base.setName("Mobuis");
+    const auto parser_out = EMW::Parser::parse_mesh_without_tag(nodesFile, cellsFile);
+    auto mesh_base = Mesh::SurfaceMesh{parser_out.nodes, parser_out.cells};
+    mesh_base.setName("Plane");
 
     // физика
-    const Types::scalar lambda = 0.05;
+    const Types::scalar lambda = 0.5;
     const Types::complex_d k{2 * Math::Constants::PI<scalar>() / lambda, 0};
-
+    std::cout << k.real() << std::endl;
     // расчет матрицы системы
     const MatrixXc A = EMW::Matrix::getMatrixK(k, mesh_base);
 

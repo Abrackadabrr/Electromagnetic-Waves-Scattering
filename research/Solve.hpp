@@ -48,7 +48,7 @@ vector_t solve(const EMW::Types::MatrixXc &A, const vector_t &b, EMW::Types::ind
     std::cout << "Max iterations: " << method.maxIterations() << std::endl;
     method.setTolerance(tolerance);
     std::cout << "Tolerance: " << tolerance << std::endl;
-    method.set_restart(500);
+    method.set_restart(max_iterations);
     std::cout << "Restarts every: " << method.get_restart() << std::endl;
 
     auto start = std::chrono::steady_clock::now();
@@ -73,15 +73,18 @@ vector_t solve(const EMW::Math::LinAgl::Matrix::Wrappers::MatrixReplacement<matr
     auto method = method_t<matrix_wrapper_t, Eigen::IdentityPreconditioner>{};
 
     method.setMaxIterations(max_iterations);
-    std::cout << method.maxIterations() << std::endl;
+    std::cout << "Max GMRES iterations: " << method.maxIterations() << std::endl;
     method.setTolerance(tolerance);
-    method.set_restart(1000);
+    method.set_restart(500);
 
     std::cout << "Starting solution with 2ToepMatrix" << std::endl;
 
     auto start = std::chrono::steady_clock::now();
 
     method.compute(A);
+
+    std::cout << "Matrix computed" << std::endl;
+
     auto j_vec = A.get_preconditioner().solve(vector_t{method.solve(b)});
 
     auto end = std::chrono::steady_clock::now();

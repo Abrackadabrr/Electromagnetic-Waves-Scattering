@@ -11,7 +11,7 @@ namespace Pathes {
     std::string examples =
             "/home/evgen/Education/MasterDegree/thesis/Electromagnetic-Waves-Scattering/vtk_files/examples/";
     std::string studies =
-            "/home/evgen/Education/MasterDegree/thesis/Electromagnetic-Waves-Scattering/vtk_files/studies/";
+            "/home/evgen/Education/MasterDegree/thesis/results/preconditioner/";
 }
 
 #endif //ELECTROMAGNETIC_WAVES_SCATTERING_PATHES_HPP

@@ -53,11 +53,11 @@ vtkSmartPointer<vtkUnstructuredGrid> detail::formUnstructuredGrid(const EMW::Mes
     // А теперь пишем, как наши точки объединены в четырехугольники (поверхностныее полигоны)
     for (const auto &cell : cells) {
         auto poly = vtkSmartPointer<vtkPolygon>::New();
-        poly->GetPointIds()->SetNumberOfIds(4);
+        poly->GetPointIds()->SetNumberOfIds(3);
         poly->GetPointIds()->SetId(0, cell.points_[0] + cells.size());
         poly->GetPointIds()->SetId(1, cell.points_[1] + cells.size());
         poly->GetPointIds()->SetId(2, cell.points_[2] + cells.size());
-        poly->GetPointIds()->SetId(3, cell.points_[3] + cells.size());
+//        poly->GetPointIds()->SetId(3, cell.points_[3] + cells.size());
         unstructuredGrid->InsertNextCell(poly->GetCellType(), poly->GetPointIds());
     }
 

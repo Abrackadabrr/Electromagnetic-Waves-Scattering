@@ -112,17 +112,24 @@ template <> struct CalcTraits<CalculationMethod::ACA> {
         };
 
         // тут непосредственно делаем адаптивный крест
-        const auto result =
-            Math::LinAgl::Decompositions::ComplexACA::compute(compute_row, compute_col, rows, cols, error_controller);
-        // std::cout << "Rank = " << result.get<0>().cols() << std::endl;
+        if ((ref_mesh_zero.getCells()[0].collPoint_ - another_mesh_zero.getCells()[0].collPoint_).norm() > 0 * a) {
+            const auto result = Math::LinAgl::Decompositions::ComplexACA::compute(compute_row, compute_col, rows, cols,
+                                                                                  error_controller);
+            std::cout << "Rank = " << result.get<0>().cols() << std::endl;
 #if COMPUTE_ERRORS_OF_APPROXIMATION
-        const auto full_block = CalcTraits<CalculationMethod::Full>::create_a_block(reference_mesh, another_mesh, k, a);
-        const auto approximation = result.compute();
-        const Types::MatrixXc error_matrix = (full_block - approximation);
-        std::cout << "Absolute error of approximation = " << error_matrix.norm() << std::endl;
-        std::cout << "Relative error of approximation = " << error_matrix.norm() / full_block.norm() << std::endl;
+            const auto full_block =
+                CalcTraits<CalculationMethod::Full>::create_a_block(reference_mesh, another_mesh, k, a);
+            const auto approximation = result.compute();
+            const Types::MatrixXc error_matrix = (full_block - approximation);
+            std::cout << "Absolute error of approximation = " << error_matrix.norm() << std::endl;
+            std::cout << "Relative error of approximation = " << error_matrix.norm() / full_block.norm() << std::endl;
 #endif
-        return result;
+            return result;
+        } else {
+            auto result = WaveGuideWithActiveSection::submatrix(another_mesh, reference_mesh, a, k);
+            std::cout << "Full calculation" << std::endl;
+            return Math::LinAgl::Matrix::DynamicFactoredMatrix<decltype(result)>{{std::move(result)}};
+        }
     }
 };
 
@@ -162,75 +169,93 @@ typename CalcTraits<Calc>::ReturnType getMatrix(const scene &geometry, Types::sc
     const auto &reference_mesh = expanded_geometry.get(reference_row, reference_col);
 
     // заполняем горизонтальную часть вектора, отвечающего за внешнюю теплицевость
-    for (int i = 0; i < second_layer_cols; i++) {
-        Containers::vector<block_t> blocks;
-        Types::index first_layer_size = ToeplitzBlock::get_size_of_container(first_layer_rows, first_layer_cols);
-        blocks.resize(first_layer_size);
-        int row_current_line = reference_row + i;
-        // заполняем горизонтальную часть вектора, отвечающего за внутреннюю теплицевость
-        for (int m = 0; m < first_layer_cols; m++) {
-            if ((i == 0) && (m == 0)) {
-                // вычисление диагонального блока, единственного несжимаемого
-                // во всей большой матрице
-                blocks[0] = std::move(block_t({WaveGuideWithActiveSection::diagonal(reference_mesh, a, k)}));
-            } else {
-                // а тут обычный расчет
-                // надо найти сетку, по которой считаем
-                int col = reference_col + m;
-                const auto &another_mesh = expanded_geometry.get(row_current_line, col);
-                // std::cout << row_current_line << ' ' << col << std::endl;
-                // Расчет в зависимости от метода сжатия
-                blocks[m] = std::move(CT::create_a_block(reference_mesh, another_mesh, k, a));
+#pragma omp parallel num_threads(2)
+        {
+#pragma omp sections
+            {
+#pragma omp section
+                {
+#pragma omp parallel for schedule(dynamic) num_threads(7)
+                for (int i = 0; i < second_layer_cols; i++) {
+                    Containers::vector<block_t> blocks;
+                    Types::index first_layer_size =
+                        ToeplitzBlock::get_size_of_container(first_layer_rows, first_layer_cols);
+                    blocks.resize(first_layer_size);
+                    int row_current_line = reference_row + i;
+                    // заполняем горизонтальную часть вектора, отвечающего за внутреннюю теплицевость
+                    for (int m = 0; m < first_layer_cols; m++) {
+                        if ((i == 0) && (m == 0)) {
+                            // вычисление диагонального блока, единственного несжимаемого
+                            // во всей большой матрице
+                            blocks[0] =
+                                std::move(block_t({WaveGuideWithActiveSection::diagonal(reference_mesh, a, k)}));
+                        } else {
+                            // а тут обычный расчет
+                            // надо найти сетку, по которой считаем
+                            int col = reference_col + m;
+                            const auto &another_mesh = expanded_geometry.get(row_current_line, col);
+                            std::cout << row_current_line << ' ' << col << std::endl;
+                            // Расчет в зависимости от метода сжатия
+                            blocks[m] = std::move(CT::create_a_block(reference_mesh, another_mesh, k, a));
+                        }
+                    }
+                    // заполняем вертикальную часть вектора, отвечающего за внутреннюю теплицевость
+                    for (int m = 1; m < first_layer_rows; m++) {
+                        // тут снова обычный расчет
+                        // надо найти сетку, по которой считаем
+                        int col = reference_col - m;
+                        const int index_to_insert = first_layer_cols + m - 1;
+                        std::cout << row_current_line << ' ' << col << std::endl;
+                        const auto &another_mesh = expanded_geometry.get(row_current_line, col);
+                        // Расчет в зависимости от метода сжатия
+                        blocks[index_to_insert] = std::move(CT::create_a_block(reference_mesh, another_mesh, k, a));
+                    }
+                    internal_blocks[i] =
+                        std::move(ToeplitzBlock{first_layer_rows, first_layer_cols, std::move(blocks)});
+                    // Проверка на то, что все корректно мувнулось куда нужно, а не скопировалось
+                    if (blocks.size() != 0)
+                        throw std::runtime_error("Bad move in generalized equations");
+                }
             }
-        }
-        // заполняем вертикальную часть вектора, отвечающего за внутреннюю теплицевость
-        for (int m = 1; m < first_layer_rows; m++) {
-            // тут снова обычный расчет
-            // надо найти сетку, по которой считаем
-            int col = reference_col - m;
-            const int index_to_insert = first_layer_cols + m - 1;
-            // std::cout << row_current_line << ' ' << col << std::endl;
-            const auto &another_mesh = expanded_geometry.get(row_current_line, col);
-            // Расчет в зависимости от метода сжатия
-            blocks[index_to_insert] = std::move(CT::create_a_block(reference_mesh, another_mesh, k, a));
-        }
-        internal_blocks[i] = std::move(ToeplitzBlock{first_layer_rows, first_layer_cols, std::move(blocks)});
-        // Проверка на то, что все корректно мувнулось куда нужно, а не скопировалось
-        if (blocks.size() != 0)
-            throw std::runtime_error("Bad move in generalized equations");
-    }
-    // заполняем вертикальную часть вектора, отвечающего за внешнюю теплицевость
-    for (int i = 0; i < second_layer_rows - 1; i++) {
-        Containers::vector<block_t> blocks;
-        Types::index first_layer_size = ToeplitzBlock::get_size_of_container(first_layer_rows, first_layer_cols);
-        blocks.resize(first_layer_size);
-        int row_current_line = reference_row - (i + 1);
-        // заполняем горизонтальную часть вектора, отвечающего за внутреннюю теплицевость
-        for (int m = 0; m < first_layer_cols; m++) {
-            // а тут обычный расчет
-            // надо найти сетку, по которой считаем
-            int col = reference_col + m;
-            const auto &another_mesh = expanded_geometry.get(row_current_line, col);
-            // std::cout << row_current_line << ' ' << col << std::endl;
-            // Расчет в зависимости от метода сжатия
-            blocks[m] = std::move(CT::create_a_block(reference_mesh, another_mesh, k, a));
+#pragma omp section
+            {
+    #pragma omp parallel for schedule(dynamic) num_threads(7)
+                    // заполняем вертикальную часть вектора, отвечающего за внешнюю теплицевость
+                    for (int i = 0; i < second_layer_rows - 1; i++) {
+                        Containers::vector<block_t> blocks;
+                        Types::index first_layer_size =
+                            ToeplitzBlock::get_size_of_container(first_layer_rows, first_layer_cols);
+                        blocks.resize(first_layer_size);
+                        int row_current_line = reference_row - (i + 1);
+                        // заполняем горизонтальную часть вектора, отвечающего за внутреннюю теплицевость
+                        for (int m = 0; m < first_layer_cols; m++) {
+                            // а тут обычный расчет
+                            // надо найти сетку, по которой считаем
+                            int col = reference_col + m;
+                            const auto &another_mesh = expanded_geometry.get(row_current_line, col);
+                            std::cout << row_current_line << ' ' << col << std::endl;
+                            // Расчет в зависимости от метода сжатия
+                            blocks[m] = std::move(CT::create_a_block(reference_mesh, another_mesh, k, a));
+                        }
+                        // заполняем вертикальную часть вектора, отвечающего за внутреннюю теплицевость
+                        for (int m = 1; m < first_layer_rows; m++) {
+                            // тут снова обычный расчет
+                            // надо найти сетку, по которой считаем
+                            int col = reference_col - m;
+                            const int index_to_insert = first_layer_cols + m - 1;
+                            const auto &another_mesh = expanded_geometry.get(row_current_line, col);
+                            std::cout << row_current_line << ' ' << col << std::endl;
+                            // Расчет в зависимости от метода сжатия
+                            blocks[index_to_insert] = std::move(CT::create_a_block(reference_mesh, another_mesh, k, a));
+                        }
+                        internal_blocks[second_layer_cols + i] =
+                            ToeplitzBlock{first_layer_rows, first_layer_cols, std::move(blocks)};
+                        // Проверка на то, что все корректно мувнулось куда нужно, а не скопировалось
+                        if (blocks.size() != 0)
+                            throw std::runtime_error("Bad move in generalized equations");
+                    }
+                }
             }
-            // заполняем вертикальную часть вектора, отвечающего за внутреннюю теплицевость
-            for (int m = 1; m < first_layer_rows; m++) {
-                // тут снова обычный расчет
-                // надо найти сетку, по которой считаем
-                int col = reference_col - m;
-                const int index_to_insert = first_layer_cols + m - 1;
-                const auto &another_mesh = expanded_geometry.get(row_current_line, col);
-                // std::cout << row_current_line << ' ' << col << std::endl;
-                // Расчет в зависимости от метода сжатия
-                blocks[index_to_insert] = std::move(CT::create_a_block(reference_mesh, another_mesh, k, a));
-            }
-            internal_blocks[second_layer_cols + i] =
-                ToeplitzBlock{first_layer_rows, first_layer_cols, std::move(blocks)};
-            // Проверка на то, что все корректно мувнулось куда нужно, а не скопировалось
-            if (blocks.size() != 0)
-                throw std::runtime_error("Bad move in generalized equations");
         }
     return {second_layer_rows, second_layer_cols, std::move(internal_blocks)};
 };

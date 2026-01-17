@@ -49,7 +49,6 @@ namespace EMW::Containers {
     using tuple = std::tuple<types...>;
     template<typename Type>
     using set = std::set<Type>;
-
 };
 
 #endif //ELECTROMAGNETIC_WAVES_SCATTERING_TYPES_H

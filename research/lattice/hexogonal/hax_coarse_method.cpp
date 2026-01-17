@@ -108,12 +108,10 @@ int main() {
                                   "lattice/8000_nodes.csv";
     const std::string cellsFile = "/home/evgen/Education/MasterDegree/thesis/Electromagnetic-Waves-Scattering/meshes/"
                                   "lattice/2000_cells.csv";
-    constexpr EMW::Types::index nNodes = 8000;
-    constexpr EMW::Types::index nCells = 2000;
 
     // собираем сетки
-    const auto parser_out = EMW::Parser::parseMesh(nodesFile, cellsFile);
-    auto mesh_base = Mesh::SurfaceMesh{parser_out.first, parser_out.second};
+    const auto parser_out = EMW::Parser::parse_mesh_without_tag(nodesFile, cellsFile);
+    auto mesh_base = Mesh::SurfaceMesh{parser_out.nodes, parser_out.cells};
 
     constexpr Types::index N1 = 12;
     constexpr Types::index N2 = 12;
@@ -121,7 +119,7 @@ int main() {
     // а какие волноводы лишние?
     Containers::set<Types::index> out_waveguides{9, 10, 11, 22, 23, 35, 108, 120, 121, 132, 133, 134};
 
-    const Types::scalar a_hat = 04; // расстояние между центрами сеток "на диагонали 1"
+    const Types::scalar a_hat = 0.04; // расстояние между центрами сеток "на диагонали 1"
     const Types::scalar b_hat = 0.08; // расстояние между центрами сеток "на диагонали 2"
     const Types::scalar step = std::sqrt(a_hat * a_hat + b_hat * b_hat / 4);
 
@@ -149,7 +147,7 @@ int main() {
 
     // собираем правую часть шаманским способом (очень шаманским)
     // решаем какой будет фазовый фактор на волноводах
-    const Types::scalar phi = 40;
+    const Types::scalar phi = 0;
     auto phase_factors = Research::Lattice::Hexagonal::get_linear_phase_factors(geometry, {1, 1, 0}, phi);
     /////////////////////// и вот тут мы зануляем специально правые части на ненужных волноводах
     for (auto &&i : out_waveguides)
@@ -169,6 +167,7 @@ int main() {
     std::cout << "RHS assembled, size: " << rhs.rows() << std::endl;
 
     // собираем общую маленькую тёплицеву матрицу, притом сжатую
+    Research::Lattice::CalcTraits<calc_method>::error_controller = 0.001;
     auto start = std::chrono::high_resolution_clock::now();
 
     const auto matrix = Research::Lattice::getMatrix<calc_method>(geometry, a, k);
@@ -188,11 +187,10 @@ int main() {
 
     std::cout << "Time elapsed for solving: " << elapsed << std::endl;
 
-
     // Разбиваем на токи и рисуем на разных многообразиях
     const Research::Lattice::FieldOver field_set(geometry, std::move(result));
 
-    const std::string path = "/home/evgen/Education/MasterDegree/thesis/results/fal/hack_method/aca/";
+    const std::string path = "/home/evgen/Education/MasterDegree/thesis/my_papers/Toeplitz_structure/numerical_results/fal/";
     const std::string dir_name = std::to_string(N1) + "_x_" + std::to_string(N2) + "_lattice_fal/";
     VTK::set_of_fields_snapshot(field_set, path + std::to_string(N1) + "_x_" + std::to_string(N2) + "_lattice_fal.vtu");
 

@@ -2,29 +2,33 @@
 // Created by evgen on 04.02.24.
 //
 
-#include <vector>
-#include <utility>
-#include <tuple>
 #include <ranges>
+#include <tuple>
+#include <utility>
+#include <vector>
 
-#include "gtest/gtest.h"
-#include "types/Types.hpp"
-#include "mesh/SurfaceMesh.hpp"
 #include "mesh/MeshTypes.hpp"
+#include "mesh/SurfaceMesh.hpp"
 #include "slae_generation/MatrixGeneration.hpp"
+#include "types/Types.hpp"
+#include "gtest/gtest.h"
+#include <math/integration/gauss_quadrature/GaussLegenderPoints.hpp>
+
+#include <operators/OperatorK.hpp>
 
 using namespace EMW;
 using namespace EMW::Types;
 
-template<typename Range1, typename Range2, typename OutputIterator>
+template <typename Range1, typename Range2, typename OutputIterator>
 void cartesian_product(Range1 const &r1, Range2 const &r2, OutputIterator out, scalar h) {
     using std::begin;
     using std::end;
 
     for (auto i = begin(r1); i != end(r1); ++i) {
         for (auto j = begin(r2); j != end(r2); ++j) {
-            *out++ = Types::Vector3d{static_cast<Types::scalar>(*j) - 1. / 2, static_cast<Types::scalar>(*i) - 1. / 2,
-                                     0} * h;
+            *out++ =
+                Types::Vector3d{static_cast<Types::scalar>(*j) - 1. / 2, static_cast<Types::scalar>(*i) - 1. / 2, 0} *
+                h;
         }
     }
 }
@@ -35,16 +39,14 @@ TEST(MARTIX, MATRIX_COEFFICIENTS) {
     meshgrid.reserve(N * N);
     cartesian_product(std::ranges::views::iota(0, N), std::ranges::views::iota(0, N), std::back_inserter(meshgrid), 2);
 
-    const auto cellsView = std::views::iota(0, (N - 1) * (N - 1)) | std::views::transform(
-            [N](int index) {
-                Types::index i = index + index / (N - 1);
-                const auto point = Mesh::IndexedCell::nodes_t{i, i + 1, i + 1 + N, i + N};
-                return point;
-            }
-    );
+    const auto cellsView = std::views::iota(0, (N - 1) * (N - 1)) | std::views::transform([N](int index) {
+                               Types::index i = index + index / (N - 1);
+                               const auto point = Mesh::IndexedCell::nodes_t{i, i + 1, i + 1 + N, i + N};
+                               return point;
+                           });
 
-    const auto cells = Containers::vector<Mesh::IndexedCell::nodes_t>{std::ranges::begin(cellsView),
-                                                                      std::ranges::end(cellsView)};
+    const auto cells =
+        Containers::vector<Mesh::IndexedCell::nodes_t>{std::ranges::begin(cellsView), std::ranges::end(cellsView)};
 
     const Mesh::SurfaceMesh mesh{meshgrid, cells};
 
@@ -54,8 +56,8 @@ TEST(MARTIX, MATRIX_COEFFICIENTS) {
     const scalar inner_error = norm(k0_value(1, 1) - k0_value(0, 0));
     ASSERT_NEAR(inner_error, 0, 1e-15);
     std::cout << "K0 value: " << k0_value(1, 1) << std::endl;
-    const scalar analytical_error = norm(
-            k0_value(1, 1) - complex_d{-2 * 0.1615145224880715150268185498864132, -2 * 0.04632231448567410781500901437237300});
+    const scalar analytical_error = norm(k0_value(1, 1) - complex_d{-2 * 0.1615145224880715150268185498864132,
+                                                                    -2 * 0.04632231448567410781500901437237300});
     ASSERT_NEAR(analytical_error, 0, 1e-6);
 
     // Teст на расчет К1
@@ -63,6 +65,41 @@ TEST(MARTIX, MATRIX_COEFFICIENTS) {
     const auto k1_value = Matrix::DiscreteK::getFirstPartIntegral(0, 0, Types::complex_d{1, 0}, mesh.getCells());
     std::cout.precision(15);
     std::cout << "K1 value: " << k1_value << std::endl;
+}
+
+TEST(MARTIX, MATRIX_COEFFICIENTS_2) {
+    std::vector<Mesh::point_t> meshgrid;
+    meshgrid.reserve(4);
+    const Types::scalar eps = 0.01;
+    meshgrid.emplace_back(-eps, -eps, 0);
+    meshgrid.emplace_back(eps, -eps, 0);
+    meshgrid.emplace_back(eps, eps, 0);
+    meshgrid.emplace_back(-eps, eps, 0);
+    const auto cell = Mesh::IndexedCell{{0, 1, 2, 3}, meshgrid};
+
+    Vector3c j = Vector3c::Zero();
+    j[0] = complex_d{1, 0};
+    j[1] = complex_d{1, 0};
+    const Mesh::point_t point{0, 0, 1};
+    const auto k = Types::complex_d{10, 0};
+
+    std::cout.precision(15);
+    // Тест на расчет K0
+    // Интеграл считался через Wolfram Matematica
+    const Vector3c k0_value =
+        EMW::OperatorK::detail::K0TensorOverSingularCell<DefiniteIntegrals::GaussLegendre::Quadrature<8>>(point, cell,
+                                                                                                          k) *
+        j;
+    std::cout << "K0 value: \n" << k0_value << std::endl;
+
+    //  Teст на расчет К1
+    // Вот сюда бы тоже добавить аналитического значения, потому что тут оно тоже было посчитано в Wolfram Matematica
+    const auto k1_value =
+        EMW::OperatorK::K1OverSingularCellSingularityExtraction<DefiniteIntegrals::GaussLegendre::Quadrature<8, 8>>(
+            point, j, cell, k);
+
+    std::cout << "K1 value: \n" << k1_value << std::endl;
+    std::cout << "K_full: \n" << k1_value + k0_value << std::endl;
 }
 
 #if 0

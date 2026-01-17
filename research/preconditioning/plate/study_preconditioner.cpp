@@ -26,6 +26,7 @@
 #include <chrono>
 #include <filesystem>
 #include <iostream>
+#include <operators/OperatorK.hpp>
 
 using namespace EMW;
 using namespace EMW::Types;
@@ -47,9 +48,7 @@ Types::scalar multiplier(const Types::Vector3d &x) {
 }
 
 Types::Vector3c getConstantRHS(const Types::Vector3d &x) {
-    if (x.norm() < 0.1)
-        return {complex_d{1, 0}, {0, 0}, {0, 0}};
-    return Vector3c::Zero();
+    return {complex_d{1, 0}, {0, 0}, {0, 0}};
 }
 
 std::pair<VectorXc, int> solve(const MatrixXc &A, const VectorXc &b, scalar tolerance) {
@@ -60,14 +59,9 @@ std::pair<VectorXc, int> solve(const MatrixXc &A, const VectorXc &b, scalar tole
     method.setTolerance(tolerance);
     method.set_restart(30000);
 
-    std::chrono::time_point<std::chrono::system_clock> start = std::chrono::system_clock::now();
-
     method.compute(A);
     VectorXc j_vec = VectorXc{method.solve(b)};
 
-    std::chrono::time_point<std::chrono::system_clock> end = std::chrono::system_clock::now();
-    std::chrono::duration<double, std::ratio<1, 1>> elapsed_seconds = end - start;
-    std::cout << "Время решения GMRES: " << elapsed_seconds.count() << std::endl;
     std::cout << "total iterations: " << method.iterations() << std::endl;
     std::cout << "tolerance: " << method.tolerance() << std::endl;
     std::cout << "total error: " << method.error() << std::endl;
@@ -75,62 +69,31 @@ std::pair<VectorXc, int> solve(const MatrixXc &A, const VectorXc &b, scalar tole
     return {j_vec, method.iterations()};
 }
 
-std::pair<VectorXc, int> solveSimpleIterations(const MatrixXc &A, const MatrixXc &P, const VectorXc &b,
-                                               scalar tolerance) {
-    auto method = EMW::IterativeSolvers::SimpleIterationMethod<MatrixXc, VectorXc>{};
-    method.tolerance = tolerance;
-
-    std::chrono::time_point<std::chrono::system_clock> start = std::chrono::system_clock::now();
-
-    VectorXc j_vec = VectorXc{method.solve(P, A, b, VectorXc::Zero(A.rows()))};
-
-    std::chrono::time_point<std::chrono::system_clock> end = std::chrono::system_clock::now();
-    std::chrono::duration<double, std::ratio<1, 1>> elapsed_seconds = end - start;
-    std::cout << "Время решения простой итерации: " << elapsed_seconds.count() << std::endl;
-    std::cout << "total iterations: " << method.iterations << std::endl;
-    std::cout << "tolerance: " << method.tolerance << std::endl;
-    std::cout << "total error: " << method.error << std::endl;
-    std::cout << "Info: " << method.info() << std::endl;
-    return {j_vec, method.iterations};
-}
+Types::Matrix3c get_preconditioner(const Mesh::SurfaceMesh& mesh, const Math::SurfaceVectorField& field)
 
 int main() {
-    Eigen::setNbThreads(14);
-
     int N1 = 81;
     scalar h1 = 1. / (N1 - 1);
     int N2 = 81;
     scalar h2 = 1. / (N2 - 1);
     auto surfaceMesh = Examples::Plate::generateRectangularMesh(N1, N2, h1, h2);
 
-
     surfaceMesh.setName("rect" + std::to_string(N1) + "_x_" + std::to_string(N2));
 
-    // падающее поле на треугольной сетке
-    constexpr complex_d k = 4 * Math::Constants::PI<scalar>() * complex_d{1, 0.05};
+    // задаём правую часть, просто берем константу для начала
+    constexpr complex_d k = 4 * Math::Constants::PI<scalar>() * complex_d{1, 0.};
     const Vector3d e = Vector3d{1, 0, 0}.normalized();
-    EMW::Physics::planeWaveCase physics{e, k, Vector3d{0, 0, -1}.normalized()};
-    const auto initial_field_function = [physics](const Mesh::point_t &point) -> Vector3c {
-        // std::cout << physics.value(point) << std::endl;
-        return physics.value(point);
-    };
-
     auto rhsField = Math::SurfaceVectorField(surfaceMesh, getConstantRHS);
 
-    // Ставится задача K[u] = m x n, которая на бесконечной плоскости
-    // имеет решение вида u = (4/k^2) n x K[m].
-    const VectorXc b = rhsField.asSLAERHS();
-    const MatrixXc A = Matrix::getMatrix(k, surfaceMesh);
-    constexpr scalar tolerance = 1e-2;
+    // Ставится задача K[j] = f, которая на бесконечной плоскости
+    // имеет решение вида j = (4/k^2) n x K[n x f].
+    const VectorXc b = rhsField.asVector();
+    const MatrixXc A = Matrix::getMatrixK(k, surfaceMesh);
+    constexpr scalar tolerance = 1e-3;
     std::cout << "Solving without preconditioner" << std::endl;
     const auto sol = solve(A, b, tolerance);
 
-    // файл для записи
-    // std::ofstream fileout;
-    const std::string path = Pathes::studies + "plane/preconditioning/rectangular/" + surfaceMesh.getName();
-    // std::filesystem::create_directories(path);
-    // fileout.open(path + "data.csv");
-    // fileout << "r,i" << std::endl;
+    const std::string path = "/home/evgen/Education/MasterDegree/thesis/results/preconditioner/plane/rectangular/" + surfaceMesh.getName();
 
     for (scalar r = 1.409; r < 1.41; r += 0.1) {
         std::cout << "1x1, radius = " << r << std::endl;

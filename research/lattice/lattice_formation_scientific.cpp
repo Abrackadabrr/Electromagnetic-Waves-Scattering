@@ -106,8 +106,8 @@ int main() {
                                   "lattice/2000_cells.csv";
 
     // собираем сетки
-    const auto parser_out = EMW::Parser::parseMesh(nodesFile, cellsFile);
-    auto mesh_base = Mesh::SurfaceMesh{parser_out.first, parser_out.second};
+    const auto parser_out = EMW::Parser::parse_mesh_without_tag(nodesFile, cellsFile);
+    auto mesh_base = Mesh::SurfaceMesh{parser_out.nodes, parser_out.cells};
 
     constexpr Types::index N1 = 9;  // количество строк в решетке
     constexpr Types::index N2 = 7;  // количество столбцов в решетке
@@ -132,8 +132,10 @@ int main() {
     std::cout << "Волновое число в свободном пространстве: " << k.real()
               << "; Длина волны в свободном пространстве: " << 2 * Math::Constants::PI<Types::scalar>() / k.real()
               << std::endl;
-
+#if 1
     // собираем общую маленькую тёплицеву матрицу
+    Research::Lattice::CalcTraits<calc_method>::error_controller = 0.001;
+
     auto start = std::chrono::high_resolution_clock::now();
 
     const auto matrix = Research::Lattice::getMatrix<calc_method>(geometry, a, k);
@@ -143,18 +145,19 @@ int main() {
 
     std::cout << Utils::get_memory_usage(matrix) << std::endl;
     std::cout << "Matrix assembled, size: " << matrix.rows() << "; time elapsed: " << elapsed << std::endl;
-
+#endif
     // собираем правую часть шаманским способом (очень шаманским)
     // решаем какой будет фазовый фактор на волноводах
     const Containers::array<Types::scalar, N1_x_N2> phases{0};
     Containers::array<Types::complex_d, N1_x_N2> phase_factors;
     for (Types::index i = 0; i < phases.size(); ++i)
-        phase_factors[i] = std::exp(Math::Constants::i * phases[i] * Math::Constants::deg_to_rad<Types::scalar>());
+        phase_factors[i] = std::exp(Math::Constants::i * 0. * Math::Constants::deg_to_rad<Types::scalar>());
     const auto rhs = eq::getRhs(phase_factors, mesh_base, a, k);
 
-    std::cout << "RHS assembled, size: " << rhs.rows() << std::endl;
-
-    auto result = Research::solve<Eigen::GMRES>(MatrixWrapper{matrix}, rhs, 2000, 1e-2);
+    std::cout << "RHS assembled, size: " << rhs.rows() << "; rhs norm = " << rhs.norm() << std::endl;
+#if 1
+    const MatrixWrapper wrapped_mat{matrix};
+    auto result = Research::solve<Eigen::GMRES>(wrapped_mat, rhs, 2000, 1e-2);
 
     // Разбиваем на токи и рисуем на разных многообразиях
     const Research::Lattice::FieldOver field_set(geometry, std::move(result));
@@ -165,4 +168,5 @@ int main() {
 
     getSigmaValuesXZ(k, field_set, path + dir_name);
     getSigmaValuesYZ(k, field_set, path + dir_name);
+#endif
 }

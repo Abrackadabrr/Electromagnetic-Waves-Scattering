@@ -151,9 +151,9 @@ ToeplitzStructure<scalar_t, block_t>::matvec(const vector_t &vec) const noexcept
     assert(vec.size() == cols());
     // создаем нулевой вектор результата, в который будем записывать ответ
     vector_t result = vector_t::Zero(rows());
-
+//    std::cout << "Matvec started" << std::endl;
     // Далее итерируемся по всем блокам (потому что обычное умножение, а не потому что бесструктурная матрица!)
-// #pragma omp parallel for schedule(static) collapse(2) num_threads(14)
+#pragma omp parallel for collapse(2) num_threads(4)
     for (Types::index i = 0; i < blocks.rows(); ++i) {
         for (Types::index j = 0; j < blocks.cols(); ++j) {
             // Достаем ссылку на текущий блок (тут как раз проявляется тёплицевость)
@@ -164,10 +164,13 @@ ToeplitzStructure<scalar_t, block_t>::matvec(const vector_t &vec) const noexcept
             // тут просто получилось несоответствие типов для вызова матвека
             vector_t local_res = current_block * sub_vector;
             // Складываем результат
-// #pragma omp critical
-            { result.block(i * rows_in_block_, 0, rows_in_block_, 1) += local_res; }
+#pragma omp critical
+            {
+                result.block(i * rows_in_block_, 0, rows_in_block_, 1) += local_res;
+            }
         }
     }
+//    std::cout << "Matvec ended" << std::endl;
     return result;
 }
 
@@ -240,7 +243,7 @@ Types::MatrixX<scalar_t> ToeplitzStructure<scalar_t, block_t>::to_dense() const 
 
 
 // --- Defined binary operators --- //
-
+#if 0
 template <typename scalar_t, typename block_t>
 ToeplitzStructure<scalar_t, block_t> operator*(const ToeplitzStructure<scalar_t, block_t> &matrix, scalar_t value) {
     return matrix.mull(value);
@@ -256,6 +259,7 @@ ToeplitzStructure<scalar_t, block_t> & operator*=(ToeplitzStructure<scalar_t, bl
     matrix.mull_inplace(value);
     return matrix;
 }
+#endif
 
 template <typename scalar_t, typename block_t>
 Types::VectorX<scalar_t> operator*(const ToeplitzStructure<scalar_t, block_t> &matrix, const Types::VectorX<scalar_t> &vector) noexcept {
