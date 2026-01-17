@@ -6,7 +6,10 @@
 #define ELECTROMAGNETIC_WAVES_SCATTERING_VTKFUNCTIONS_HPP
 
 #include "math/fields/SurfaceVectorField.hpp"
+
 #include "mesh/SurfaceMesh.hpp"
+#include "mesh/volume_mesh/CubeMesh.hpp"
+
 #include "types/Types.hpp"
 
 #include <vtkCellData.h>
@@ -224,6 +227,8 @@ void field_in_points_snapshot(const std::vector<std::vector<EMW::Types::Vector3c
                               const std::vector<std::string> &scalar_names,
                               const std::vector<EMW::Types::Vector3d> &points, const std::string &mesh_name,
                               const std::string &path_to_file);
+
+void volume_mesh_snapshot(const EMW::Mesh::VolumeMesh::CubeMesh &mesh, const std::string &path_to_file);
 
 template <typename ScalarField>
 void united_snapshot(const std::vector<ScalarField> &scalarFields,

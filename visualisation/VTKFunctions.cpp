@@ -6,6 +6,7 @@
 #include <ranges>
 #include <vtkPoints.h>
 #include <vtkPolygon.h>
+#include <vtkHexahedron.h>
 #include <vtkUnstructuredGrid.h>
 
 namespace VTK {
@@ -158,6 +159,48 @@ void field_in_points_snapshot(const std::vector<std::vector<EMW::Types::Vector3c
     writer->Write();
 }
 
+void volume_mesh_snapshot(const EMW::Mesh::VolumeMesh::CubeMesh &mesh, const std::string &path_to_file) {
+    // VTK grid
+    vtkSmartPointer<vtkUnstructuredGrid> unstructuredGrid = vtkSmartPointer<vtkUnstructuredGrid>::New();
+    unstructuredGrid->Allocate(mesh.getNodes().size());
+    // VTK points
+    vtkSmartPointer<vtkPoints> dumpPoints = vtkSmartPointer<vtkPoints>::New();
+
+    const EMW::Containers::vector<EMW::Mesh::point_t> &nodes = mesh.getNodes();
+    const EMW::Containers::vector<EMW::Mesh::VolumeCells::IndexedCube> &cells = mesh.getCells();
+
+    // Обходим все точки нашей расчётной сетки
+    for (auto &node : nodes) {
+        // Вставляем новую точку в сетку VTK-снапшота
+        dumpPoints->InsertNextPoint(node.x(), node.y(), node.z());
+    }
+
+    // Грузим точки в сетку
+    unstructuredGrid->SetPoints(dumpPoints);
+
+    // А теперь пишем, как наши точки объединены в четырехугольники (поверхностныее полигоны)
+    for (const auto &cell : cells) {
+        auto poly = vtkSmartPointer<vtkHexahedron>::New();
+        vtkIdType ids[8] = {
+            cell.nodes_[0],
+            cell.nodes_[1],
+            cell.nodes_[3],
+            cell.nodes_[2],
+            cell.nodes_[4],
+            cell.nodes_[5],
+            cell.nodes_[7],
+            cell.nodes_[6],
+        };
+        unstructuredGrid->InsertNextCell(VTK_HEXAHEDRON, 8, ids);
+    }
+
+    // Создаём снапшот в файле с заданным именем
+    std::string fileName = mesh.getName() + ".vtu";
+    vtkSmartPointer<vtkXMLUnstructuredGridWriter> writer = vtkSmartPointer<vtkXMLUnstructuredGridWriter>::New();
+    writer->SetFileName((path_to_file + fileName).c_str());
+    writer->SetInputData(unstructuredGrid);
+    writer->Write();
+}
 
 }
 

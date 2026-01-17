@@ -9,8 +9,7 @@
 
 namespace EMW::Mesh {
 
-template<typename cell_t>
-class MeshBase {
+template <typename cell_t> class MeshBase {
 
     struct mesh_info_t {
         Types::index nodes_size;
@@ -23,5 +22,5 @@ class MeshBase {
     std::string name = "default_mesh_name";
 };
 
-}
-#endif //MESHBASE_HPP
+} // namespace EMW::Mesh
+#endif // MESHBASE_HPP

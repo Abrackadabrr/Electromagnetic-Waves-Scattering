@@ -8,7 +8,15 @@
 
 namespace EMW::Mesh::VolumeCells {
 IndexedCube::IndexedCube(const Containers::vector<point_t> &full_points, const nodes_t &full_indices)
-    : nodes_(full_indices){};
+    : nodes_(full_indices), volume_((full_points[full_indices[0]] - full_points[full_indices[1]]).norm() *
+                                    (full_points[full_indices[0]] - full_points[full_indices[2]]).norm() *
+                                    (full_points[full_indices[0]] - full_points[full_indices[4]]).norm()) {
+    center_ = Types::Vector3d::Zero();
+    for (int i = 0; i < full_indices.size(); i++) {
+        center_ += full_points[full_indices[i]];
+    }
+    center_ /= full_indices.size();
+};
 
 Mesh::IndexedCell IndexedCube::getFace(Axis ax, Direction dir, const full_points_t &fp) const {
     switch (ax) {
