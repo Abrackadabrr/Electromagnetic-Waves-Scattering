@@ -33,8 +33,8 @@ TEST(VOLUME_MESH_TESTS, GET_FACE_ON_CUBE) {
 
 TEST(VOLUME_MESH_TESTS, SIMPLE_CREATION_AND_SNAPSHOT) {
     Types::point_t corner{0, 0, 0};
-    const Types::scalar xs = 1, ys = 1, zs = 1;
-    const Mesh::VolumeMesh::CubeMesh mesh{corner, xs, ys, zs, 10, 10, 10};
+    const Types::scalar xs = 1;
+    const Mesh::VolumeMesh::CubeMesh mesh{corner, xs, 10};
 
     const Types::index idx = mesh.cube_idx(5, 6, 7);
     const auto cell = mesh.getCells()[idx];
