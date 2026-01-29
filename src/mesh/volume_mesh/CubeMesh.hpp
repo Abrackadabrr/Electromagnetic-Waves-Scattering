@@ -26,22 +26,30 @@ class CubeMesh {
 
     std::string name = "default_mesh_name";
 
-  public:
+    /**
+     * Параллелепипедная сетка в пространстве
+     */
     CubeMesh(Types::Vector3d minCorner, Types::scalar xs, Types::scalar ys, Types::scalar zs, std::size_t nx,
              std::size_t ny, std::size_t nz);
 
-    // --- 3D Indecies to 1D --- //
+  public:
+    /**
+     * Кубическая сетка в пространстве (пока что оператор умеет работать только с ней)
+     */
+    CubeMesh(Types::Vector3d minCorner, Types::scalar xs, std::size_t nx) : CubeMesh(minCorner, xs, xs, xs, nx, nx, nx) {};
+
+    // --- Конвертация 3D индекс в 1D --- //
     Types::index inline point_idx(std::size_t i, std::size_t j, std::size_t k) const {
-        assert(i < nx_ && j < ny_ && k < nz_);
+        // assert(i < nx_ && j < ny_ && k < nz_);
         return i + nx_ * (j + ny_ * k);
     };
 
     inline std::size_t cube_idx(std::size_t cx, std::size_t cy, std::size_t cz) const {
-        assert(nx_ >= 2 && ny_ >= 2 && nz_ >= 2);
+        //assert(nx_ >= 2 && ny_ >= 2 && nz_ >= 2);
         const std::size_t mx = nx_ - 1;
         const std::size_t my = ny_ - 1;
         const std::size_t mz = nz_ - 1;
-        assert(cx < mx && cy < my && cz < mz);
+        //assert(cx < mx && cy < my && cz < mz);
 
         return cx + mx * (cy + my * cz);
     }
@@ -51,6 +59,10 @@ class CubeMesh {
     const nodes_container_t &getNodes() const { return nodes_; }
     const std::string getName() const { return name; }
     const Types::scalar h() const { return std::sqrt(dx_*dx_ + dy_*dy_ + dz_*dz_); }
+    const Types::point_t leftDownCorner(Types::index k) const { return nodes_[cells_[k].nodes_[0]]; };
+    const Types::scalar dx() const { return dx_; };
+    const Types::scalar dy() const { return dy_; };
+    const Types::scalar dz() const { return dz_; };
 };
 } // namespace EMW::Mesh::VolumeMesh
 

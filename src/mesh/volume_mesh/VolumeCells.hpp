@@ -9,33 +9,12 @@
 #include "types/Types.hpp"
 
 namespace EMW::Mesh::VolumeCells {
+
 /**
- *
- */
-struct CubeAlongAxis {
-    Types::point_t initial_point;
-    Containers::array<Types::scalar, 3> lengths;
-
-    enum Axis { X, Y, Z };
-    enum Direction { Minus, Plus };
-
-    Mesh::Cell getXface(Direction dir) const {
-        const Types::Vector3d ex = Types::Vector3d{1, 0, 0};
-        const Types::Vector3d ey = Types::Vector3d{0, 1, 0};
-        const Types::Vector3d ez = Types::Vector3d{0, 0, 1};
-        const Types::Vector3d start_point = initial_point + static_cast<Types::index>(dir) * ex;
-        const Types::Vector3d point2;
-        const Types::Vector3d point3;
-        const Types::Vector3d point4;
-    }
-
-    Mesh::Cell getYface(Direction dir) const {}
-
-    Mesh::Cell getZface(Direction dir) const {}
-};
-
+* Этот класс должен быть приватным классом кубической сетки, конечно же, потому что его можно спокойно создать в
+* неконсистентном состоянии. Но пока что это просто класс какой-то тут. Нужен для быстро посмотрения расчетов.
+*/
 struct IndexedCube {
-
     enum Axis { X, Y, Z };
     enum Direction { Minus, Plus };
 

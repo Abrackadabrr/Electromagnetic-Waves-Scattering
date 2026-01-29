@@ -20,6 +20,8 @@ Types::complex_d F(Types::complex_d k, const Types::Vector3d &x, const Types::Ve
     return  Math::Constants::inverse_4PI<Types::scalar>() * (std::exp(Math::Constants::i * k * r) / r);
 }
 
+// TODO: тут надо разобраться с устойчивостью формулы при r -> 0. Скорее всего в таком случае нужно переходить
+// к разложению в ряд Тейлора до ~ 3 порядка (при r где-то 1е-3). Нужно посмотреть на графики устойчивости
 Types::complex_d F_bounded_part(Types::complex_d k, const Types::Vector3d &x, const Types::Vector3d &y) {
     const Types::Vector3d rVec = x - y;
     const Types::scalar r = rVec.norm();
