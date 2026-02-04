@@ -100,7 +100,7 @@ TEST_F(MORE_THAN_3D_INTEGRATION, TEST_GRAVITATIONAL_ENERGY_WITH_VS_WITHOUT_EXTRA
             const auto integrand = [x, y, z, cut_of_cube_integral](Types::scalar z_dash) {
                 return cut_of_cube_integral(x, y, z, z_dash);
             };
-            return DefiniteIntegrals::integrate<GL::Quadrature<1>>(integrand, {-l/2}, {l/2}) +
+            return DefiniteIntegrals::integrate<GL::Quadrature<1>>(integrand, {-l/2}, {0}) +
                 DefiniteIntegrals::integrate<GL::Quadrature<1>>(integrand, {0}, {l/2});
         };
 
@@ -108,28 +108,22 @@ TEST_F(MORE_THAN_3D_INTEGRATION, TEST_GRAVITATIONAL_ENERGY_WITH_VS_WITHOUT_EXTRA
                                    Types::scalar z2) {
             return Helmholtz::F_bounded_part(k, {x1, y1, z1}, {x2, y2, z2});
         };
-        const auto start_with = std::chrono::high_resolution_clock::now();
+
         const auto res_with = DefiniteIntegrals::integrate<GL::Quadrature<1, 1, 1, 1, 1, 1>>(
             integrand_with, {-l / 2, -l / 2, -l / 2, -l / 2, -l / 2, -l / 2 + distance},
             {l, l, l, l, l, l,}) +
                 Math::Constants::inverse_4PI<Types::scalar>() * DefiniteIntegrals::integrate<GL::Quadrature<1, 1, 1>>(newtonian_potential_of_cube, {-l / 2, -l / 2, -l / 2 + distance}, {l, l, l});
-        const auto end_with = std::chrono::high_resolution_clock::now();
-        const auto elapsed_with = std::chrono::duration_cast<std::chrono::nanoseconds>(end_with - start_with);
 
         // 2. Расчет без выделения особенности
         const auto integrand = [k](Types::scalar x1, Types::scalar y1, Types::scalar z1, Types::scalar x2, Types::scalar y2,
                                    Types::scalar z2) {
             return Helmholtz::F(k, {x1, y1, z1}, {x2, y2, z2});
         };
-        const auto start_without = std::chrono::high_resolution_clock::now();
         const auto res_without = DefiniteIntegrals::integrate<GL::Quadrature<1, 1, 1, 1, 1, 1>>(
             integrand, {-l / 2, -l / 2, -l / 2, -l / 2, -l / 2, -l / 2 + distance},
             {l, l, l, l, l, l,});
-        const auto end_without = std::chrono::high_resolution_clock::now();
-        const auto elapsed_without = std::chrono::duration_cast<std::chrono::nanoseconds>(end_without - start_without);
 
         std::cout.precision(16);
         std::cout << std::abs(res_with - res_without) / std::abs(res_with) << "," << distance << std::endl;
- //пш       std::cout << elapsed_without.count() * 1. / elapsed_with.count() << std::endl;
     }
 }

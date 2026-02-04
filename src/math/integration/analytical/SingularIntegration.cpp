@@ -78,6 +78,7 @@ static Types::scalar primitive_F(Types::scalar x, Types::scalar y, Types::scalar
 }
 
 // Ньютонов потенциал для параллелепипеда [-a, a] x [-b, b] x [-c, c]
+// Эта штука не робит
 Types::scalar newtonian_potential_of_parallelepiped(const Types::point_t &point, Types::scalar a, Types::scalar b,
                                                     Types::scalar c) {
     // Координаты точки расчета относительно параллелепипеда

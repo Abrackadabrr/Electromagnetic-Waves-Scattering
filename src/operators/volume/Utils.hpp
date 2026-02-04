@@ -9,8 +9,6 @@
 
 #include "math/MathConstants.hpp"
 
-#include "../Functions.hpp"
-
 namespace EMW::Operators::Volume::Utils {
 
 /**

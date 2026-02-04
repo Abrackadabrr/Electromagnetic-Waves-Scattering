@@ -11,24 +11,11 @@ namespace EMW::Mesh {
 SurfaceMesh::SurfaceMesh(Containers::vector<point_t> nodes,
                          Containers::vector<Containers::array<Types::index, 4>> cells)
     : nodes_(nodes) {
+    cells_.reserve(cells.size());
     std::transform(cells.begin(), cells.end(), std::back_inserter(cells_),
                    [&nodes](const Containers::array<Types::index, 4> &indexes) -> IndexedCell {
                        return IndexedCell(indexes, nodes);
                    });
-#define WAVEGUIDE_CALCULATION 0
-    // std::cout << "Waveguide submesh creation:" << WAVEGUIDE_CALCULATION << std::endl;
-#if WAVEGUIDE_CALCULATION
-    // БОЛЬШУЩИЙ КОСТЫЛЬ ДЛЯ РАСЧЕТА ВОЛНОВОДА
-    // этот параметр показывает количество ячеек в плоскости,
-    // где есть матгнитный ток и задается импедансное условие
-    // эти точки помечаются отдельно, чтобы в дальнейшем их вынуть
-    // в своем формате сетки я точно знаю, что эти точки лежат в конце
-    int amount_of_cells_in_active_surface = 200;
-    // std::cout << "amount_of_cells_in_active_surface " << amount_of_cells_in_active_surface << std::endl;
-    for (int i = 1; i <= amount_of_cells_in_active_surface; i++) {
-        cells_[cells_.size() - i].tag = IndexedCell::Tag::WAVEGUIDE_CROSS_SECTION;
-    }
-#endif
 };
 
 SurfaceMesh::SurfaceMesh(const Containers::vector<point_t> &nodes,

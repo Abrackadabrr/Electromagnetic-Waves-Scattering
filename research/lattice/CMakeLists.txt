@@ -39,7 +39,8 @@ list(APPEND TASKS tests/matrix_comparison.cpp
         lattice_formation_analysis_of_blocks.cpp
         lattice_formation_compressed_matrix.cpp
         lattice_formation.cpp
-        lattice_time_calculations_for_large_structured.cpp)
+        lattice_time_calculations_for_large_structured.cpp
+        preconditioner_study.cpp)
 
 foreach (TASK IN LISTS TASKS)
     get_filename_component(FILE_NAME ${TASK} NAME_WE)
