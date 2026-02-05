@@ -35,6 +35,10 @@ class CubeMesh {
   public:
     /**
      * Кубическая сетка в пространстве (пока что оператор умеет работать только с ней)
+     *
+     * @param minCorner угол куба с наименьшими координатами
+     * @param xs длина стороны куба
+     * @param nx количество ячеек разбиения по стороне куба
      */
     CubeMesh(Types::Vector3d minCorner, Types::scalar xs, std::size_t nx) : CubeMesh(minCorner, xs, xs, xs, nx, nx, nx) {};
 
