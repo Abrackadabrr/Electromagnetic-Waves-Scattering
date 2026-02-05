@@ -14,6 +14,45 @@ namespace EMW::Operators::Volume {
 
 namespace Gl = DefiniteIntegrals::GaussLegendre;
 
+Types::Matrix3c operator_K_over_cube_mesh::matrix_2_coef(Types::index k, Types::index p) {
+    Types::Matrix3c result = Types::Matrix3c::Zero();
+    const auto &cube_k = mesh.getCells()[k];
+    const auto &cube_p = mesh.getCells()[p];
+    const auto h = mesh.h();
+    // Вообще этот расчет правильный если k != p.
+    // В противном случае надо интегрировать с выделением особенности снова,
+    // речь про внутренний интеграл.
+    for (Types::index i = 0; i < 3; i++) {
+        Containers::array<Mesh::IndexedCell, 2> faces_k;
+        faces_k[0] = cube_k.getFace(static_cast<Mesh::VolumeCells::IndexedCube::Axis>(i),
+                                                Mesh::VolumeCells::IndexedCube::Direction::Minus, mesh.getNodes());
+        faces_k[1] = cube_k.getFace(static_cast<Mesh::VolumeCells::IndexedCube::Axis>(i),
+                                                 Mesh::VolumeCells::IndexedCube::Direction::Plus, mesh.getNodes());
+        for (Types::index j = 0; j < 3; j++) {
+            Containers::array<Mesh::IndexedCell, 2> faces_p;
+            faces_p[0] = cube_p.getFace(static_cast<Mesh::VolumeCells::IndexedCube::Axis>(i),
+                                                    Mesh::VolumeCells::IndexedCube::Direction::Minus, mesh.getNodes());
+            faces_p[1] = cube_p.getFace(static_cast<Mesh::VolumeCells::IndexedCube::Axis>(i),
+                                                     Mesh::VolumeCells::IndexedCube::Direction::Plus, mesh.getNodes());
+
+            // и тут нужно взять четыре одинаковых по вайбу интеграла
+            for (auto&& face_k : faces_k)
+                for (auto&& face_p : faces_p) {
+                    // Делаем.
+                    const auto integrand = [&face_k, &face_p, wn = wave_number](Types::scalar x1, Types::scalar y1, Types::scalar x2, Types::scalar y2) {
+                        const auto x = face_p.parametrization(x1, y1);
+                        const auto y = face_k.parametrization(x2, y2);
+                        return Helmholtz::F(wn, x, y) * face_p.multiplier(x1, y1) * face_k.multiplier(x2, y2);
+                    };
+
+                     result(i, j) += DefiniteIntegrals::integrate<DefiniteIntegrals::GaussLegendre::Quadrature<2, 2, 2, 2>>(
+                               integrand, {0, 0, 0, 0},{1, 1, 1, 1});
+                }
+        }
+    }
+    return result;
+}
+
 Types::complex_d operator_K_over_cube_mesh::matrix_3_coef(Types::index k, Types::index p) {
     const auto &cube_k = mesh.getCells()[k];
     const auto &cube_p = mesh.getCells()[p];
@@ -21,8 +60,8 @@ Types::complex_d operator_K_over_cube_mesh::matrix_3_coef(Types::index k, Types:
     const Types::complex_d k2 = wave_number * wave_number;
 
     // if (k == p)
-        // чтобы это зафорсить, нужно обобщить формулу для самоэнергии
-        // куба на параллелограмм и тогда все будить чики бамбони
+    // чтобы это зафорсить, нужно обобщить формулу для самоэнергии
+    // куба на параллелограмм и тогда все будить чики бамбони
 
     if ((cube_k.center_ - cube_p.center_).norm() < 6 * h) {
         // интегрирование с выделением особенности
@@ -36,6 +75,7 @@ Types::complex_d operator_K_over_cube_mesh::matrix_3_coef(Types::index k, Types:
         const auto potential_of_cube = [this, k](Types::scalar x, Types::scalar y, Types::scalar z) {
             return newton_potential_over_cube(k, {x, y, z});
         };
+
         return k2 * (
                    DefiniteIntegrals::integrate<DefiniteIntegrals::GaussLegendre::Quadrature<2, 2, 2, 2, 2, 2>>(
                        integrand_bounded_part, {mesh.leftDownCorner(k)[0], mesh.leftDownCorner(k)[1],

@@ -15,7 +15,7 @@ namespace EMW::Mesh::VolumeCells {
 * неконсистентном состоянии. Но пока что это просто класс какой-то тут. Нужен для быстро посмотрения расчетов.
 */
 struct IndexedCube {
-    enum Axis { X, Y, Z };
+    enum Axis { X = 0, Y = 1, Z = 2 };
     enum Direction { Minus, Plus };
 
     using nodes_t = Containers::array<Types::index, 8>;
@@ -28,6 +28,8 @@ struct IndexedCube {
     IndexedCube(const full_points_t &full_points, const nodes_t &full_indices);
 
     Mesh::IndexedCell getFace(Axis ax, Direction dir, const full_points_t& fp) const;
+
+    Types::point_t getLeftDownCornerOfFace(Axis ax, Direction dir, const full_points_t& fp) const;
 
     Mesh::IndexedCell getXface(Direction dir, const full_points_t& fp) const;
 

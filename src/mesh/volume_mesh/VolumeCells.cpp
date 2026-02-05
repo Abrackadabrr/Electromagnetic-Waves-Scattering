@@ -32,6 +32,11 @@ Mesh::IndexedCell IndexedCube::getFace(Axis ax, Direction dir, const full_points
     }
 }
 
+Types::point_t IndexedCube::getLeftDownCornerOfFace(Axis ax, Direction dir, const full_points_t &fp) const {
+    const auto res = getFace(ax, dir, fp);
+    return fp[res.points_[0]];
+}
+
 Mesh::IndexedCell IndexedCube::getXface(Direction dir, const full_points_t &fp) const {
     Containers::array<Types::index, 4> xface{
         nodes_[dir],
