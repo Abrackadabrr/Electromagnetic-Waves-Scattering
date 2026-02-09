@@ -173,7 +173,6 @@ Types::MatrixXc operator_K_over_cube_mesh::get_galerkin_matrix() const {
             result(3 * k, 3 * p) += volume_res;
             result(3 * k + 1, 3 * p + 1) += volume_res;
             result(3 * k + 2, 3 * p + 2) += volume_res;
-            std::cout << k << ' ' << p << '\n';
         }
     }
     return result;
