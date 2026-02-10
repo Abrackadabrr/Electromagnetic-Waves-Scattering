@@ -58,6 +58,15 @@ namespace EMW::Mesh::VolumeMesh
         [[nodiscard]] const auto& getVectorData(const std::string& name) const { return *vector_data.find(name); };
         [[nodiscard]] const auto& getScalarData() const { return scalar_data; }
         [[nodiscard]] const auto& getVectorData() const { return vector_data; };
+
+        /**
+        * Возвращает cell-data на сетке в виде вектора с нумерацией, согласно нумерации ячеек в сетке
+        *
+        * @param name - имя поля данных, которые хотим получить
+        * @return комплексный вектор размерности количества ячеек в сетке
+         */
+        [[nodiscard]] Types::VectorXc getScalarDataAsVector(const std::string& name) const;
+
     };
 
     template <typename Container>
