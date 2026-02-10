@@ -9,6 +9,7 @@
 
 #include "mesh/SurfaceMesh.hpp"
 #include "mesh/volume_mesh/CubeMesh.hpp"
+#include "mesh/volume_mesh/CubeMeshWithData.hpp"
 
 #include "types/Types.hpp"
 
@@ -229,6 +230,8 @@ void field_in_points_snapshot(const std::vector<std::vector<EMW::Types::Vector3c
                               const std::string &path_to_file);
 
 void volume_mesh_snapshot(const EMW::Mesh::VolumeMesh::CubeMesh &mesh, const std::string &path_to_file);
+
+void volume_mesh_withdata_snapshot(const EMW::Mesh::VolumeMesh::CubeMeshWithData &mesh, const std::string &path_to_file);
 
 template <typename ScalarField>
 void united_snapshot(const std::vector<ScalarField> &scalarFields,

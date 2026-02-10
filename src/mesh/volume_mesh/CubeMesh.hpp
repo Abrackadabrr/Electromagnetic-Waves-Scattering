@@ -9,18 +9,18 @@
 
 namespace EMW::Mesh::VolumeMesh {
 class CubeMesh {
-
+protected:
     struct mesh_info_t {
         Types::index nodes_size;
         Types::index cells_size;
         std::string name;
     };
+    using CellsType = VolumeCells::IndexedCube;
+    using CellsContainer_t = Containers::vector<CellsType>;
+    using NodesContainer_t = Containers::vector<Types::point_t>;
 
-    using cells_container_t = Containers::vector<VolumeCells::IndexedCube>;
-    using nodes_container_t = Containers::vector<Types::point_t>;
-
-    nodes_container_t nodes_;
-    cells_container_t cells_;
+    NodesContainer_t nodes_;
+    CellsContainer_t cells_;
     Types::index nx_, ny_, nz_;
     Types::scalar dx_, dy_, dz_;
 
@@ -43,12 +43,14 @@ class CubeMesh {
     CubeMesh(Types::Vector3d minCorner, Types::scalar xs, std::size_t nx) : CubeMesh(minCorner, xs, xs, xs, nx, nx, nx) {};
 
     // --- Конвертация 3D индекс в 1D --- //
-    Types::index inline point_idx(std::size_t i, std::size_t j, std::size_t k) const {
+    // индекс точки
+    [[nodiscard]] Types::index inline point_idx(std::size_t i, std::size_t j, std::size_t k) const {
         // assert(i < nx_ && j < ny_ && k < nz_);
         return i + nx_ * (j + ny_ * k);
     };
 
-    inline std::size_t cube_idx(std::size_t cx, std::size_t cy, std::size_t cz) const {
+    // индекс куба
+    [[nodiscard]] inline std::size_t cube_idx(std::size_t cx, std::size_t cy, std::size_t cz) const {
         //assert(nx_ >= 2 && ny_ >= 2 && nz_ >= 2);
         const std::size_t mx = nx_ - 1;
         const std::size_t my = ny_ - 1;
@@ -59,14 +61,14 @@ class CubeMesh {
     }
 
     // --- Getters --- //
-    const cells_container_t &getCells() const { return cells_; }
-    const nodes_container_t &getNodes() const { return nodes_; }
-    const std::string getName() const { return name; }
-    const Types::scalar h() const { return std::sqrt(dx_*dx_ + dy_*dy_ + dz_*dz_); }
-    const Types::point_t leftDownCorner(Types::index k) const { return nodes_[cells_[k].nodes_[0]]; };
-    const Types::scalar dx() const { return dx_; };
-    const Types::scalar dy() const { return dy_; };
-    const Types::scalar dz() const { return dz_; };
+    [[nodiscard]] const CellsContainer_t &getCells() const { return cells_; }
+    [[nodiscard]] const NodesContainer_t &getNodes() const { return nodes_; }
+    [[nodiscard]] const std::string& getName() const { return name; }
+    [[nodiscard]] Types::scalar h() const { return std::sqrt(dx_*dx_ + dy_*dy_ + dz_*dz_); }
+    [[nodiscard]] const Types::point_t& leftDownCorner(Types::index k) const { return nodes_[cells_[k].nodes_[0]]; };
+    [[nodiscard]] Types::scalar dx() const { return dx_; };
+    [[nodiscard]] Types::scalar dy() const { return dy_; };
+    [[nodiscard]] Types::scalar dz() const { return dz_; };
 };
 } // namespace EMW::Mesh::VolumeMesh
 

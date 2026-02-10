@@ -8,6 +8,7 @@
 #include "third_party/eigen/Eigen/Core"
 #include "third_party/eigen/Eigen/Geometry"
 #include <array>
+#include <map>
 #include <vector>
 #include <set>
 
@@ -50,6 +51,8 @@ namespace EMW::Containers {
     using tuple = std::tuple<types...>;
     template<typename Type>
     using set = std::set<Type>;
+    template<typename Key, typename Value>
+    using map = std::map<Key, Value>;
 };
 
 #endif //ELECTROMAGNETIC_WAVES_SCATTERING_TYPES_H

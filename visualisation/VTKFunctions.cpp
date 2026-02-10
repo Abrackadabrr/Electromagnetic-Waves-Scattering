@@ -202,6 +202,87 @@ void volume_mesh_snapshot(const EMW::Mesh::VolumeMesh::CubeMesh &mesh, const std
     writer->Write();
 }
 
+void volume_mesh_withdata_snapshot(const EMW::Mesh::VolumeMesh::CubeMeshWithData &mesh, const std::string &path_to_file) {
+    // VTK grid
+    vtkSmartPointer<vtkUnstructuredGrid> unstructuredGrid = vtkSmartPointer<vtkUnstructuredGrid>::New();
+    unstructuredGrid->Allocate(mesh.getNodes().size());
+    // VTK points
+    vtkSmartPointer<vtkPoints> dumpPoints = vtkSmartPointer<vtkPoints>::New();
+
+    const EMW::Containers::vector<EMW::Mesh::point_t> &nodes = mesh.getNodes();
+    const EMW::Containers::vector<EMW::Mesh::VolumeCells::IndexedCube> &cells = mesh.getCells();
+
+    // Обходим все точки нашей расчётной сетки
+    for (auto &node : nodes) {
+        // Вставляем новую точку в сетку VTK-снапшота
+        dumpPoints->InsertNextPoint(node.x(), node.y(), node.z());
+    }
+
+    // Грузим точки в сетку
+    unstructuredGrid->SetPoints(dumpPoints);
+
+    // А теперь пишем, как наши точки объединены в четырехугольники (поверхностныее полигоны)
+    for (const auto &cell : cells) {
+        auto poly = vtkSmartPointer<vtkHexahedron>::New();
+        vtkIdType ids[8] = {
+            cell.nodes_[0],
+            cell.nodes_[1],
+            cell.nodes_[3],
+            cell.nodes_[2],
+            cell.nodes_[4],
+            cell.nodes_[5],
+            cell.nodes_[7],
+            cell.nodes_[6],
+        };
+        unstructuredGrid->InsertNextCell(VTK_HEXAHEDRON, 8, ids);
+    }
+
+    // Записываем данные из сетки в cellData
+    for (auto&& [name, scalar_data] : mesh.getScalarData()) {
+        auto real_field = vtkSmartPointer<vtkDoubleArray>::New();
+        real_field->SetName((name + "_real").c_str());
+        real_field->SetNumberOfComponents(1);
+        auto imag_field = vtkSmartPointer<vtkDoubleArray>::New();
+        imag_field->SetNumberOfComponents(1);
+        imag_field->SetName((name + "_imag").c_str());
+
+        for (auto&& value : scalar_data) {
+            const double real = value.real();
+            const double imag = value.imag();
+            real_field->InsertNextValue(real);
+            imag_field->InsertNextValue(imag);
+        }
+        unstructuredGrid->GetCellData()->AddArray(real_field);
+        unstructuredGrid->GetCellData()->AddArray(imag_field);
+    }
+
+    for (auto&& [name, vector_data] : mesh.getVectorData()) {
+        auto real_field = vtkSmartPointer<vtkDoubleArray>::New();
+        real_field->SetName((name + "_real").c_str());
+        real_field->SetNumberOfComponents(3);
+        auto imag_field = vtkSmartPointer<vtkDoubleArray>::New();
+        imag_field->SetNumberOfComponents(3);
+        imag_field->SetName((name + "_imag").c_str());
+
+        for (auto&& value : vector_data) {
+            const double real[3] = {value.real()[0], value.real()[1], value.real()[2]};
+            const double imag[3] = {value.imag()[0], value.imag()[1], value.imag()[2]};
+            real_field->InsertNextTuple(real);
+            imag_field->InsertNextTuple(imag);
+        }
+        unstructuredGrid->GetCellData()->AddArray(real_field);
+        unstructuredGrid->GetCellData()->AddArray(imag_field);
+    }
+
+    // Создаём снапшот в файле с заданным именем
+    const std::string fileName = mesh.getName() + ".vtu";
+    vtkSmartPointer<vtkXMLUnstructuredGridWriter> writer = vtkSmartPointer<vtkXMLUnstructuredGridWriter>::New();
+    writer->SetFileName((path_to_file + fileName).c_str());
+    writer->SetInputData(unstructuredGrid);
+    writer->Write();
+}
+
+
 }
 
 
