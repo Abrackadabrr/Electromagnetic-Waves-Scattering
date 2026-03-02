@@ -2,7 +2,6 @@
 // Created by evgen on 11.06.2025.
 //
 
-#include "examples/pathes.hpp"
 #include "experiment/PhysicalCondition.hpp"
 #include "math/MathConstants.hpp"
 #include "math/integration/gauss_quadrature/GaussLegenderPoints.hpp"
@@ -57,13 +56,13 @@ int main() {
     mesh_base.setName("sphere");
 
     // физика
-    const Types::scalar lambda = 1.5;
-    const Types::complex_d k{2 * Math::Constants::PI<scalar>() / lambda, 0};
+    const Types::scalar freq = 0.1;
+    const Types::complex_d k{(2 * Math::Constants::PI<Types::scalar>() * 1e9 * freq) / Math::Constants::c, 0};
     std::cout << k.real() << std::endl;
 
     EMW::Physics::planeWaveCase physics(Vector3d{0, 1, 0}.normalized(),  // polarization
                                         k,                               // wave figure
-                                        Vector3d{0, 0, 1}.normalized()); // wave unit vector
+                                        Vector3d{-1, 0, 0}.normalized()); // wave unit vector
     // смотрим след поля на поверхности
     const auto E_0_field =
         Math::SurfaceVectorField{mesh_base, [&physics](const Mesh::point_t &p) { return physics.value(p); }};
@@ -77,7 +76,8 @@ int main() {
     const Math::SurfaceVectorField j_e = Math::SurfaceVectorField::TangentField(mesh_base, j_vec, "j_e");
 
     // расчитываем поле вокруг заданной геометрии
-#define FIELD_CALCULATION 1
+    const std::string path = "/home/evgen/Work/INM_RAS/Fidesys/example_calculations/";
+#define FIELD_CALCULATION 0
 #if FIELD_CALCULATION
     // Рисуем картину поля в плоскости y = 0
     int k1 = 199;
@@ -106,8 +106,6 @@ int main() {
             return Types::Vector3c{{0, 0}, {0, 0}, {0, 0}};
         return v;
     });
-
-    const std::string path = "/home/evgen/Work/INM_RAS/Fidesys/example_calculations/";
     VTK::field_in_points_snapshot({calculated_field}, {}, {"E"}, {}, points, "surrounding_mesh", path);
 #endif
     // рисуем поле токов
