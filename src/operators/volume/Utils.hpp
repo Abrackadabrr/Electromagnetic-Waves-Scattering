@@ -13,6 +13,8 @@ namespace EMW::Operators::Volume::Utils {
 
 /**
 * Интеграл 1/|x - y| по кубу сначала по х, потом по у
+*
+* Вроде бы это штука не работает как раз
 */
 inline Types::complex_d self_interracting_gravitational_cube(Types::scalar L) {
     const Types::scalar sqrt2 = std::sqrt(2.0);

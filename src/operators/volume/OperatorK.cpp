@@ -104,18 +104,22 @@ Types::complex_d operator_K_over_cube_mesh::matrix_3_coef(Types::index k, Types:
             return newton_potential_of_cube(k, {x, y, z});
         };
 
-        return k2 * (
-                   DefiniteIntegrals::integrate<DefiniteIntegrals::GaussLegendre::Quadrature<2, 2, 2, 2, 2, 2>>(
-                       integrand_bounded_part, {mesh.leftDownCorner(k)[0], mesh.leftDownCorner(k)[1],
-                                                mesh.leftDownCorner(k)[2],
-                                                mesh.leftDownCorner(p)[0], mesh.leftDownCorner(p)[1],
-                                                mesh.leftDownCorner(p)[2]},
-                       {mesh.dx(), mesh.dy(), mesh.dz(), mesh.dx(), mesh.dy(), mesh.dz()}) +
-                   Math::Constants::inverse_4PI<Types::scalar>() *
-                   DefiniteIntegrals::integrate<DefiniteIntegrals::GaussLegendre::Quadrature<4, 4, 4>>(
-                       potential_of_cube, {mesh.leftDownCorner(p)[0], mesh.leftDownCorner(p)[1],
-                                           mesh.leftDownCorner(p)[2]},
-                       {mesh.dx(), mesh.dy(), mesh.dz()}));
+        const auto first_part =
+                                    DefiniteIntegrals::integrate<DefiniteIntegrals::GaussLegendre::Quadrature<
+                                        2, 2, 2, 2, 2, 2>>(
+                                        integrand_bounded_part, {mesh.leftDownCorner(k)[0], mesh.leftDownCorner(k)[1],
+                                                                 mesh.leftDownCorner(k)[2],
+                                                                 mesh.leftDownCorner(p)[0], mesh.leftDownCorner(p)[1],
+                                                                 mesh.leftDownCorner(p)[2]},
+                                        {mesh.dx(), mesh.dy(), mesh.dz(), mesh.dx(), mesh.dy(), mesh.dz()});
+        const auto second_part =
+                                     Math::Constants::inverse_4PI<Types::scalar>() *
+                                     DefiniteIntegrals::integrate<DefiniteIntegrals::GaussLegendre::Quadrature<
+                                         4, 4, 4>>(
+                                         potential_of_cube, {mesh.leftDownCorner(p)[0], mesh.leftDownCorner(p)[1],
+                                                             mesh.leftDownCorner(p)[2]},
+                                         {mesh.dx(), mesh.dy(), mesh.dz()});
+        return k2 * (first_part + second_part);
     }
 
     // Интегрирование без выделения особенности:
@@ -138,15 +142,15 @@ Types::scalar operator_K_over_cube_mesh::newton_potential_of_cube(Types::index k
     const auto dx = mesh.dx();
     const auto dy = mesh.dy();
     const auto dz = mesh.dz();
-    // интегрирование старое (квадратура в квадратуре в квадратуре)
+    // интегрирование старое (квадратура поверх 1/r по квадрату)
     const auto cut_of_cube_integral = [corner = left_down_corner_of_cube_k, dx,
             dy](Types::scalar x, Types::scalar y, Types::scalar z, Types::scalar z_dash) {
         // Интегрирование по сечению куба на высоте z_dash
         Containers::vector<Types::point_t> points1 = {
             {corner.x(), corner.y(), corner.z() + z_dash},
-            {corner.x() + dx, corner.y(), z_dash},
-            {corner.x() + dx, corner.y() + dy, z_dash},
-            {corner.x(), corner.y() + dy, z_dash},
+            {corner.x() + dx, corner.y(), corner.z() + z_dash},
+            {corner.x() + dx, corner.y() + dy, corner.z() + z_dash},
+            {corner.x(), corner.y() + dy, corner.z() + z_dash},
         };
         const Mesh::IndexedCell cell1({0, 1, 2, 3}, points1);
         return Math::AnalyticalIntegration::integrate_1_div_r(Types::point_t{x, y, z}, cell1);
@@ -164,11 +168,12 @@ Types::MatrixXc operator_K_over_cube_mesh::get_galerkin_matrix() const {
     const Types::index n_cubes = mesh.getCells().size();
     Types::MatrixXc result = Types::MatrixXc::Zero(3 * n_cubes, 3 * n_cubes);
     for (auto k = 0u; k < n_cubes; ++k) {
-        const auto& cube_k = mesh.getCells()[k];
+        const auto &cube_k = mesh.getCells()[k];
         for (auto p = 0u; p < n_cubes; ++p) {
             // считаем поверхностную часть
             const auto volume_res = matrix_3_coef(k, p);
-            result.block(3 * k, 3 * p, 3, 3) = matrix_2_coef(k, p);
+            const auto surface_res = matrix_2_coef(k, p);
+            result.block(3 * k, 3 * p, 3, 3) = surface_res;
             // и подправляем общую матрицу
             result(3 * k, 3 * p) += volume_res;
             result(3 * k + 1, 3 * p + 1) += volume_res;
@@ -178,11 +183,11 @@ Types::MatrixXc operator_K_over_cube_mesh::get_galerkin_matrix() const {
     return result;
 }
 
-void operator_K_over_cube_mesh::get_galerkin_matrix_inplace(Types::MatrixXc * p_mat) const {
+void operator_K_over_cube_mesh::get_galerkin_matrix_inplace(Types::MatrixXc *p_mat) const {
     const Types::index n_cubes = mesh.getCells().size();
     *p_mat = Types::MatrixXc::Zero(3 * n_cubes, 3 * n_cubes);
     for (auto k = 0u; k < n_cubes; ++k) {
-        const auto& cube_k = mesh.getCells()[k];
+        const auto &cube_k = mesh.getCells()[k];
         for (auto p = 0u; p < n_cubes; ++p) {
             // считаем поверхностную часть
             const auto volume_res = matrix_3_coef(k, p);

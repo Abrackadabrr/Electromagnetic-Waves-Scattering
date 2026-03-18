@@ -34,15 +34,8 @@ TEST(VOLUME_MESH_TESTS, GET_FACE_ON_CUBE) {
 TEST(VOLUME_MESH_TESTS, SIMPLE_CREATION_AND_SNAPSHOT) {
     Types::point_t corner{0, 0, 0};
     const Types::scalar xs = 1;
-    const Mesh::VolumeMesh::CubeMesh mesh{corner, xs, 10};
+    const Mesh::VolumeMesh::CubeMeshWithData mesh{corner, xs, 3};
 
-    const Types::index idx = mesh.cube_idx(5, 6, 7);
-    const auto cell = mesh.getCells()[idx];
-    const auto face = cell.getFace(Mesh::VolumeCells::IndexedCube::Axis::Z,
-                                   Mesh::VolumeCells::IndexedCube::Direction::Plus, mesh.getNodes());
-
-    std::cout << face.normal << std::endl;
-
-    VTK::volume_mesh_snapshot(
+    VTK::volume_mesh_withdata_snapshot(
         mesh, "/home/evgen/Education/MasterDegree/thesis/Electromagnetic-Waves-Scattering/tests/mesh/volume_mesh/");
 }

@@ -256,6 +256,14 @@ void volume_mesh_withdata_snapshot(const EMW::Mesh::VolumeMesh::CubeMeshWithData
         unstructuredGrid->GetCellData()->AddArray(imag_field);
     }
 
+    // Добавляем нумерацию ячеек в сетке
+    auto cell_idx_field = vtkSmartPointer<vtkIntArray>::New();
+    cell_idx_field->SetName("cell_idx");
+    for (size_t idx = 0; idx < mesh.getCells().size(); ++idx) {
+        cell_idx_field->InsertNextValue(idx);
+    }
+    unstructuredGrid->GetCellData()->AddArray(cell_idx_field);
+
     for (auto&& [name, vector_data] : mesh.getVectorData()) {
         auto real_field = vtkSmartPointer<vtkDoubleArray>::New();
         real_field->SetName((name + "_real").c_str());

@@ -21,6 +21,7 @@ class operator_K_over_cube_mesh {
     const Mesh::VolumeMesh::CubeMesh &mesh;
     Types::complex_d wave_number;
 
+public:
     /**
     * @brief Матрица поверхностной части интегрального оператора
     *
@@ -54,7 +55,6 @@ class operator_K_over_cube_mesh {
      */
     [[nodiscard]] Types::scalar newton_potential_of_cube(Types::index k, Types::point_t r) const;
 
-  public:
     explicit operator_K_over_cube_mesh(Types::complex_d k, const Mesh::VolumeMesh::CubeMesh &mesh) : mesh(mesh), wave_number(k) {};
 
     [[nodiscard]] Types::MatrixXc get_galerkin_matrix() const;

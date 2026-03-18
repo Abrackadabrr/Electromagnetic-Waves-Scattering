@@ -25,6 +25,8 @@ Types::complex_d F(Types::complex_d k, const Types::Vector3d &x, const Types::Ve
 Types::complex_d F_bounded_part(Types::complex_d k, const Types::Vector3d &x, const Types::Vector3d &y) {
     const Types::Vector3d rVec = x - y;
     const Types::scalar r = rVec.norm();
+    if (r  < 1e-10)
+        return (Math::Constants::i - k * r) * k * Math::Constants::inverse_4PI<Types::scalar>();
     return Math::Constants::inverse_4PI<Types::scalar>() * ((std::exp(Math::Constants::i * k * r) - 1.) / r);
 }
 
