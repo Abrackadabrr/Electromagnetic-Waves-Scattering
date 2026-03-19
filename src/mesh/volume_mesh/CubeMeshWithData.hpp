@@ -66,7 +66,6 @@ namespace EMW::Mesh::VolumeMesh
         * @return комплексный вектор размерности количества ячеек в сетке
          */
         [[nodiscard]] Types::VectorXc getScalarDataAsVector(const std::string& name) const;
-
     };
 
     template <typename Container>

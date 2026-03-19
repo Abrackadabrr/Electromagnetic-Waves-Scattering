@@ -87,7 +87,7 @@ TEST_F(VOLUME_OPERATOR_OVER_CUBE_MESH_TESTS, SimpleTripleBlockToeplitzTest) {
 }
 
 TEST_F(VOLUME_OPERATOR_OVER_CUBE_MESH_TESTS, TEST_SOLVING) {
-    constexpr Types::scalar cube_length = 1.0;
+    constexpr Types::scalar cube_length = 0.5;
     constexpr Types::index Nx = 5;
     // берем кубическую сетку на кубе
     Mesh::VolumeMesh::CubeMesh mesh{Types::point_t{0, 0, 0}, cube_length, Nx};

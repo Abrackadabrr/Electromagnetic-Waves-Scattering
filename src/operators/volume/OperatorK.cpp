@@ -167,9 +167,10 @@ Types::scalar operator_K_over_cube_mesh::newton_potential_of_cube(Types::index k
 Types::MatrixXc operator_K_over_cube_mesh::get_galerkin_matrix() const {
     const Types::index n_cubes = mesh.getCells().size();
     Types::MatrixXc result = Types::MatrixXc::Zero(3 * n_cubes, 3 * n_cubes);
+#pragma omp parallel for simd collapse(2) schedule(static) num_threads(14)
     for (auto k = 0u; k < n_cubes; ++k) {
-        const auto &cube_k = mesh.getCells()[k];
         for (auto p = 0u; p < n_cubes; ++p) {
+            const auto &cube_k = mesh.getCells()[k];
             // считаем поверхностную часть
             const auto volume_res = matrix_3_coef(k, p);
             const auto surface_res = matrix_2_coef(k, p);
@@ -178,6 +179,7 @@ Types::MatrixXc operator_K_over_cube_mesh::get_galerkin_matrix() const {
             result(3 * k, 3 * p) += volume_res;
             result(3 * k + 1, 3 * p + 1) += volume_res;
             result(3 * k + 2, 3 * p + 2) += volume_res;
+            std::cout << "k = " << k << std::endl;
         }
     }
     return result;
