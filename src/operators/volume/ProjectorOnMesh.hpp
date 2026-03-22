@@ -46,11 +46,14 @@ namespace EMW::Operators::Volume
             {
                 return function({x, y, z});
             };
+            // интеграл по кубу на сетке в соотвествии с нумерацией
             const Types::Vector3c value = DefiniteIntegrals::integrate<DefiniteIntegrals::GaussLegendre::Quadrature<
                 4, 4, 4>>(
                 integrand, {cube_i[0], cube_i[1], cube_i[2]},
                 {mesh_.dx(), mesh_.dy(), mesh_.dz()});
-            result.block(3 * i, 0, 3, 1) = value;
+            result[3 * i] = value[0];
+            result[3 * i + 1] = value[1];
+            result[3 * i + 2] = value[2];
         }
         return result;
     }

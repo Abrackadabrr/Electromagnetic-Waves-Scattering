@@ -31,7 +31,7 @@ namespace EMW::Physics {
     /**
      * Расчитывает волновое число по частоте в ГИГАГерцах
      */
-    inline Types::scalar get_k_on_frquency(const Types::scalar frequency) {
+    inline constexpr  Types::scalar get_k_on_frquency(const Types::scalar frequency) {
         return 2 * Math::Constants::PI<Types::scalar>() * 1e9 * frequency / Math::Constants::c;
     }
 }

@@ -29,15 +29,18 @@ Types::Matrix3c operator_K_over_cube_mesh::matrix_2_coef(Types::index k, Types::
                                     Mesh::VolumeCells::IndexedCube::Direction::Plus, mesh.getNodes());
         for (Types::index j = 0; j < 3; j++) {
             Containers::array<Mesh::IndexedCell, 2> faces_p;
-            faces_p[0] = cube_p.getFace(static_cast<Mesh::VolumeCells::IndexedCube::Axis>(i),
+            faces_p[0] = cube_p.getFace(static_cast<Mesh::VolumeCells::IndexedCube::Axis>(j),
                                         Mesh::VolumeCells::IndexedCube::Direction::Minus, mesh.getNodes());
-            faces_p[1] = cube_p.getFace(static_cast<Mesh::VolumeCells::IndexedCube::Axis>(i),
+            faces_p[1] = cube_p.getFace(static_cast<Mesh::VolumeCells::IndexedCube::Axis>(j),
                                         Mesh::VolumeCells::IndexedCube::Direction::Plus, mesh.getNodes());
 
             // и тут нужно взять четыре одинаковых по вайбу интеграла
-            for (auto &&face_k : faces_k)
-                for (auto &&face_p : faces_p) {
+            for (size_t face_k_idx = 0; face_k_idx < 2; face_k_idx++)
+                for (size_t face_p_idx = 0; face_p_idx < 2; face_p_idx++){
                     // Делаем.
+                    Types::scalar multiplier = face_k_idx == face_p_idx ? 1 : -1;
+                    auto face_k = faces_k[face_k_idx];
+                    auto face_p = faces_p[face_p_idx];
                     if ((cube_p.center_ - cube_p.center_).norm() < 6 * h) {
                         // то интегрируемся с выделением особенности
                         // 1. Интеграл от ньютонова потенциала 2д ячейки по ней же самой
@@ -46,7 +49,7 @@ Types::Matrix3c operator_K_over_cube_mesh::matrix_2_coef(Types::index k, Types::
                             return Math::AnalyticalIntegration::integrate_1_div_r(point, face_p) * face_k.multiplier(
                                        x, y);
                         };
-                        result(i, j) += Math::Constants::inverse_4PI<Types::scalar>() * DefiniteIntegrals::integrate<
+                        result(i, j) += multiplier * Math::Constants::inverse_4PI<Types::scalar>() * DefiniteIntegrals::integrate<
                             DefiniteIntegrals::GaussLegendre::Quadrature<
                                 4, 4>>(analytical_integrand, {0, 0}, {1, 1});
                         // 2. Интеграл от ограниченного остатка
@@ -58,8 +61,8 @@ Types::Matrix3c operator_K_over_cube_mesh::matrix_2_coef(Types::index k, Types::
                                        x2, y2);
                         };
 
-                        result(i, j) += DefiniteIntegrals::integrate<DefiniteIntegrals::GaussLegendre::Quadrature<
-                            2, 2, 2, 2>>(
+                        result(i, j) += multiplier * DefiniteIntegrals::integrate<DefiniteIntegrals::GaussLegendre::Quadrature<
+                            3, 3, 3, 3>>(
                             residual_integrand, {0, 0, 0, 0}, {1, 1, 1, 1});
                     } else {
                         // Иначе интегрируемся без выделения особенности сразу
@@ -70,8 +73,8 @@ Types::Matrix3c operator_K_over_cube_mesh::matrix_2_coef(Types::index k, Types::
                             return Helmholtz::F(wn, x, y) * face_p.multiplier(x1, y1) * face_k.multiplier(x2, y2);
                         };
 
-                        result(i, j) += DefiniteIntegrals::integrate<DefiniteIntegrals::GaussLegendre::Quadrature<
-                            2, 2, 2, 2>>(
+                        result(i, j) += multiplier * DefiniteIntegrals::integrate<DefiniteIntegrals::GaussLegendre::Quadrature<
+                            3, 3, 3, 3>>(
                             integrand, {0, 0, 0, 0}, {1, 1, 1, 1});
                     }
                 }
@@ -106,7 +109,7 @@ Types::complex_d operator_K_over_cube_mesh::matrix_3_coef(Types::index k, Types:
 
         const auto first_part =
                                     DefiniteIntegrals::integrate<DefiniteIntegrals::GaussLegendre::Quadrature<
-                                        2, 2, 2, 2, 2, 2>>(
+                                        3, 3, 3, 2, 2, 2>>(
                                         integrand_bounded_part, {mesh.leftDownCorner(k)[0], mesh.leftDownCorner(k)[1],
                                                                  mesh.leftDownCorner(k)[2],
                                                                  mesh.leftDownCorner(p)[0], mesh.leftDownCorner(p)[1],
@@ -167,10 +170,9 @@ Types::scalar operator_K_over_cube_mesh::newton_potential_of_cube(Types::index k
 Types::MatrixXc operator_K_over_cube_mesh::get_galerkin_matrix() const {
     const Types::index n_cubes = mesh.getCells().size();
     Types::MatrixXc result = Types::MatrixXc::Zero(3 * n_cubes, 3 * n_cubes);
-#pragma omp parallel for simd collapse(2) schedule(static) num_threads(14)
-    for (auto k = 0u; k < n_cubes; ++k) {
-        for (auto p = 0u; p < n_cubes; ++p) {
-            const auto &cube_k = mesh.getCells()[k];
+#pragma omp parallel for simd schedule(static) collapse(2) num_threads(14)
+    for (auto p = 0u; p < n_cubes; ++p) {
+        for (auto k = 0u; k < n_cubes; ++k) {
             // считаем поверхностную часть
             const auto volume_res = matrix_3_coef(k, p);
             const auto surface_res = matrix_2_coef(k, p);
@@ -179,7 +181,6 @@ Types::MatrixXc operator_K_over_cube_mesh::get_galerkin_matrix() const {
             result(3 * k, 3 * p) += volume_res;
             result(3 * k + 1, 3 * p + 1) += volume_res;
             result(3 * k + 2, 3 * p + 2) += volume_res;
-            std::cout << "k = " << k << std::endl;
         }
     }
     return result;

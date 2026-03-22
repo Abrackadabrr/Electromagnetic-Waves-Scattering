@@ -24,15 +24,20 @@ protected:
     Types::index nx_, ny_, nz_;
     Types::scalar dx_, dy_, dz_;
 
-    std::string name = "default_mesh_name";
+    std::string name_ = "default_mesh_name";
+
+  public:
 
     /**
-     * Параллелепипедная сетка в пространстве
+     * Cетка на прямоугольнике из прямоугольников
+     *
+     * @param minCorner угол области с наименьшими координатами
+     * @param xs, ys, zs длины сторон
+     * @param nx, ny, nx количества ячеек разбиения по стороне области
      */
     CubeMesh(Types::Vector3d minCorner, Types::scalar xs, Types::scalar ys, Types::scalar zs, std::size_t nx,
              std::size_t ny, std::size_t nz);
 
-  public:
     /**
      * Кубическая сетка в пространстве (пока что оператор умеет работать только с ней)
      *
@@ -63,12 +68,15 @@ protected:
     // --- Getters --- //
     [[nodiscard]] const CellsContainer_t &getCells() const { return cells_; }
     [[nodiscard]] const NodesContainer_t &getNodes() const { return nodes_; }
-    [[nodiscard]] const std::string& getName() const { return name; }
+    [[nodiscard]] const std::string& getName() const { return name_; }
     [[nodiscard]] Types::scalar h() const { return std::sqrt(dx_*dx_ + dy_*dy_ + dz_*dz_); }
     [[nodiscard]] const Types::point_t& leftDownCorner(Types::index k) const { return nodes_[cells_[k].nodes_[0]]; };
     [[nodiscard]] Types::scalar dx() const { return dx_; };
     [[nodiscard]] Types::scalar dy() const { return dy_; };
     [[nodiscard]] Types::scalar dz() const { return dz_; };
+
+    // --- Setters --- //
+    void setName(const std::string& name) { name_ = name; };
 };
 } // namespace EMW::Mesh::VolumeMesh
 

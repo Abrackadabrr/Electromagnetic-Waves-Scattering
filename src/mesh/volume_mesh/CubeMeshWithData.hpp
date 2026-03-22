@@ -20,6 +20,7 @@ namespace EMW::Mesh::VolumeMesh
         Types::index nodesCount;
         Types::index cellsCount;
 
+    public:
         CubeMeshWithData(const Types::Vector3d& minCorner, Types::scalar xs, Types::scalar ys, Types::scalar zs,
                          std::size_t nx,
                          std::size_t ny, std::size_t nz) : Base(minCorner, xs, ys, zs, nx, ny, nz),
@@ -27,7 +28,6 @@ namespace EMW::Mesh::VolumeMesh
         {
         }
 
-    public:
         CubeMeshWithData(const Types::Vector3d& minCorner, Types::scalar xs, Types::index ns) :
             CubeMeshWithData(minCorner, xs, xs, xs, ns, ns, ns)
         {
