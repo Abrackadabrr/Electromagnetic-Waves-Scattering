@@ -54,8 +54,8 @@ namespace EMW::Mesh::VolumeMesh
             Callable, Types::point_t>;
 
         // ---- Getters ---- //
-        [[nodiscard]] const auto& getScalarData(const std::string& name) const { return *scalar_data.find(name); };
-        [[nodiscard]] const auto& getVectorData(const std::string& name) const { return *vector_data.find(name); };
+        [[nodiscard]] const auto& getScalarData(const std::string& name) const { return scalar_data.find(name)->second; };
+        [[nodiscard]] const auto& getVectorData(const std::string& name) const { return vector_data.find(name)->second; };
         [[nodiscard]] const auto& getScalarData() const { return scalar_data; }
         [[nodiscard]] const auto& getVectorData() const { return vector_data; };
 
@@ -97,7 +97,7 @@ namespace EMW::Mesh::VolumeMesh
     void CubeMeshWithData::invokeScalarData(const std::string& name, Callable&& point_function) requires std::
         is_invocable_v<Callable, Types::point_t>
     {
-        // generate a Containers::vector<Types::complex_d> from cube function
+        // generate a Containers::vector<Types::complex_d> from point function
         Containers::vector<Types::complex_d> data;
         data.reserve(cellsCount);
         for (std::size_t i = 0; i < cellsCount; ++i)

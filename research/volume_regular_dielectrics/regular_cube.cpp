@@ -27,16 +27,18 @@ int main() {
     constexpr Types::index Nx = 3;
     constexpr Types::index Ny = static_cast<size_t>(1 / cube_length) + 1;
     constexpr Types::index Nz = Ny;
-    constexpr Types::scalar cube_measure = cube_length * cube_length * cube_length;
-    // L2 норма базисных функций
-    std::cout << "L2 норма базисных функций = " << cube_measure << std::endl;
+
     // Сетка
-    Mesh::VolumeMesh::CubeMeshWithData mesh{Types::point_t{0, -0.5, -0.5}, (Nx - 1) * cube_length,
-                                            (Ny - 1) * cube_length, (Nz - 1) * cube_length, Nx, Ny, Nz};
+    Mesh::VolumeMesh::CubeMeshWithData mesh{Types::point_t{-cube_length, -0.5, -0.5}, (Nx - 1) * cube_length,
+                                            (Ny - 1) * cube_length, (Nz - 1) * (cube_length), Nx, Ny, Nz};
+
+    const Types::scalar cube_measure = mesh.dx() * mesh.dy() * mesh.dz();
+    // Квадрат L2 нормы базисных функций
+    std::cout << "Квадрат L2 нормы базисных функций = " << cube_measure << std::endl;
 
     // Параметры падающей волны
     constexpr double freq = 0.3; // GGz
-    constexpr Types::complex_d k{Physics::get_k_on_frquency(freq), 0.};
+    constexpr Types::complex_d k{2 * M_PI, 0.};
     Physics::planeWaveCase incident_field{Types::Vector3d{0, 1, 0}, k, Types::Vector3d{1, 0, 0}};
 
     std::cout << "Длина волны в свободном пространстве = " << 2 * M_PI / k.real() << std::endl;
@@ -52,18 +54,20 @@ int main() {
     std::cout << "Matrix (" << mat.rows() << ", " << mat.cols() << ')' << std::endl;
     std::cout << "Matrix for norm = " << mat.norm() << std::endl;
     // Собираем матрицу системы
-    mat = Types::MatrixXc::Identity(mat.rows(), mat.cols()) - mat / (cube_measure * cube_measure);
+    const Types::MatrixXc A = Types::MatrixXc::Identity(mat.rows(), mat.cols()) - mat / cube_measure;
     // Поправляем правую часть
-    rhs = rhs / (cube_measure * cube_measure);
+    const Types::VectorXc b = rhs / std::sqrt(cube_measure);
 
     // Решаем линейную систему
-    const auto solution = Research::solve<Eigen::GMRES>(mat, rhs, 100, 1e-5);
+    const auto solution = Research::solve<Eigen::GMRES>(A, b, 1000, 1e-8);
 
     // Преобразовываем в векторное поле на ячейках
     std::vector<Types::Vector3c> field_on_mesh;
     field_on_mesh.reserve(mesh.getCells().size());
     for (size_t idx = 0; idx < mesh.getCells().size(); ++idx) {
-        field_on_mesh.emplace_back(solution[3 * idx + 0], solution[3 * idx + 1], solution[3 * idx + 2]);
+        field_on_mesh.emplace_back(solution[3 * idx + 0] / std::sqrt(cube_measure),
+                                   solution[3 * idx + 1] / std::sqrt(cube_measure),
+                                   solution[3 * idx + 2] / std::sqrt(cube_measure));
     }
 
     // Добавляем поле

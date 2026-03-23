@@ -8,6 +8,8 @@
 #include "math/integration/gauss_quadrature/GaussLegenderPoints.hpp"
 #include "math/integration/Quadrature.hpp"
 
+#include "mesh/volume_mesh/CubeMesh.hpp"
+
 #include "types/Types.hpp"
 
 
@@ -35,7 +37,7 @@ namespace EMW::Operators::Volume
     template <typename Callable>
     auto ProjectorOnMesh::operator()(Callable&& function) const -> vector_t
     {
-        // Проиходимся по всем кубам и оформляем себе скаларные произведения с кусочно-постоянными базисными функциями
+        // Проходимся по всем кубам и оформляем себе скаларные произведения с кусочно-постоянными базисными функциями
         const Types::index n_cubes = mesh_.getCells().size();
         vector_t result = vector_t::Zero(3 * n_cubes);
         for (Types::index i = 0; i < n_cubes; ++i)
