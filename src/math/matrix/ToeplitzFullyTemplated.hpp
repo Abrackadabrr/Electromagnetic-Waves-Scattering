@@ -11,238 +11,241 @@
 #include <cassert>
 #include <iostream>
 
-namespace EMW::Math::LinAgl::Matrix {
-
-/**
- * Матрица со структурой тёплиц-тёплиц-общий_вид
- */
-template <typename scalar_t, typename block_t> class ToeplitzStructure {
-    // Проверка на дефолт контруирование
-    static_assert(std::is_default_constructible_v<block_t>);
-
-  public:
-    using vector_t = Types::VectorX<scalar_t>;
-    using dense_matrix_t = Types::MatrixX<scalar_t>;
-    using block_type = block_t;
-    using scalar_type = scalar_t;
-
-  private:
-    ToeplitzContainer<block_t> blocks;
-    // Характеристика одного блока
-    // Эти поля нужны для удобства
-    Types::index rows_in_block_ = 0;
-    Types::index cols_in_block_ = 0;
-
-  public:
-    ToeplitzStructure() = default;
-
+namespace EMW::Math::LinAgl::Matrix
+{
     /**
-     * Конструктор сейчас работает при условии, что в типе block_t есть методы rows() и cols()
-     *
-     * @param block_rows -- количество строк матрицы, считая в блоках
-     * @param block_cols -- количество столбцов матрицы, считая в блоках
-     * @param get_block -- функция, которая возвращает квадратную матрицу, размеры одинаковы для любых пар (i, j)
-     *
-     * Консистентность состояния поддерживается, если функция get_block возвращает блоки
-     * одного и того же размера
+     * Матрица со структурой тёплиц-общий_вид
      */
-    ToeplitzStructure(Types::index block_rows, Types::index block_cols,
-                      const std::function<block_t(Types::index i, Types::index j)> &get_block);
+    template <typename scalar_t, typename block_t>
+    class ToeplitzStructure
+    {
+        // Проверка на дефолт контруирование
+        static_assert(std::is_default_constructible_v<block_t>);
 
-    ToeplitzStructure(Types::index block_rows, Types::index block_cols, Containers::vector<block_t> &&blocks_);
+    public:
+        using vector_t = Types::VectorX<scalar_t>;
+        using dense_matrix_t = Types::MatrixX<scalar_t>;
+        using block_type = block_t;
+        using scalar_type = scalar_t;
 
-    /** Умножение матрицы на вектор */
-    [[nodiscard]] vector_t matvec(const vector_t &vec) const noexcept;
-    /** Умное умножение матрицы на вектор */
-    [[nodiscard]] vector_t matvec_wise(const vector_t &vec) const noexcept;
-    /** Умножение матрицы на число с возвращением копии */
-    [[nodiscard]] ToeplitzStructure mull(scalar_t value) const noexcept;
-    /** Умножение себя на число */
-    const ToeplitzStructure &mull_inplace(scalar_t value) noexcept;
-    /** Взятие диагонали */
-    [[nodiscard]] vector_t diagonal() const;
+    private:
+        ToeplitzContainer<block_t> blocks;
+        // Характеристика одного блока
+        // Эти поля нужны для удобства
+        Types::index rows_in_block_ = 0;
+        Types::index cols_in_block_ = 0;
 
-    // --- Selectors --- //
-    /**
-     * Вернуть блок в матрице под передаваемой нумерацией
-     * @param row номер строки (в контексте блочной структуры)
-     * @param col номер столбца (в контексте блочной структуры)
-     * @return const ref на соотвествующий блок в тёплицевом контейнере
-     */
-    [[nodiscard]] const block_t &get_block(Types::index row, Types::index col) const noexcept {
-        return blocks(row, col);
-    }
-    [[nodiscard]] block_t &get_block(Types::index row, Types::index col) noexcept { return blocks(row, col); }
+    public:
+        ToeplitzStructure() = default;
 
-    // Возвращают значения строк и столбцов в каждом блоке
-    [[nodiscard]] Types::index rows_in_block() const noexcept { return rows_in_block_; }
-    [[nodiscard]] Types::index cols_in_block() const noexcept { return cols_in_block_; }
-    // Возвращают количество строк и столбцов во всей матрице (то есть в большой матрице, которая тут удобно хранится)
-    // имеется ввиду что-то типа outerSize в терминологии Eigen
-    [[nodiscard]] Types::index rows() const noexcept { return rows_in_block_ * blocks.rows(); }
-    [[nodiscard]] Types::index cols() const noexcept { return cols_in_block_ * blocks.cols(); }
+        /**
+         * Конструктор сейчас работает при условии, что в типе block_t есть методы rows() и cols()
+         *
+         * @param block_rows -- количество строк матрицы, считая в блоках
+         * @param block_cols -- количество столбцов матрицы, считая в блоках
+         * @param get_block -- функция, которая возвращает квадратную матрицу, размеры одинаковы для любых пар (i, j)
+         *
+         * Консистентность состояния поддерживается, если функция get_block возвращает блоки
+         * одного и того же размера
+         */
+        ToeplitzStructure(Types::index block_rows, Types::index block_cols,
+                          const std::function<block_t(Types::index i, Types::index j)>& get_block);
 
-    [[nodiscard]] Types::index rows_in_toeplitrz() const { return blocks.rows(); };
-    [[nodiscard]] Types::index cols_in_toeplitrz() const { return blocks.cols(); };
+        ToeplitzStructure(Types::index block_rows, Types::index block_cols, Containers::vector<block_t>&& blocks_);
 
-    // --- Доступ к элементам на чтение --- //
+        /*
+         * Построить нулевую матрицу с заданном формате.
+         *
+         * Это почти как дефолтный конструктор, только не совсем
+         *
+         */
+        ToeplitzStructure(Types::index block_rows, Types::index block_cols, Types::index rows_in_block,
+                          Types::index cols_in_block);
 
-    /** Доступ к настоящим элементам в матрице, а не к блокам! */
-    [[nodiscard]] const scalar_t &operator()(Types::index i, Types::index j) const noexcept;
-    /** Доступ к блокам в матрице */
-    const ToeplitzContainer<block_t> &get_blocks() const noexcept { return blocks; }
+        /** Умножение матрицы на вектор */
+        [[nodiscard]] vector_t matvec(const vector_t& vec) const noexcept;
+        /** Умножение матрицы на число с возвращением копии */
+        [[nodiscard]] ToeplitzStructure mull(scalar_t value) const noexcept;
+        /** Умножение себя на число */
+        const ToeplitzStructure& mull_inplace(scalar_t value) noexcept;
+        /** Взятие диагонали */
+        [[nodiscard]] vector_t diagonal() const;
 
-    // ---- Static methods --- //
-    inline static Types::index get_size_of_container(Types::index rows, Types::index cols) noexcept
-        __attribute__((always_inline)) {
-        return rows + cols - 1;
+        // --- Selectors --- //
+        /**
+         * Вернуть блок в матрице под передаваемой нумерацией
+         * @param row номер строки (в контексте блочной структуры)
+         * @param col номер столбца (в контексте блочной структуры)
+         * @return const ref на соотвествующий блок в тёплицевом контейнере
+         */
+        [[nodiscard]] const block_t& get_block(Types::index row, Types::index col) const noexcept
+        {
+            return blocks(row, col);
+        }
+
+        [[nodiscard]] block_t& get_block(Types::index row, Types::index col) noexcept { return blocks(row, col); }
+
+        // Возвращают значения строк и столбцов в каждом блоке
+        [[nodiscard]] Types::index rows_in_block() const noexcept { return rows_in_block_; }
+        [[nodiscard]] Types::index cols_in_block() const noexcept { return cols_in_block_; }
+        // Возвращают количество строк и столбцов во всей матрице (то есть в большой матрице, которая тут удобно хранится)
+        // имеется ввиду outerSize в терминологии Eigen
+        [[nodiscard]] Types::index rows() const noexcept { return rows_in_block_ * blocks.rows(); }
+        [[nodiscard]] Types::index cols() const noexcept { return cols_in_block_ * blocks.cols(); }
+
+        [[nodiscard]] Types::index rows_in_toeplitrz() const { return blocks.rows(); };
+        [[nodiscard]] Types::index cols_in_toeplitrz() const { return blocks.cols(); };
+
+        // --- Доступ к элементам на чтение --- //
+
+        /** Доступ к настоящим элементам в матрице, а не к блокам! */
+        [[nodiscard]] const scalar_t& operator()(Types::index i, Types::index j) const noexcept;
+        /** Доступ к блокам в матрице */
+        const ToeplitzContainer<block_t>& get_blocks() const noexcept { return blocks; }
+
+        // ---- Static methods --- //
+        inline static Types::index get_size_of_container(Types::index rows, Types::index cols) noexcept
+        __attribute__((always_inline))
+        {
+            return rows + cols - 1;
+        };
+
+        // Приведение к плотной матрице
+        Types::MatrixX<scalar_t> to_dense() const noexcept;
     };
 
-    // Приведение к плотной матрице
-    Types::MatrixX<scalar_t> to_dense() const noexcept;
-};
+    template <typename scalar_t, typename block_t>
+    typename ToeplitzStructure<scalar_t, block_t>::vector_t ToeplitzStructure<scalar_t, block_t>::diagonal() const
+    {
+        if (rows_in_block_ != cols_in_block_)
+        {
+            throw std::runtime_error(
+                "To correct use of diagonal method internal blocks of toeplitz structure must be square");
+        }
 
-template <typename scalar_t, typename block_t>
-typename ToeplitzStructure<scalar_t, block_t>::vector_t ToeplitzStructure<scalar_t, block_t>::diagonal() const {
-    if (rows_in_block_ != cols_in_block_) {
-        throw std::runtime_error(
-            "To correct use of diagonal method internal blocks of toeplitz structure must be square");
+        const Types::index diagonal_size = std::min(rows_in_block_, cols_in_block_);
+        const Types::index how_many_diagonal_blocks = std::min(blocks.rows(), blocks.cols());
+        const vector_t subdiag = blocks(0, 0).diagonal();
+
+        vector_t result = vector_t::Zero(diagonal_size * how_many_diagonal_blocks);
+        for (Types::index i = 0; i < how_many_diagonal_blocks; ++i)
+        {
+            result.block(i * diagonal_size, 0, diagonal_size, 1) = subdiag;
+        }
+        return result;
     }
 
-    const Types::index diagonal_size = std::min(rows_in_block_, cols_in_block_);
-    const Types::index how_many_diagonal_blocks = std::min(blocks.rows(), blocks.cols());
-    const vector_t subdiag = blocks(0, 0).diagonal();
-
-    vector_t result = vector_t::Zero(diagonal_size * how_many_diagonal_blocks);
-    for (Types::index i = 0; i < how_many_diagonal_blocks; ++i) {
-        result.block(i * diagonal_size, 0, diagonal_size, 1) = subdiag;
+    template <typename scalar_t, typename block_t>
+    [[nodiscard]] const scalar_t& ToeplitzStructure<scalar_t, block_t>::operator()(Types::index i,
+        Types::index j) const noexcept
+    {
+        // сначала поймем в каком из "верхних блоков" мы находимся
+        const Types::index row_on_current_level = i / rows_in_block_;
+        const Types::index col_on_current_level = j / cols_in_block_;
+        // далее смотрим индексы на следующем уровне вложенности
+        const Types::index i_new = i % rows_in_block_;
+        const Types::index j_new = j % cols_in_block_;
+        // и идём стучаться в него
+        return blocks(row_on_current_level, col_on_current_level)(i_new, j_new);
     }
-    return result;
-}
 
-template <typename scalar_t, typename block_t>
-[[nodiscard]] const scalar_t &ToeplitzStructure<scalar_t, block_t>::operator()(Types::index i,
-                                                                               Types::index j) const noexcept {
-    // сначала поймем в каком из "верхних блоков" мы находимся
-    const Types::index row_on_current_level = i / rows_in_block_;
-    const Types::index col_on_current_level = j / cols_in_block_;
-    const Types::index i_new = i % rows_in_block_;
-    const Types::index j_new = j % cols_in_block_;
-    return blocks(row_on_current_level, col_on_current_level)(i_new, j_new);
-}
+    template <typename scalar_t, typename block_t>
+    ToeplitzStructure<scalar_t, block_t>::ToeplitzStructure(
+        Types::index block_rows, Types::index block_cols,
+        const std::function<block_t(Types::index i, Types::index j)>& get_block)
+        : blocks(block_rows, block_cols, get_block), rows_in_block_(blocks(0, 0).rows()),
+          cols_in_block_(blocks(0, 0).cols())
+    {
+    }
 
-template <typename scalar_t, typename block_t>
-ToeplitzStructure<scalar_t, block_t>::ToeplitzStructure(
-    Types::index block_rows, Types::index block_cols,
-    const std::function<block_t(Types::index i, Types::index j)> &get_block)
-    : blocks(block_rows, block_cols, get_block), rows_in_block_(blocks(0, 0).rows()),
-      cols_in_block_(blocks(0, 0).cols()) {}
+    template <typename scalar_t, typename block_t>
+    ToeplitzStructure<scalar_t, block_t>::ToeplitzStructure(Types::index block_rows, Types::index block_cols,
+                                                            Containers::vector<block_t>&& blocks_)
+        : blocks(block_rows, block_cols, std::move(blocks_)), rows_in_block_(blocks(0, 0).rows()),
+          cols_in_block_(blocks(0, 0).cols())
+    {
+    }
 
-template <typename scalar_t, typename block_t>
-ToeplitzStructure<scalar_t, block_t>::ToeplitzStructure(Types::index block_rows, Types::index block_cols,
-                                                        Containers::vector<block_t> &&blocks_)
-    : blocks(block_rows, block_cols, std::move(blocks_)), rows_in_block_(blocks(0, 0).rows()),
-      cols_in_block_(blocks(0, 0).cols()) {}
 
-template <typename scalar_t, typename block_t>
-typename ToeplitzStructure<scalar_t, block_t>::vector_t
-ToeplitzStructure<scalar_t, block_t>::matvec(const vector_t &vec) const noexcept {
 
-    assert(vec.size() == cols());
-    // создаем нулевой вектор результата, в который будем записывать ответ
-    vector_t result = vector_t::Zero(rows());
-//    std::cout << "Matvec started" << std::endl;
-    // Далее итерируемся по всем блокам (потому что обычное умножение, а не потому что бесструктурная матрица!)
+    template <typename scalar_t, typename block_t>
+    typename ToeplitzStructure<scalar_t, block_t>::vector_t
+    ToeplitzStructure<scalar_t, block_t>::matvec(const vector_t& vec) const noexcept
+    {
+        assert(vec.size() == cols());
+        // создаем нулевой вектор результата, в который будем записывать ответ
+        vector_t result = vector_t::Zero(rows());
+        //    std::cout << "Matvec started" << std::endl;
+        // Далее итерируемся по всем блокам (потому что обычное умножение, а не потому что бесструктурная матрица!)
 #pragma omp parallel for collapse(2) num_threads(4)
-    for (Types::index i = 0; i < blocks.rows(); ++i) {
-        for (Types::index j = 0; j < blocks.cols(); ++j) {
-            // Достаем ссылку на текущий блок (тут как раз проявляется тёплицевость)
-            const block_t &current_block = blocks(i, j);
-            // Теперь умножаем на соответствующий подвектор
-            const vector_t &sub_vector = vec.block(j * cols_in_block_, 0, cols_in_block_, 1);
-            // тут пришлось скопировать, потому что block -- это не вектор, а block-expression внутри Eigen
-            // тут просто получилось несоответствие типов для вызова матвека
-            vector_t local_res = current_block * sub_vector;
-            // Складываем результат
-#pragma omp critical
+        for (Types::index i = 0; i < blocks.rows(); ++i)
+        {
+            for (Types::index j = 0; j < blocks.cols(); ++j)
             {
-                result.block(i * rows_in_block_, 0, rows_in_block_, 1) += local_res;
+                // Достаем ссылку на текущий блок (тут как раз проявляется тёплицевость)
+                const block_t& current_block = blocks(i, j);
+                // Теперь умножаем на соответствующий подвектор
+                const vector_t& sub_vector = vec.block(j * cols_in_block_, 0, cols_in_block_, 1);
+                // тут пришлось скопировать, потому что block -- это не вектор, а block-expression внутри Eigen
+                // тут просто получилось несоответствие типов для вызова матвека
+                vector_t local_res = current_block * sub_vector;
+                // Складываем результат
+#pragma omp critical
+                {
+                    result.block(i * rows_in_block_, 0, rows_in_block_, 1) += local_res;
+                }
             }
         }
+        //    std::cout << "Matvec ended" << std::endl;
+        return result;
     }
-//    std::cout << "Matvec ended" << std::endl;
-    return result;
-}
 
-template <typename scalar_t, typename block_t>
-typename ToeplitzStructure<scalar_t, block_t>::vector_t
-ToeplitzStructure<scalar_t, block_t>::matvec_wise(const vector_t &vec) const noexcept {
 
-    assert(vec.size() == cols());
-    // создаем нулевой вектор результата, в который будем записывать ответ
-    vector_t result = vector_t::Zero(rows());
-
-    const Types::index cols_in_toeplitz_structure = cols_in_toeplitrz();
-
-    // 1) Сделали решейпнутую правую часть (и копируем её?)
-    const dense_matrix_t reshaped_rhs = vec.reshaped(cols_in_block_, cols_in_toeplitz_structure);
-
-    // 2) Далее цикл по блокам с умножением нужного количества "подвекторов из правой части"
-// #pragma omp parallel for schedule(static) num_threads(14)
-    for (Types::index i = 0; i < blocks.get_actual_size(); i++) {
-        // Сначала понимаем какой это блок: строчный или столбцовый
-        const bool shift_sign = (i < cols_in_toeplitz_structure);
-        // Затем понимаем сколько надо отступить, чтобы не умножать лишнего
-        const Types::index shift_module = shift_sign ? i : i - cols_in_toeplitz_structure + 1;
-        // Затем рассчитываем блок, который надо вытащить из решейпнутой правой части
-        const Types::index col_to_start = shift_sign ? shift_module : 0;
-        const Types::index n_cols_to_get = cols_in_toeplitz_structure - shift_module;
-        // Затем вырезаем этот блок,
-        const dense_matrix_t rhs_block_to_mull = reshaped_rhs.block(0, col_to_start, cols_in_block_, n_cols_to_get);
-        // умножаем на внутренний блок,
-        const vector_t local_res = (blocks.get_values()[i] * rhs_block_to_mull).reshaped(n_cols_to_get * rows_in_block_, 1);
-        // и складываем в нужное место
-        const Types::index first_row_where_to_add = shift_sign ? 0 : shift_module;
-        result.block(cols_in_block_ * first_row_where_to_add, 0, n_cols_to_get * rows_in_block_, 1) += local_res;
+    template <typename scalar_t, typename block_t>
+    ToeplitzStructure<scalar_t, block_t> ToeplitzStructure<scalar_t, block_t>::mull(scalar_t value) const noexcept
+    {
+        std::cout << "Mul with one copy" << std::endl;
+        return ToeplitzStructure(*this).mull_inplace(value);
     }
-    return result;
-}
 
-template <typename scalar_t, typename block_t>
-ToeplitzStructure<scalar_t, block_t> ToeplitzStructure<scalar_t, block_t>::mull(scalar_t value) const noexcept {
-    std::cout << "Mul with one copy" << std::endl;
-    return ToeplitzStructure(*this).mull_inplace(value);
-}
-
-template <typename scalar_t, typename block_t>
-const ToeplitzStructure<scalar_t, block_t> &
-ToeplitzStructure<scalar_t, block_t>::mull_inplace(scalar_t value) noexcept {
-    std::cout << "Mull inplace" << std::endl;
-    for (Types::index index = 0, total = blocks.get_actual_size(); index != total; ++index) {
-        blocks(index) *= value;
+    template <typename scalar_t, typename block_t>
+    const ToeplitzStructure<scalar_t, block_t>&
+    ToeplitzStructure<scalar_t, block_t>::mull_inplace(scalar_t value) noexcept
+    {
+        std::cout << "Mull inplace" << std::endl;
+        for (Types::index index = 0, total = blocks.get_actual_size(); index != total; ++index)
+        {
+            blocks(index) *= value;
+        }
+        return *this;
     }
-    return *this;
-}
 
-template <typename scalar_t, typename block_t>
-Types::MatrixX<scalar_t> ToeplitzStructure<scalar_t, block_t>::to_dense() const noexcept {
-    Types::MatrixX<scalar_t> result(rows(), cols());
-    for (Types::index i = 0; i < blocks.rows(); ++i) {
-        for (Types::index j = 0; j < blocks.cols(); ++j) {
-            const auto& block = blocks(i, j);
-            if constexpr (std::is_same_v<block_t, Types::MatrixX<scalar_t>>) {
-                result.block(i * rows_in_block_, j * cols_in_block_, rows_in_block_, cols_in_block_) = block;
-            } else {
-               // std::cout << block.rows() << " " << rows_in_block_ << std::endl;
-                result.block(i * rows_in_block_, j * cols_in_block_, rows_in_block_, cols_in_block_) = block.to_dense();
+    template <typename scalar_t, typename block_t>
+    Types::MatrixX<scalar_t> ToeplitzStructure<scalar_t, block_t>::to_dense() const noexcept
+    {
+        Types::MatrixX<scalar_t> result(rows(), cols());
+        for (Types::index i = 0; i < blocks.rows(); ++i)
+        {
+            for (Types::index j = 0; j < blocks.cols(); ++j)
+            {
+                const auto& block = blocks(i, j);
+                if constexpr (std::is_same_v<block_t, Types::MatrixX<scalar_t>>)
+                {
+                    result.block(i * rows_in_block_, j * cols_in_block_, rows_in_block_, cols_in_block_) = block;
+                }
+                else
+                {
+                    // std::cout << block.rows() << " " << rows_in_block_ << std::endl;
+                    result.block(i * rows_in_block_, j * cols_in_block_, rows_in_block_, cols_in_block_) = block.
+                        to_dense();
+                }
             }
         }
+        return result;
     }
-    return result;
-}
 
 
-// --- Defined binary operators --- //
+    // --- Defined binary operators --- //
 #if 0
 template <typename scalar_t, typename block_t>
 ToeplitzStructure<scalar_t, block_t> operator*(const ToeplitzStructure<scalar_t, block_t> &matrix, scalar_t value) {
@@ -261,13 +264,12 @@ ToeplitzStructure<scalar_t, block_t> & operator*=(ToeplitzStructure<scalar_t, bl
 }
 #endif
 
-template <typename scalar_t, typename block_t>
-Types::VectorX<scalar_t> operator*(const ToeplitzStructure<scalar_t, block_t> &matrix, const Types::VectorX<scalar_t> &vector) noexcept {
-    return matrix.matvec(vector);
-}
-
-
-
+    template <typename scalar_t, typename block_t>
+    Types::VectorX<scalar_t> operator*(const ToeplitzStructure<scalar_t, block_t>& matrix,
+                                       const Types::VectorX<scalar_t>& vector) noexcept
+    {
+        return matrix.matvec(vector);
+    }
 }
 
 
