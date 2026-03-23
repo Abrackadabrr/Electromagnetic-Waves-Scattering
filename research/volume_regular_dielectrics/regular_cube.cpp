@@ -13,9 +13,11 @@
 
 #include "../Solve.hpp"
 
-#include <VTKFunctions.hpp>
+#include "VTKFunctions.hpp"
+
+#include "math/fields/Utils.hpp"
+
 #include <iostream>
-#include <math/fields/Utils.hpp>
 
 using namespace EMW;
 
@@ -25,9 +27,10 @@ int main() {
     constexpr Types::index Nx = 3;
     constexpr Types::index Ny = static_cast<size_t>(1 / cube_length) + 1;
     constexpr Types::index Nz = Ny;
-
+    constexpr Types::scalar cube_measure = cube_length * cube_length * cube_length;
+    // L2 норма базисных функций
+    std::cout << "L2 норма базисных функций = " << cube_measure << std::endl;
     // Сетка
-    // Mesh::VolumeMesh::CubeMeshWithData mesh{Types::point_t{0, 0, 0}, cube_length, Nx};
     Mesh::VolumeMesh::CubeMeshWithData mesh{Types::point_t{0, -0.5, -0.5}, (Nx - 1) * cube_length,
                                             (Ny - 1) * cube_length, (Nz - 1) * cube_length, Nx, Ny, Nz};
 
@@ -40,7 +43,7 @@ int main() {
 
     // Галеркинская проекция правой части на сетку (правая часть линейной системы)
     Operators::Volume::ProjectorOnMesh proj{mesh};
-    const auto rhs = proj([incident_field](Types::point_t p) { return incident_field.value(p); });
+    auto rhs = proj([incident_field](Types::point_t p) { return incident_field.value(p); });
     std::cout << "RHS size: " << rhs.rows() << std::endl;
 
     // Матрицу собираем
@@ -48,7 +51,10 @@ int main() {
     auto mat = operator_K.get_galerkin_matrix();
     std::cout << "Matrix (" << mat.rows() << ", " << mat.cols() << ')' << std::endl;
     std::cout << "Matrix for norm = " << mat.norm() << std::endl;
-    mat = Types::MatrixXc::Identity(mat.rows(), mat.cols()) - mat;
+    // Собираем матрицу системы
+    mat = Types::MatrixXc::Identity(mat.rows(), mat.cols()) - mat / (cube_measure * cube_measure);
+    // Поправляем правую часть
+    rhs = rhs / (cube_measure * cube_measure);
 
     // Решаем линейную систему
     const auto solution = Research::solve<Eigen::GMRES>(mat, rhs, 100, 1e-5);

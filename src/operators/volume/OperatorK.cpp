@@ -41,17 +41,21 @@ Types::Matrix3c operator_K_over_cube_mesh::matrix_2_coef(Types::index k, Types::
                     Types::scalar multiplier = face_k_idx == face_p_idx ? 1 : -1;
                     auto face_k = faces_k[face_k_idx];
                     auto face_p = faces_p[face_p_idx];
+
                     if ((cube_p.center_ - cube_p.center_).norm() < 6 * h) {
                         // то интегрируемся с выделением особенности
                         // 1. Интеграл от ньютонова потенциала 2д ячейки по ней же самой
                         const auto analytical_integrand = [&face_k, &face_p](Types::scalar x, Types::scalar y) {
                             const auto point = face_k.parametrization(x, y);
-                            return Math::AnalyticalIntegration::integrate_1_div_r(point, face_p) * face_k.multiplier(
+                            const auto integrand_value = Math::AnalyticalIntegration::integrate_1_div_r(point, face_p);
+                            return integrand_value * face_k.multiplier(
                                        x, y);
                         };
-                        result(i, j) += multiplier * Math::Constants::inverse_4PI<Types::scalar>() * DefiniteIntegrals::integrate<
+                        const auto singular_part = Math::Constants::inverse_4PI<Types::scalar>() * DefiniteIntegrals::integrate<
                             DefiniteIntegrals::GaussLegendre::Quadrature<
-                                4, 4>>(analytical_integrand, {0, 0}, {1, 1});
+                                3, 3>>(analytical_integrand, {0, 0}, {1, 1});
+                        result(i, j) += multiplier * singular_part;
+
                         // 2. Интеграл от ограниченного остатка
                         const auto residual_integrand = [&face_k, &face_p, wn = wave_number](
                             Types::scalar x1, Types::scalar y1, Types::scalar x2, Types::scalar y2) {
@@ -60,10 +64,11 @@ Types::Matrix3c operator_K_over_cube_mesh::matrix_2_coef(Types::index k, Types::
                             return Helmholtz::F_bounded_part(wn, x, y) * face_p.multiplier(x1, y1) * face_k.multiplier(
                                        x2, y2);
                         };
-
-                        result(i, j) += multiplier * DefiniteIntegrals::integrate<DefiniteIntegrals::GaussLegendre::Quadrature<
-                            3, 3, 3, 3>>(
+                        const auto regular_part = DefiniteIntegrals::integrate<DefiniteIntegrals::GaussLegendre::Quadrature<
+                            2, 2, 2, 2>>(
                             residual_integrand, {0, 0, 0, 0}, {1, 1, 1, 1});
+                        result(i, j) += multiplier * regular_part;
+
                     } else {
                         // Иначе интегрируемся без выделения особенности сразу
                         const auto integrand = [&face_k, &face_p, wn = wave_number](
@@ -74,7 +79,7 @@ Types::Matrix3c operator_K_over_cube_mesh::matrix_2_coef(Types::index k, Types::
                         };
 
                         result(i, j) += multiplier * DefiniteIntegrals::integrate<DefiniteIntegrals::GaussLegendre::Quadrature<
-                            3, 3, 3, 3>>(
+                            2, 2, 2, 2>>(
                             integrand, {0, 0, 0, 0}, {1, 1, 1, 1});
                     }
                 }
@@ -109,7 +114,7 @@ Types::complex_d operator_K_over_cube_mesh::matrix_3_coef(Types::index k, Types:
 
         const auto first_part =
                                     DefiniteIntegrals::integrate<DefiniteIntegrals::GaussLegendre::Quadrature<
-                                        3, 3, 3, 2, 2, 2>>(
+                                        2, 2, 2, 2, 2, 2>>(
                                         integrand_bounded_part, {mesh.leftDownCorner(k)[0], mesh.leftDownCorner(k)[1],
                                                                  mesh.leftDownCorner(k)[2],
                                                                  mesh.leftDownCorner(p)[0], mesh.leftDownCorner(p)[1],
@@ -118,7 +123,7 @@ Types::complex_d operator_K_over_cube_mesh::matrix_3_coef(Types::index k, Types:
         const auto second_part =
                                      Math::Constants::inverse_4PI<Types::scalar>() *
                                      DefiniteIntegrals::integrate<DefiniteIntegrals::GaussLegendre::Quadrature<
-                                         4, 4, 4>>(
+                                         3, 3, 3>>(
                                          potential_of_cube, {mesh.leftDownCorner(p)[0], mesh.leftDownCorner(p)[1],
                                                              mesh.leftDownCorner(p)[2]},
                                          {mesh.dx(), mesh.dy(), mesh.dz()});
