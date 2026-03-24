@@ -87,18 +87,19 @@ TEST_F(VOLUME_OPERATOR_OVER_CUBE_MESH_TESTS, SimpleTripleBlockToeplitzTest) {
 }
 
 TEST_F(VOLUME_OPERATOR_OVER_CUBE_MESH_TESTS, TEST_SOLVING) {
-    constexpr Types::scalar cube_length = 0.5;
-    constexpr Types::index Nx = 5;
+    constexpr Types::scalar cube_length = 0.1;
+    constexpr Types::index Nx = 8;
     // берем кубическую сетку на кубе
     Mesh::VolumeMesh::CubeMesh mesh{Types::point_t{0, 0, 0}, cube_length, Nx};
     Operators::Volume::operator_K_over_cube_mesh operator_K{k, mesh};
-    // собираем матрицу
-    auto mat = operator_K.get_galerkin_matrix();
-    std::cout << "Matrix (" << mat.rows() << ", " << mat.cols() << ')' << std::endl;
-    mat -= Types::MatrixXc::Identity(mat.rows(), mat.cols());
-    // собираем правую часть
-    Physics::planeWaveCase incident_field{Types::Vector3d{1, 0, 0}, k, Types::Vector3d{0, 1, 0}};
-    Operators::Volume::ProjectorOnMesh proj{mesh};
-    const auto rhs = proj([incident_field](Types::point_t p) { return incident_field.value(p); });
-    std::cout << "RHS size: " << rhs.rows() << std::endl;
+    // собираем полную матрицу
+    auto full_mat = operator_K.get_galerkin_matrix();
+    std::cout << "Matrix (" << full_mat.rows() << ", " << full_mat.cols() << ')' << std::endl;
+
+    // Собираем тёплицеву матрицу
+    auto toep_mat = operator_K.compute_galerkin_matrix();
+    std::cout << "Toep Matrix (" << toep_mat.rows() << ", " << toep_mat.cols() << ')' << std::endl;
+    std::cout << full_mat.norm() << std::endl;
+    // Сравниваем типов
+    ASSERT_NEAR((full_mat - toep_mat.to_dense()).norm(), 0, 1e-14 * full_mat.norm());
 }

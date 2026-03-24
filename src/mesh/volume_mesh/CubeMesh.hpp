@@ -74,6 +74,9 @@ protected:
     [[nodiscard]] Types::scalar dx() const { return dx_; };
     [[nodiscard]] Types::scalar dy() const { return dy_; };
     [[nodiscard]] Types::scalar dz() const { return dz_; };
+    [[nodiscard]] size_t nx() const { return nx_; };
+    [[nodiscard]] size_t ny() const { return ny_; };
+    [[nodiscard]] size_t nz() const { return nz_; };
 
     // --- Setters --- //
     void setName(const std::string& name) { name_ = name; };

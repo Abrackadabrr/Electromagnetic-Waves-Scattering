@@ -10,7 +10,9 @@
 
 #include "operators/Functions.hpp"
 
+#include <bitset>
 #include <iostream>
+#include <bits/fs_fwd.h>
 
 namespace EMW::Operators::Volume {
 namespace Gl = DefiniteIntegrals::GaussLegendre;
@@ -36,7 +38,7 @@ Types::Matrix3c operator_K_over_cube_mesh::matrix_2_coef(Types::index k, Types::
 
             // и тут нужно взять четыре одинаковых по вайбу интеграла
             for (size_t face_k_idx = 0; face_k_idx < 2; face_k_idx++)
-                for (size_t face_p_idx = 0; face_p_idx < 2; face_p_idx++){
+                for (size_t face_p_idx = 0; face_p_idx < 2; face_p_idx++) {
                     // Делаем.
                     Types::scalar multiplier = face_k_idx == face_p_idx ? 1 : -1;
                     auto face_k = faces_k[face_k_idx];
@@ -51,9 +53,10 @@ Types::Matrix3c operator_K_over_cube_mesh::matrix_2_coef(Types::index k, Types::
                             return integrand_value * face_k.multiplier(
                                        x, y);
                         };
-                        const auto singular_part = Math::Constants::inverse_4PI<Types::scalar>() * DefiniteIntegrals::integrate<
-                            DefiniteIntegrals::GaussLegendre::Quadrature<
-                                3, 3>>(analytical_integrand, {0, 0}, {1, 1});
+                        const auto singular_part =
+                            Math::Constants::inverse_4PI<Types::scalar>() * DefiniteIntegrals::integrate<
+                                DefiniteIntegrals::GaussLegendre::Quadrature<
+                                    3, 3>>(analytical_integrand, {0, 0}, {1, 1});
                         result(i, j) += multiplier * singular_part;
 
                         // 2. Интеграл от ограниченного остатка
@@ -64,8 +67,9 @@ Types::Matrix3c operator_K_over_cube_mesh::matrix_2_coef(Types::index k, Types::
                             return Helmholtz::F_bounded_part(wn, x, y) * face_p.multiplier(x1, y1) * face_k.multiplier(
                                        x2, y2);
                         };
-                        const auto regular_part = DefiniteIntegrals::integrate<DefiniteIntegrals::GaussLegendre::Quadrature<
-                            3, 3, 3, 3>>(
+                        const auto regular_part = DefiniteIntegrals::integrate<
+                            DefiniteIntegrals::GaussLegendre::Quadrature<
+                                3, 3, 3, 3>>(
                             residual_integrand, {0, 0, 0, 0}, {1, 1, 1, 1});
                         result(i, j) += multiplier * regular_part;
 
@@ -78,8 +82,9 @@ Types::Matrix3c operator_K_over_cube_mesh::matrix_2_coef(Types::index k, Types::
                             return Helmholtz::F(wn, x, y) * face_p.multiplier(x1, y1) * face_k.multiplier(x2, y2);
                         };
 
-                        result(i, j) += multiplier * DefiniteIntegrals::integrate<DefiniteIntegrals::GaussLegendre::Quadrature<
-                            3, 3, 3, 3>>(
+                        result(i, j) += multiplier * DefiniteIntegrals::integrate<
+                            DefiniteIntegrals::GaussLegendre::Quadrature<
+                                3, 3, 3, 3>>(
                             integrand, {0, 0, 0, 0}, {1, 1, 1, 1});
                     }
                 }
@@ -113,20 +118,20 @@ Types::complex_d operator_K_over_cube_mesh::matrix_3_coef(Types::index k, Types:
         };
 
         const auto regular_part =
-                                    DefiniteIntegrals::integrate<DefiniteIntegrals::GaussLegendre::Quadrature<
-                                        2, 2, 2, 2, 2, 2>>(
-                                        integrand_bounded_part, {mesh.leftDownCorner(k)[0], mesh.leftDownCorner(k)[1],
-                                                                 mesh.leftDownCorner(k)[2],
-                                                                 mesh.leftDownCorner(p)[0], mesh.leftDownCorner(p)[1],
-                                                                 mesh.leftDownCorner(p)[2]},
-                                        {mesh.dx(), mesh.dy(), mesh.dz(), mesh.dx(), mesh.dy(), mesh.dz()});
+            DefiniteIntegrals::integrate<DefiniteIntegrals::GaussLegendre::Quadrature<
+                2, 2, 2, 2, 2, 2>>(
+                integrand_bounded_part, {mesh.leftDownCorner(k)[0], mesh.leftDownCorner(k)[1],
+                                         mesh.leftDownCorner(k)[2],
+                                         mesh.leftDownCorner(p)[0], mesh.leftDownCorner(p)[1],
+                                         mesh.leftDownCorner(p)[2]},
+                {mesh.dx(), mesh.dy(), mesh.dz(), mesh.dx(), mesh.dy(), mesh.dz()});
         const auto singular_part =
-                                     Math::Constants::inverse_4PI<Types::scalar>() *
-                                     DefiniteIntegrals::integrate<DefiniteIntegrals::GaussLegendre::Quadrature<
-                                         3, 3, 3>>(
-                                         potential_of_cube_k, {mesh.leftDownCorner(p)[0], mesh.leftDownCorner(p)[1],
-                                                             mesh.leftDownCorner(p)[2]},
-                                         {mesh.dx(), mesh.dy(), mesh.dz()});
+            Math::Constants::inverse_4PI<Types::scalar>() *
+            DefiniteIntegrals::integrate<DefiniteIntegrals::GaussLegendre::Quadrature<
+                3, 3, 3>>(
+                potential_of_cube_k, {mesh.leftDownCorner(p)[0], mesh.leftDownCorner(p)[1],
+                                      mesh.leftDownCorner(p)[2]},
+                {mesh.dx(), mesh.dy(), mesh.dz()});
         return k2 * (regular_part + singular_part);
     }
 
@@ -172,6 +177,19 @@ Types::scalar operator_K_over_cube_mesh::newton_potential_of_cube(Types::index k
                integrand, {dz / 2}, {dz / 2});
 }
 
+Types::Matrix3c operator_K_over_cube_mesh::galerkin_block_for_cubes(size_t k, size_t p) const {
+    const Types::index n_cubes = mesh.getCells().size();
+    // считаем поверхностную часть
+    const auto volume_res = matrix_3_coef(k, p);
+    Types::Matrix3c result = -matrix_2_coef(k, p);
+    // и подправляем общую матрицу
+    result(0, 0) += volume_res;
+    result(1, 1) += volume_res;
+    result(2, 2) += volume_res;
+
+    return result;
+}
+
 Types::MatrixXc operator_K_over_cube_mesh::get_galerkin_matrix() const {
     const Types::index n_cubes = mesh.getCells().size();
     Types::MatrixXc result = Types::MatrixXc::Zero(3 * n_cubes, 3 * n_cubes);
@@ -207,4 +225,90 @@ void operator_K_over_cube_mesh::get_galerkin_matrix_inplace(Types::MatrixXc *p_m
         }
     }
 }
+
+Math::LinAgl::Matrix::TripleToeplitzBlock<Types::complex_d>
+operator_K_over_cube_mesh::compute_galerkin_matrix() const {
+    const size_t first_layer_toeplitz = mesh.nx() - 1;
+    const size_t second_layer_toeplitz = mesh.ny() - 1;
+    const size_t third_layer_toeplitz = mesh.nz() - 1;
+    decltype(auto) result =
+        Math::LinAgl::Matrix::ZeroTripleToeplitzBlock<Types::complex_d>(first_layer_toeplitz, second_layer_toeplitz,
+                                                                        third_layer_toeplitz, 3);
+    // Циклы для расчета трижды теплицевой матрицы
+    // Эта штука так же долго считает, но занимает уже меньше памяти
+    for (size_t i3 = 0; i3 < third_layer_toeplitz; ++i3)
+        for (size_t j3 = 0; j3 < third_layer_toeplitz; ++j3)
+            for (size_t i2 = 0; i2 < second_layer_toeplitz; ++i2)
+                for (size_t j2 = 0; j2 < second_layer_toeplitz; ++j2)
+                    for (size_t i1 = 0; i1 < first_layer_toeplitz; ++i1)
+                        for (size_t j1 = 0; j1 < first_layer_toeplitz; ++j1) {
+                            auto& working_block = result.get_block(i3, j3).
+                                   get_block(i2, j2).
+                                   get_block(i1, j1);
+                            // Ускорение заполнения матрицы за счет отсуствия
+                            // пересчёта одинаковых блоков
+                            // TODO: сделать нормальный расчет, то есть аналитически вывести все формулки
+                            if (working_block.norm() < 1e-10) {
+                                // Ищем кубы по трёхмерному индексу
+                                const auto idx1 = mesh.cube_idx(i1, i2, i3);
+                                const auto idx2 = mesh.cube_idx(j1, j2, j3);
+                                // Счёт
+                                const auto volume_res = matrix_3_coef(idx1, idx2);
+                                Types::Matrix3c surface_res = -matrix_2_coef(idx1, idx2);
+                                // и подправляем общую матрицу
+                                surface_res(0, 0) += volume_res;
+                                surface_res(1, 1) += volume_res;
+                                surface_res(2, 2) += volume_res;
+
+                                working_block = surface_res;
+                            }
+                        }
+    return result;
+}
+
+#if 0
+Math::LinAgl::Matrix::TripleToeplitzBlock<Types::complex_d>
+operator_K_over_cube_mesh::compute_galerkin_matrix_wise() const {
+    const size_t first_layer_toeplitz = mesh.nx() - 1;
+    const size_t second_layer_toeplitz = mesh.ny() - 1;
+    const size_t third_layer_toeplitz = mesh.nz() - 1;
+    decltype(auto) result =
+        Math::LinAgl::Matrix::ZeroTripleToeplitzBlock<Types::complex_d>(first_layer_toeplitz, second_layer_toeplitz,
+                                                                        third_layer_toeplitz, 3);
+    // Циклы для расчета трижды теплицевой матрицы
+
+    // Функция, которая будет необходима для расчета возьми блоков в тёплицевой структуре
+    const auto calc_index_of_cube = [](size_t i1, size_t i2, size_t i3, uint8_t mask) {
+        return std::array{ (mask & 1) * i1, (mask & 2) * i2, (mask & 4) * i3};
+    };
+
+    for (Types::integer i3 = -third_layer_toeplitz + 1; i3 < third_layer_toeplitz; ++i3)
+        for (Types::integer i2 = -second_layer_toeplitz + 1; i2 < second_layer_toeplitz; ++i2)
+            for (Types::integer i1 = -first_layer_toeplitz + 1; i1 < first_layer_toeplitz; ++i1) {
+                // Находим какой-то куб внутри сетки
+                const auto current_cube_idx = mesh.cube_idx(i1, i2, i3);
+                // Считаем два варианта: взаимодействие reference_cube_idx на current_cube_idx
+                // и наоборот
+                const auto ref_to_cur = galerkin_block_for_cubes(reference_cube_idx, current_cube_idx);
+                const auto cur_to_ref = galerkin_block_for_cubes(reference_cube_idx, current_cube_idx);
+                // И теперь пытаемся понять куда этот расчет запихать в контейнер
+                for (char mask = 0; mask < 8; ++mask) {
+                    const auto idxs = calc_index_of_cube(i1, i2, i3, mask);
+                }
+                // И тут есть восемь возможных вариантов для расчета
+                // (как раз (2N_1 - 1)(2N_2 - 1)(2N_3 - 1) уникальных блоков в матрице)
+                auto &&col_third_level_block =
+                    result.get_block(i3, 0);
+                get_block(i2, 0).
+                    get_block(i1, 0) = surface_res;
+
+                // Заполняем первую строку
+                result.get_block(0, i3).
+                       get_block(0, i2).
+                       get_block(0, i1) = surface_res;
+            }
+
+    return result;
+}
+#endif
 }
