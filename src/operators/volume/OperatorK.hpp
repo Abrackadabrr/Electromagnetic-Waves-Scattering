@@ -78,7 +78,7 @@ namespace EMW::Operators::Volume
          * Аппроксимация методом Галеркина оператора К.
          * Используется специальная трижды тёплицева структура.
          */
-        [[nodiscard]] Math::LinAgl::Matrix::TripleToeplitzBlock<Types::complex_d> compute_galerkin_matrix() const;
+        [[nodiscard]] Math::LinAgl::Matrix::TripleToeplitzBlock<Types::complex_d> compute_galerkin_matrix(Types::scalar l1_basis_function_norm = 1) const;
         [[nodiscard]] Math::LinAgl::Matrix::TripleToeplitzBlock<Types::complex_d> compute_galerkin_matrix_wise() const;
     };
 } // namespace EMW::Operators::Volume

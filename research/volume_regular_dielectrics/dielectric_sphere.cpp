@@ -15,6 +15,9 @@
 
 #include "VTKFunctions.hpp"
 
+#include "MatrixTraits.hpp"
+#include "MatrixReplacement.hpp"
+
 #include "math/fields/Utils.hpp"
 
 #include <iostream>
@@ -29,12 +32,13 @@ Types::scalar permittivity_distribution(Types::point_t x) {
 
 int main() {
     // 1. Рисуем сетку
-    constexpr Types::scalar cube_length = 2 * SPHERE_RADUIS;
-    constexpr Types::index Nx = 16;
-    constexpr Types::index Ny = 16;
-    constexpr Types::index Nz = 16;
-    constexpr Types::scalar mesh_one_axis_size = SPHERE_RADUIS / (Nx - 1);
-    Mesh::VolumeMesh::CubeMeshWithData mesh{Types::point_t{0, 0, 0}, (Nx - 1) * mesh_one_axis_size,
+    constexpr Types::scalar cube_length = 3 * SPHERE_RADUIS;
+    constexpr Types::index Nx = 40;
+    constexpr Types::index Ny = 40;
+    constexpr Types::index Nz = 40;
+    constexpr Types::scalar mesh_one_axis_size = cube_length / (Nx - 1);
+    Mesh::VolumeMesh::CubeMeshWithData mesh{Types::point_t{-cube_length / 2, -cube_length / 2, -cube_length / 2},
+                                            (Nx - 1) * mesh_one_axis_size,
                                             (Ny - 1) * mesh_one_axis_size, (Nz - 1) * mesh_one_axis_size, Nx, Ny, Nz};
     mesh.setName("sphere");
     // Настраиваем диэлектрическую проницаемость
@@ -48,15 +52,17 @@ int main() {
 
     // 3. Галеркинская проекция
     Operators::Volume::ProjectorOnMesh proj{mesh};
+    const Types::scalar cube_measure = mesh.dx() * mesh.dy() * mesh.dz();
+    std::cout << "Объем элемента сетки: " << cube_measure << std::endl;
     auto rhs = proj([incident_field](Types::point_t p) { return incident_field.value(p); });
     std::cout << "Rhs rows = " << rhs.rows() << std::endl;
+    // Поправляем правую часть
+    Types::VectorXc b = rhs / std::sqrt(cube_measure);
 
     // Матрицу собираем
     Operators::Volume::operator_K_over_cube_mesh operator_K{k, mesh};
-    auto mat = operator_K.get_galerkin_matrix();
-    const Types::scalar cube_measure = mesh.dx() * mesh.dy() * mesh.dz();
+    auto mat = operator_K.compute_galerkin_matrix(std::sqrt(cube_measure));
 
-    // Изменяем матрицу
     Types::VectorXc diag_eps = Types::VectorXc::Zero(3 * mesh.getCells().size());
     const auto eps_data = mesh.getScalarData("eps");
     for (size_t idx = 0; idx < mesh.getCells().size(); ++idx) {
@@ -64,13 +70,11 @@ int main() {
         diag_eps[3 * idx + 1] = eps_data[idx] - 1.;
         diag_eps[3 * idx + 2] = eps_data[idx] - 1.;
     }
-    const Types::MatrixXc A = Types::MatrixXc::Identity(mat.rows(), mat.cols()) - (mat / cube_measure) * Eigen::Diagonal
-                              {diag_eps};
-    // Поправляем правую часть
-    const Types::VectorXc b = rhs / std::sqrt(cube_measure);
-
+    Eigen::DiagonalMatrix<Types::complex_d, Eigen::Dynamic> eps_mat{diag_eps};
+    b = eps_mat * b;
     // 4. Решаем систему
-    const auto solution = Research::solve<Eigen::GMRES>(A, b, 1000, 1e-8);
+    const auto solution = Research::solve<Eigen::GMRES>(
+        Math::LinAgl::Matrix::Wrappers::VolumeOperatorMatrixReplacement{mat, eps_mat}, b, 1000, 1e-8);
 
     // 5. Преобразовываем в векторное поле на ячейках и пишем в данные сетки
     std::vector<Types::Vector3c> field_on_mesh;

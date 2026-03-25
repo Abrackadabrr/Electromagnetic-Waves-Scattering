@@ -227,13 +227,14 @@ void operator_K_over_cube_mesh::get_galerkin_matrix_inplace(Types::MatrixXc *p_m
 }
 
 Math::LinAgl::Matrix::TripleToeplitzBlock<Types::complex_d>
-operator_K_over_cube_mesh::compute_galerkin_matrix() const {
+operator_K_over_cube_mesh::compute_galerkin_matrix(Types::scalar l1_basis_function_norm) const {
     const size_t first_layer_toeplitz = mesh.nx() - 1;
     const size_t second_layer_toeplitz = mesh.ny() - 1;
     const size_t third_layer_toeplitz = mesh.nz() - 1;
     decltype(auto) result =
         Math::LinAgl::Matrix::ZeroTripleToeplitzBlock<Types::complex_d>(first_layer_toeplitz, second_layer_toeplitz,
                                                                         third_layer_toeplitz, 3);
+    const Types::scalar l2_basis_fn_norm_sqr = l1_basis_function_norm * l1_basis_function_norm;
     // Циклы для расчета трижды теплицевой матрицы
     // Эта штука так же долго считает, но занимает уже меньше памяти
     for (size_t i3 = 0; i3 < third_layer_toeplitz; ++i3)
@@ -245,10 +246,10 @@ operator_K_over_cube_mesh::compute_galerkin_matrix() const {
                             auto& working_block = result.get_block(i3, j3).
                                    get_block(i2, j2).
                                    get_block(i1, j1);
-                            // Ускорение заполнения матрицы за счет отсуствия
+                            // Ускорение заполнения матрицы за счет отсутствия
                             // пересчёта одинаковых блоков
                             // TODO: сделать нормальный расчет, то есть аналитически вывести все формулки
-                            if (working_block.norm() < 1e-10) {
+                            if (working_block.norm() == 0) {
                                 // Ищем кубы по трёхмерному индексу
                                 const auto idx1 = mesh.cube_idx(i1, i2, i3);
                                 const auto idx2 = mesh.cube_idx(j1, j2, j3);
@@ -260,7 +261,7 @@ operator_K_over_cube_mesh::compute_galerkin_matrix() const {
                                 surface_res(1, 1) += volume_res;
                                 surface_res(2, 2) += volume_res;
 
-                                working_block = surface_res;
+                                working_block = surface_res / l2_basis_fn_norm_sqr;
                             }
                         }
     return result;

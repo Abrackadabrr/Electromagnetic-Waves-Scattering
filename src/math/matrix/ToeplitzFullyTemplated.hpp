@@ -67,7 +67,7 @@ namespace EMW::Math::LinAgl::Matrix
         /** Умножение матрицы на число с возвращением копии */
         [[nodiscard]] ToeplitzStructure mull(scalar_t value) const noexcept;
         /** Умножение себя на число */
-        const ToeplitzStructure& mull_inplace(scalar_t value) noexcept;
+        void mull_inplace(scalar_t value) noexcept;
         /** Взятие диагонали */
         [[nodiscard]] vector_t diagonal() const;
 
@@ -167,7 +167,6 @@ namespace EMW::Math::LinAgl::Matrix
     }
 
 
-
     template <typename scalar_t, typename block_t>
     typename ToeplitzStructure<scalar_t, block_t>::vector_t
     ToeplitzStructure<scalar_t, block_t>::matvec(const vector_t& vec) const noexcept
@@ -177,7 +176,7 @@ namespace EMW::Math::LinAgl::Matrix
         vector_t result = vector_t::Zero(rows());
         //    std::cout << "Matvec started" << std::endl;
         // Далее итерируемся по всем блокам (потому что обычное умножение, а не потому что бесструктурная матрица!)
-#pragma omp parallel for collapse(2) num_threads(4)
+#pragma omp parallel for num_threads(14)
         for (Types::index i = 0; i < blocks.rows(); ++i)
         {
             for (Types::index j = 0; j < blocks.cols(); ++j)
@@ -190,7 +189,6 @@ namespace EMW::Math::LinAgl::Matrix
                 // тут просто получилось несоответствие типов для вызова матвека
                 vector_t local_res = current_block * sub_vector;
                 // Складываем результат
-#pragma omp critical
                 {
                     result.block(i * rows_in_block_, 0, rows_in_block_, 1) += local_res;
                 }
@@ -209,15 +207,21 @@ namespace EMW::Math::LinAgl::Matrix
     }
 
     template <typename scalar_t, typename block_t>
-    const ToeplitzStructure<scalar_t, block_t>&
+    void
     ToeplitzStructure<scalar_t, block_t>::mull_inplace(scalar_t value) noexcept
     {
         std::cout << "Mull inplace" << std::endl;
         for (Types::index index = 0, total = blocks.get_actual_size(); index != total; ++index)
         {
-            blocks(index) *= value;
+            if constexpr (std::is_same_v<block_t, Types::MatrixX<scalar_t>>)
+            {
+                blocks(index) *= value;
+            }
+            else
+            {
+                blocks(index).mull_inplace(value);
+            }
         }
-        return *this;
     }
 
     template <typename scalar_t, typename block_t>

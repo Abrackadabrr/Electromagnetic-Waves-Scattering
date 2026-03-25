@@ -16,6 +16,10 @@
 #include "VTKFunctions.hpp"
 
 #include "math/fields/Utils.hpp"
+#include "math/matrix/iterative_solvers_coverage/MatrixTraits.hpp"
+
+#include "MatrixReplacement.hpp"
+#include "MatrixTraits.hpp"
 
 #include <iostream>
 
@@ -23,8 +27,8 @@ using namespace EMW;
 
 int main() {
     // Параметры куба
-    constexpr Types::scalar cube_length = 0.025;
-    constexpr Types::index Nx = 3;
+    constexpr Types::scalar cube_length = 0.0125;
+    constexpr Types::index Nx = 5;
     constexpr Types::index Ny = static_cast<size_t>(1 / cube_length) + 1;
     constexpr Types::index Nz = Ny;
 
@@ -48,18 +52,43 @@ int main() {
     auto rhs = proj([incident_field](Types::point_t p) { return incident_field.value(p); });
     std::cout << "RHS size: " << rhs.rows() << std::endl;
 
-    // Матрицу собираем
-    Operators::Volume::operator_K_over_cube_mesh operator_K{k, mesh};
-    auto mat = operator_K.get_galerkin_matrix();
-    std::cout << "Matrix (" << mat.rows() << ", " << mat.cols() << ')' << std::endl;
-    std::cout << "Matrix for norm = " << mat.norm() << std::endl;
-    // Собираем матрицу системы
-    const Types::MatrixXc A = Types::MatrixXc::Identity(mat.rows(), mat.cols()) - mat / cube_measure;
     // Поправляем правую часть
     const Types::VectorXc b = rhs / std::sqrt(cube_measure);
 
+    // Матрицу собираем и решаем линейную систему
+    Operators::Volume::operator_K_over_cube_mesh operator_K{k, mesh};
+#define DENSE 0
+#if DENSE
+    std::cout << "Calculation of Full Matrix" << std::endl;
+    auto mat = operator_K.get_galerkin_matrix();
+    // Собираем матрицу системы
+    mat = mat / cube_measure - Types::MatrixXc::Identity(mat.rows(), mat.cols());
+    std::cout << "Matrix (" << mat.rows() << ", " << mat.cols() << ')' << std::endl;
     // Решаем линейную систему
+    const auto solution = Research::solve<Eigen::GMRES>(mat, b, 1000,
+                                                        1e-8);
+    // Пишем правильное имя для сетки
+    mesh.setName("full_calc");
+#else
+    std::cout << "Calculation of Toelpitz Matrix" << std::endl;
+
+    // Галеркинская проекция на сетку
+    auto mat = operator_K.compute_galerkin_matrix(std::sqrt(cube_measure));
+    // Поле диэлектрической проницаемости
+    Types::VectorXc diag_eps = Types::VectorXc::Zero(3 * mesh.getCells().size());
+    for (size_t idx = 0; idx < mesh.getCells().size(); ++idx) {
+        diag_eps[3 * idx] = 1.;
+        diag_eps[3 * idx + 1] = 1.;
+        diag_eps[3 * idx + 2] = 1.;
+    }
+    const auto eps_matrix = Eigen::DiagonalMatrix<Types::complex_d, Eigen::Dynamic>{diag_eps};
+    // 4. Решаем систему
+    const Math::LinAgl::Matrix::Wrappers::VolumeOperatorMatrixReplacement A{mat, eps_matrix};
     const auto solution = Research::solve<Eigen::GMRES>(A, b, 1000, 1e-8);
+
+    // Пишем правильное имя для сетки
+    mesh.setName("toep_calc");
+#endif
 
     // Преобразовываем в векторное поле на ячейках
     std::vector<Types::Vector3c> field_on_mesh;
