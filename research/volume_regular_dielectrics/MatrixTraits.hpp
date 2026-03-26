@@ -16,8 +16,8 @@ namespace Eigen::internal
      * Это необходимо определенить для того, чтобы Eigen верно разрешал типы
      * @tparam MatrixType
      */
-    template <typename MatrixType1, typename MatrixType2, typename PrecondType>
-    struct traits<My::VolumeOperatorMatrixReplacement<MatrixType1, MatrixType2, PrecondType>>
+    template <typename MatrixType1, typename PrecondType>
+    struct traits<My::VolumeOperatorMatrixReplacement<MatrixType1, PrecondType>>
     {
         // Эти три вещи ниже должны зависеть от типа, который мы передаем в качестве MatrixType.
         // Но пока что это просто захардкожено
@@ -39,8 +39,8 @@ namespace Eigen::internal
         };
     };
 
-    template <typename MatrixType1, typename MatrixType2>
-    struct traits<My::VolumeOperatorMatrixReplacement<MatrixType1, MatrixType2>>
+    template <typename MatrixType1>
+    struct traits<My::VolumeOperatorMatrixReplacement<MatrixType1>>
     {
         // Эти три вещи ниже должны зависеть от типа, который мы передаем в качестве MatrixType.
         // Но пока что это просто захардкожено

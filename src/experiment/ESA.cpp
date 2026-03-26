@@ -29,6 +29,18 @@ Types::Vector3c sigmaOverCell(Types::complex_d k, const Types::Vector3d &tau, co
     return DefiniteIntegrals::integrate<DefiniteIntegrals::GaussLegendre::Quadrature<2, 2>>(phi, {0, 0}, {1, 1});
 }
 
+Types::Vector3c sigmaOverCube(Types::complex_d k, const Types::Vector3d &tau,
+                              const Types::Vector3d &left_down_corner, Types::scalar dx, Types::scalar dy,
+                              Types::scalar dz,
+                              const Types::Vector3c &j_e, const Types::Vector3c &j_m, Types::complex_d eps) {
+    const auto phi = [&](Types::scalar x, Types::scalar y, Types::scalar z) -> Types::Vector3c {
+        return Helmholtz::sigmaKernel(k, tau, {x, y, z}, j_e, j_m, eps);
+    };
+
+    return DefiniteIntegrals::integrate<DefiniteIntegrals::NewtonCotess::Quadrature<4, 4, 4>>(
+        phi, {left_down_corner.x(), left_down_corner.y(), left_down_corner.z()}, {dx, dy, dz});
+}
+
 Types::scalar calculateESA(const Types::Vector3d &tau, Types::complex_d k, const Math::SurfaceVectorField &j_e,
                            const Math::SurfaceVectorField &j_m) {
     const auto &cells_e = j_e.getManifold().getCells();
@@ -53,7 +65,7 @@ Types::scalar calculateESA(const Types::Vector3d &tau, Types::complex_d k,
                            const Containers::vector<Math::SurfaceVectorField> &j_m_v) {
     Types::Vector3c result = Types::Vector3c::Zero();
 
-    for (const auto& j_e : j_e_v) {
+    for (const auto &j_e : j_e_v) {
         const auto &cells_e = j_e.getManifold().getCells();
         const auto &field_e = j_e.getField();
 #pragma omp parallel for reduction(+:result) num_threads(14)
@@ -62,7 +74,7 @@ Types::scalar calculateESA(const Types::Vector3d &tau, Types::complex_d k,
         }
     }
 
-    for (const auto& j_m : j_m_v) {
+    for (const auto &j_m : j_m_v) {
         const auto &cells_m = j_m.getManifold().getCells();
         const auto &field_m = j_m.getField();
 #pragma omp parallel for reduction(+:result) num_threads(14)
@@ -84,4 +96,18 @@ Types::scalar calculateESA(const Types::Vector3d &tau, Types::complex_d k, const
     }
     return Math::Constants::inverse_4PI<Types::scalar>() * result.squaredNorm();
 }
+
+Types::scalar calculateRSP(const Types::Vector3d &tau, Types::complex_d k, const std::string &field_name,
+                           const Mesh::VolumeMesh::CubeMeshWithData &cube_mesh) {
+    auto&& j_data = cube_mesh.getVectorData(field_name);
+    auto&& eps_data = cube_mesh.getScalarData("eps");
+    Types::Vector3c result = Types::Vector3c::Zero();
+#pragma omp parallel for reduction(+ : result) num_threads(14)
+    for (size_t i = 0; i < cube_mesh.getCells().size(); i++) {
+        result += sigmaOverCube(k, tau, cube_mesh.leftDownCorner(i), cube_mesh.dx(), cube_mesh.dy(), cube_mesh.dz(),
+                                j_data[i], Types::Vector3c::Zero(), eps_data[i]);
+    }
+    return Math::Constants::inverse_4PI<Types::scalar>() * result.squaredNorm();
+}
+
 } // namespace EMW::ESA

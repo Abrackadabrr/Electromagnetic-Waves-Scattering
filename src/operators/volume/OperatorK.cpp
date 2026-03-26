@@ -119,7 +119,7 @@ Types::complex_d operator_K_over_cube_mesh::matrix_3_coef(Types::index k, Types:
 
         const auto regular_part =
             DefiniteIntegrals::integrate<DefiniteIntegrals::GaussLegendre::Quadrature<
-                2, 2, 2, 2, 2, 2>>(
+                4, 4, 4, 4, 4, 4>>(
                 integrand_bounded_part, {mesh.leftDownCorner(k)[0], mesh.leftDownCorner(k)[1],
                                          mesh.leftDownCorner(k)[2],
                                          mesh.leftDownCorner(p)[0], mesh.leftDownCorner(p)[1],
@@ -128,7 +128,7 @@ Types::complex_d operator_K_over_cube_mesh::matrix_3_coef(Types::index k, Types:
         const auto singular_part =
             Math::Constants::inverse_4PI<Types::scalar>() *
             DefiniteIntegrals::integrate<DefiniteIntegrals::GaussLegendre::Quadrature<
-                3, 3, 3>>(
+                4, 4, 4>>(
                 potential_of_cube_k, {mesh.leftDownCorner(p)[0], mesh.leftDownCorner(p)[1],
                                       mesh.leftDownCorner(p)[2]},
                 {mesh.dx(), mesh.dy(), mesh.dz()});
@@ -143,11 +143,10 @@ Types::complex_d operator_K_over_cube_mesh::matrix_3_coef(Types::index k, Types:
                                               Types::scalar z2) {
         return Helmholtz::F(wn, {x1, y1, z1}, {x2, y2, z2});
     };
-    return k2 * DefiniteIntegrals::integrate<DefiniteIntegrals::GaussLegendre::Quadrature<3, 3, 3, 3, 3, 3>>(
+    return k2 * DefiniteIntegrals::integrate<DefiniteIntegrals::GaussLegendre::Quadrature<4, 4, 4, 4, 4, 4>>(
                integrand, {mesh.leftDownCorner(k)[0], mesh.leftDownCorner(k)[1], mesh.leftDownCorner(k)[2],
                            mesh.leftDownCorner(p)[0], mesh.leftDownCorner(p)[1], mesh.leftDownCorner(p)[2]},
                {mesh.dx(), mesh.dy(), mesh.dz(), mesh.dx(), mesh.dy(), mesh.dz()});
-
 }
 
 Types::scalar operator_K_over_cube_mesh::newton_potential_of_cube(Types::index k, Types::point_t r) const {
@@ -236,7 +235,6 @@ operator_K_over_cube_mesh::compute_galerkin_matrix(Types::scalar l1_basis_functi
                                                                         third_layer_toeplitz, 3);
     const Types::scalar l2_basis_fn_norm_sqr = l1_basis_function_norm * l1_basis_function_norm;
     // Циклы для расчета трижды теплицевой матрицы
-    // Эта штука так же долго считает, но занимает уже меньше памяти
     for (size_t i3 = 0; i3 < third_layer_toeplitz; ++i3)
         for (size_t j3 = 0; j3 < third_layer_toeplitz; ++j3)
             for (size_t i2 = 0; i2 < second_layer_toeplitz; ++i2)

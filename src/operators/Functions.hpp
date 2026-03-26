@@ -7,36 +7,36 @@
 
 #include "types/Types.hpp"
 
-namespace EMW::Helmholtz {
-
+namespace EMW::Helmholtz
+{
     // фундаментальное решение уравнения Гельмгольца
-    Types::complex_d F(Types::complex_d k, const Types::Vector3d &x, const Types::Vector3d &y);
+    Types::complex_d F(Types::complex_d k, const Types::Vector3d& x, const Types::Vector3d& y);
 
     // ограниченный кусок от фундаментального решения, вычли 1 / (4 pi r)
-    Types::complex_d F_bounded_part(Types::complex_d k, const Types::Vector3d &x, const Types::Vector3d &y);
+    Types::complex_d F_bounded_part(Types::complex_d k, const Types::Vector3d& x, const Types::Vector3d& y);
 
     // МИНУС градиент по x фундаментального решения уравнения Гельмгольца
-    Types::Vector3c V(Types::complex_d k, const Types::Vector3d &x, const Types::Vector3d &y);
+    Types::Vector3c V(Types::complex_d k, const Types::Vector3d& x, const Types::Vector3d& y);
 
     // функция, которая считает подинтегральное выражение для интеграла диаграммы направленности
     Types::Vector3c
-    sigmaKernel(Types::complex_d k, const Types::Vector3d &tau, const Types::Vector3d &point_on_surface, const Types::Vector3c &j_e, const Types::Vector3c& j_m);
+    sigmaKernel(Types::complex_d k, const Types::Vector3d& tau, const Types::Vector3d& point_on_surface,
+                const Types::Vector3c& j_e, const Types::Vector3c& j_m, Types::complex_d epsilon = {1., 0.});
 
     // функция для сглаживания сингулярности
-    Types::scalar smoother(Types::scalar e, const Types::Vector3d &x, const Types::Vector3d &y);
+    Types::scalar smoother(Types::scalar e, const Types::Vector3d& x, const Types::Vector3d& y);
 
     Types::Vector3c
-    reducedK_kernel(Types::complex_d k, const Types::Vector3d &x, const Types::Vector3d &y, const Types::Vector3c &j);
+    reducedK_kernel(Types::complex_d k, const Types::Vector3d& x, const Types::Vector3d& y, const Types::Vector3c& j);
 }
 
-namespace EMW::Laplace {
-
+namespace EMW::Laplace
+{
     // фундаментальное решение уравнения Лапласа
     Types::scalar F(const Types::Vector3d& x, const Types::Vector3d& y);
 
     // градиент фундаментального решения уравнения Лапласа
     Types::Vector3d gradF(const Types::Vector3d& x, const Types::Vector3d& y);
-
 }
 
 #endif //ELECTROMAGNETIC_WAVES_SCATTERING_FUNCTIONS_HPP

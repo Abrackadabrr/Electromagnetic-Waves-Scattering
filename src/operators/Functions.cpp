@@ -45,9 +45,8 @@ Types::scalar smoother(Types::scalar e, const Types::Vector3d &x, const Types::V
 }
 
 Types::Vector3c sigmaKernel(Types::complex_d k, const Types::Vector3d &tau, const Types::Vector3d &point_on_surface,
-                            const Types::Vector3c &j_e, const Types::Vector3c &j_m) {
+                            const Types::Vector3c &j_e, const Types::Vector3c &j_m, Types::complex_d epsilon) {
     const Types::complex_d exponent = std::exp((-1.) * Math::Constants::i * k * tau.dot(point_on_surface));
-    const Types::scalar epsilon = 1;
     const Types::Vector3c vec_e = Math::Constants::i * k * (j_e - tau * Math::quasiDot(j_e, tau)) / epsilon;
     const Types::Vector3c vec_m = -Math::Constants::i * k * Math::cross(tau, j_m);
     return (exponent * (vec_e - vec_m));

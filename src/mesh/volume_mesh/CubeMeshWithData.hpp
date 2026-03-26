@@ -8,6 +8,8 @@
 #include "types/Types.hpp"
 #include "mesh/volume_mesh/CubeMesh.hpp"
 
+#include "math/integration/Quadrature.hpp"
+
 
 namespace EMW::Mesh::VolumeMesh
 {
@@ -40,10 +42,13 @@ namespace EMW::Mesh::VolumeMesh
         void setVectorData(const std::string& name, Container&& data);
         // --- Invokers --- //
         template <typename Callable>
-        void invokeScalarData(const std::string& name, Callable&& point_function) requires std::is_invocable_v<
+        void invokeScalarData(const std::string& name, Callable&& cell_function) requires std::is_invocable_v<
             Callable, CellsType>;
         template <typename Callable>
         void invokeScalarData(const std::string& name, Callable&& point_function) requires std::is_invocable_v<
+            Callable, Types::point_t>;
+        template <typename Quadrature, typename Callable>
+        void smoothScalarData(const std::string& name, Callable&& point_function) requires std::is_invocable_v<
             Callable, Types::point_t>;
 
         template <typename Callable>
@@ -54,8 +59,15 @@ namespace EMW::Mesh::VolumeMesh
             Callable, Types::point_t>;
 
         // ---- Getters ---- //
-        [[nodiscard]] const auto& getScalarData(const std::string& name) const { return scalar_data.find(name)->second; };
-        [[nodiscard]] const auto& getVectorData(const std::string& name) const { return vector_data.find(name)->second; };
+        [[nodiscard]] const auto& getScalarData(const std::string& name) const
+        {
+            return scalar_data.find(name)->second;
+        };
+
+        [[nodiscard]] const auto& getVectorData(const std::string& name) const
+        {
+            return vector_data.find(name)->second;
+        };
         [[nodiscard]] const auto& getScalarData() const { return scalar_data; }
         [[nodiscard]] const auto& getVectorData() const { return vector_data; };
 
@@ -87,10 +99,15 @@ namespace EMW::Mesh::VolumeMesh
     }
 
     template <typename Callable>
-    void CubeMeshWithData::invokeScalarData(const std::string& name, Callable&& point_function) requires std::
+    void CubeMeshWithData::invokeScalarData(const std::string& name, Callable&& cell_function) requires std::
         is_invocable_v<Callable, VolumeCells::IndexedCube>
     {
-        throw std::runtime_error("CubeMeshWithData::invokeScalarData: callable over cell is not implemented yet");
+        // generate a Containers::vector<Types::complex_d> from cell function
+        Containers::vector<Types::complex_d> data;
+        data.reserve(cellsCount);
+        for (std::size_t i = 0; i < cellsCount; ++i)
+            data.emplace_back(std::forward<Callable>(cell_function)(cells_[i]));
+        setScalarData(name, std::move(data));
     }
 
     template <typename Callable>
@@ -103,6 +120,27 @@ namespace EMW::Mesh::VolumeMesh
         for (std::size_t i = 0; i < cellsCount; ++i)
             data.emplace_back(std::forward<Callable>(point_function)(cells_[i].center_));
         setScalarData(name, std::move(data));
+    }
+
+    template <typename Quadrature, typename Callable>
+    void CubeMeshWithData::smoothScalarData(const std::string& name, Callable&& point_function) requires
+        std::is_invocable_v<Callable, Types::point_t>
+    {
+        // интегрально сгладить функцию по кубу
+        const auto function_to_integrate = [point_function](Types::scalar x, Types::scalar y, Types::scalar z)
+        {
+            return point_function({x, y, z});
+        };
+
+        const auto integral_over_cube = [&function_to_integrate, this](const CellsType& cell)
+        {
+            const auto ldc = this->nodes_[cell.nodes_[0]];
+            return DefiniteIntegrals::integrate<Quadrature>(function_to_integrate, {ldc.x(), ldc.y(), ldc.z()},
+                                                            {this->dx(), this->dy(), this->dz()}) /
+                (this->dx() * this->dy() * this->dz());
+        };
+
+        invokeScalarData(name, integral_over_cube);
     }
 
     template <typename Callable>

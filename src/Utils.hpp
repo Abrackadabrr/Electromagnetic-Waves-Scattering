@@ -2,8 +2,8 @@
 // Created by evgen on 10.01.2025.
 //
 
-#ifndef UTILS_HPP
-#define UTILS_HPP
+#ifndef ELECTROMAGNETIC_WAVES_SCATTERING_UTILS_HPP
+#define ELECTROMAGNETIC_WAVES_SCATTERING_UTILS_HPP
 
 #include "math/matrix/Matrix.hpp"
 #include "types/Types.hpp"
