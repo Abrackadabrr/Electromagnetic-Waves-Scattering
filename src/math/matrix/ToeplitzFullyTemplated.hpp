@@ -64,6 +64,13 @@ namespace EMW::Math::LinAgl::Matrix
 
         /** Умножение матрицы на вектор */
         [[nodiscard]] vector_t matvec(const vector_t& vec) const noexcept;
+
+        /**
+         * dest += matvec(vec);
+         */
+        template <typename Dest>
+        void matvec(const vector_t& vec, Dest& dest) const noexcept;
+
         /** Умножение матрицы на число с возвращением копии */
         [[nodiscard]] ToeplitzStructure mull(scalar_t value) const noexcept;
         /** Умножение себя на число */
@@ -174,9 +181,7 @@ namespace EMW::Math::LinAgl::Matrix
         assert(vec.size() == cols());
         // создаем нулевой вектор результата, в который будем записывать ответ
         vector_t result = vector_t::Zero(rows());
-        //    std::cout << "Matvec started" << std::endl;
         // Далее итерируемся по всем блокам (потому что обычное умножение, а не потому что бесструктурная матрица!)
-#pragma omp parallel for num_threads(14)
         for (Types::index i = 0; i < blocks.rows(); ++i)
         {
             for (Types::index j = 0; j < blocks.cols(); ++j)
@@ -194,8 +199,30 @@ namespace EMW::Math::LinAgl::Matrix
                 }
             }
         }
-        //    std::cout << "Matvec ended" << std::endl;
         return result;
+    }
+
+    template <typename scalar_t, typename block_t>
+    template <typename Dest>
+    void ToeplitzStructure<scalar_t, block_t>::matvec(const vector_t& vec, Dest& dest) const noexcept
+    {
+        assert(vec.size() == cols());
+        for (Types::index i = 0; i < blocks.rows(); ++i)
+        {
+            for (Types::index j = 0; j < blocks.cols(); ++j)
+            {
+                // Достаем ссылку на текущий блок (тут как раз проявляется тёплицевость)
+                const block_t& current_block = blocks(i, j);
+                // Теперь умножаем на соответствующий подвектор
+                const auto& sub_vector = vec.block(j * cols_in_block_, 0, cols_in_block_, 1);
+                // тут пришлось скопировать, потому что block -- это не вектор, а block-expression внутри Eigen
+                // тут просто получилось несоответствие типов для вызова матвека
+                if constexpr (std::is_same_v<block_t, Types::MatrixX<scalar_t>>)
+                    dest.block(i * rows_in_block_, 0, rows_in_block_, 1) += current_block * sub_vector;
+                else
+                    current_block.matvec(sub_vector, dest.block(i * rows_in_block_, 0, rows_in_block_, 1));
+            }
+        }
     }
 
 

@@ -29,6 +29,8 @@ Mesh::IndexedCell IndexedCube::getFace(Axis ax, Direction dir, const full_points
     case Axis::Z:
         return getZface(dir, fp);
         break;
+    default:
+        throw std::invalid_argument("Invalid direction");
     }
 }
 

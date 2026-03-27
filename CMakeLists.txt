@@ -14,3 +14,7 @@ endif ()
 if (WITH_TASKS)
     add_subdirectory(examples)
 endif ()
+
+if (WITH_BENCHMARKS)
+    add_subdirectory(benchmarks)
+endif ()
