@@ -5,6 +5,8 @@
 #ifndef CUBE_MESH_WITH_DATA_HPP
 #define CUBE_MESH_WITH_DATA_HPP
 
+#include <ranges>
+
 #include "types/Types.hpp"
 #include "mesh/volume_mesh/CubeMesh.hpp"
 
@@ -17,10 +19,28 @@ namespace EMW::Mesh::VolumeMesh
     {
         using Base = CubeMesh;
 
-        Containers::map<std::string, std::vector<Types::complex_d>> scalar_data;
-        Containers::map<std::string, std::vector<Types::Vector3c>> vector_data;
+        using scalarDataContainer = std::vector<Types::complex_d>;
+        using vectorDataContainer = std::vector<Types::Vector3c>;
+        Containers::map<std::string, scalarDataContainer> scalar_data;
+        Containers::map<std::string, vectorDataContainer> vector_data;
         Types::index nodesCount;
         Types::index cellsCount;
+
+        CubeMeshWithData(NodesContainer_t&& nodes, CellsContainer_t&& cells): Base(std::move(nodes), std::move(cells)),
+                                                                              cellsCount(cells_.size()),
+                                                                              nodesCount(nodes_.size())
+        {
+        }
+
+        template <typename Container>
+        void loadScalarData(Container&& specific_scalar_data, const std::string& name)
+        {
+            static_assert(std::is_convertible_v<typename Container::value_type, Types::complex_d>);
+            if (specific_scalar_data.size() != cells_.size())
+                throw std::runtime_error("Scalar data size mismatch with mesh's cells amount");
+            // load
+            scalar_data[name] = std::forward<Container>(specific_scalar_data);
+        }
 
     public:
         CubeMeshWithData(const Types::Vector3d& minCorner, Types::scalar xs, Types::scalar ys, Types::scalar zs,
@@ -78,6 +98,10 @@ namespace EMW::Mesh::VolumeMesh
         * @return комплексный вектор размерности количества ячеек в сетке
          */
         [[nodiscard]] Types::VectorXc getScalarDataAsVector(const std::string& name) const;
+
+        template <typename Selector>
+        [[nodiscard]] CubeMeshWithData getSubmeshBasedOnScalarData(Selector&& select_cell, const std::string& data_name)
+            requires std::is_invocable_v<Selector, Types::complex_d>;
     };
 
     template <typename Container>
@@ -160,6 +184,33 @@ namespace EMW::Mesh::VolumeMesh
         for (std::size_t i = 0; i < cellsCount; ++i)
             data.emplace_back(std::forward<Callable>(point_function)(cells_[i].center_));
         setVectorData(name, std::move(data));
+    }
+
+    template <typename Selector>
+    CubeMeshWithData CubeMeshWithData::getSubmeshBasedOnScalarData(Selector&& select_cell, const std::string& data_name)
+        requires std::is_invocable_v<
+            Selector, Types::complex_d>
+    {
+        decltype(cells_) new_cells;
+        new_cells.reserve(cells_.size());
+        Containers::vector<Types::complex_d> new_data;
+        new_data.reserve(cells_.size());
+        auto&& selective_data = getScalarData(data_name);
+        size_t total_new_cells = 0;
+        for (size_t idx = 0; idx < cellsCount; ++idx)
+        {
+            if (select_cell(selective_data[idx]))
+            {
+                total_new_cells++;
+                // save specified data
+                new_data.push_back(selective_data[idx]);
+                new_cells.push_back(cells_[idx]);
+            }
+        }
+        auto new_nodes = nodes_;
+        CubeMeshWithData submesh{std::move(new_nodes), std::move(new_cells)};
+        submesh.loadScalarData(std::move(new_data), data_name);
+        return submesh;
     }
 }
 
