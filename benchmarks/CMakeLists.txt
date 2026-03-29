@@ -14,7 +14,7 @@ endif()
 
 find_package(BLAS REQUIRED)
 
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -O3")
+# set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -O3")
 
 foreach (TEST IN LISTS BENCHS)
     get_filename_component(FILE_NAME ${TEST} NAME_WE)

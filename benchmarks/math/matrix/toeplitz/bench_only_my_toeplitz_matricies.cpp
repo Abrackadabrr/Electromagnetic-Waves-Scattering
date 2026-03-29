@@ -22,40 +22,34 @@ using MyMatrix = EMW::Math::LinAgl::Matrix::ToeplitzBlock<Complex>;
 
 namespace {
 
-MatrixXc make_random_toeplitz_matrix(std::int64_t n) {
-    std::mt19937_64 gen(42);
-    std::uniform_real_distribution<double> dist(-1.0, 1.0);
+decltype(auto) make_toeplitz_block(size_t block_size, size_t fl) {
+    auto tp_mat = EMW::Math::LinAgl::Matrix::ZeroToeplitzBlock<Complex>(fl, block_size);
 
-    MatrixXc A(n, n);
-    for (Eigen::Index i = 0; i < n; ++i) {
-        for (Eigen::Index j = 0; j < n; ++j) {
-            if (i >= j) {
-                A(i, j) = i - j;
-            } else {
-                A(i, j) = i - j;
+    for (size_t idx = 0; idx < fl; ++idx) {
+        for (size_t jdx = 0; jdx < fl; ++jdx) {
+            tp_mat.get_block(idx, jdx) = MatrixXc::Random(block_size, block_size);
+        }
+    }
+    return tp_mat;
+}
+
+decltype(auto) make_double_toeplitz_block(size_t block_size, size_t fl, size_t sl) {
+    auto tp_mat = EMW::Math::LinAgl::Matrix::ZeroDoubleToeplitzBlock<Complex>(block_size, fl, sl);
+
+    for (size_t idx_f = 0; idx_f < fl; ++idx_f) {
+        for (size_t jdx_f = 0; jdx_f < fl; ++jdx_f) {
+            for (size_t idx_s = 0; idx_s < sl; ++idx_s) {
+                for (size_t jdx_s = 0; jdx_s < sl; ++jdx_s) {
+                    tp_mat.get_block(idx_s, jdx_s).get_block(idx_f, idx_f) =
+                        MatrixXc::Random(block_size, block_size);
+                }
             }
         }
     }
-    return A;
+    return tp_mat;
 }
 
-std::pair<MatrixXc, MyMatrix> make_pair_of_matricies(size_t n_blocks, size_t block_size) {
-    auto tp_mat = EMW::Math::LinAgl::Matrix::ZeroToeplitzBlock<Complex>(n_blocks, block_size);
-    auto mat = make_random_toeplitz_matrix(n_blocks * block_size);
-
-    for (size_t idx = 0; idx < n_blocks; ++idx) {
-        for (size_t jdx = 0; jdx < n_blocks; ++jdx) {
-            const size_t rows_start = idx * block_size;
-            const size_t cols_start = jdx * block_size;
-            tp_mat.get_block(idx, jdx) = mat.block(rows_start, cols_start, block_size, block_size);
-        }
-    }
-    // const auto dense_tp_m = tp_mat.to_dense();
-    // std::cout << "Difference in norms = " << (mat - dense_tp_m).norm() / mat.norm() << std::endl;
-    return {mat, tp_mat};
-}
-
-VectorXc make_random_vector(std::int64_t n) {
+VectorXc make_random_vector(size_t n) {
     std::mt19937_64 gen(1337);
     std::uniform_real_distribution<double> dist(-1.0, 1.0);
 
@@ -72,32 +66,20 @@ public:
         openblas_set_num_threads(1);
         const auto n = static_cast<std::int64_t>(state.range(0));
         block_size_ = state.range(1);
-        auto [m, tp] = make_pair_of_matricies(n, block_size_);
-        A_ = std::move(m);
+        auto tp = make_toeplitz_block(block_size_, n);
         my_matrix_ = std::move(tp);
-        x_ = make_random_vector(n * block_size_);
-        y_ = VectorXc::Zero(n * block_size_);
+        x_ = make_random_vector(my_matrix_.rows());
+        y_ = VectorXc::Zero(my_matrix_.rows());
     }
 
 protected:
-    MatrixXc A_;
     VectorXc x_;
     VectorXc y_; // multiplication result;
     MyMatrix my_matrix_;
     size_t block_size_{};
 };
 
-BENCHMARK_DEFINE_F(MatrixVectorBenchmark, EigenMatVec)(benchmark::State &state) {
-    for (auto _ : state) {
-        y_.noalias() = A_ * x_;
-        benchmark::DoNotOptimize(y_.data());
-        benchmark::ClobberMemory();
-    }
-
-    const auto n = static_cast<double>(state.range(0));
-}
-
-BENCHMARK_DEFINE_F(MatrixVectorBenchmark, MyMatrixMatVec)(benchmark::State &state) {
+BENCHMARK_DEFINE_F(MatrixVectorBenchmark, MyMatrixMatVecNew)(benchmark::State &state) {
     for (auto _ : state) {
         my_matrix_.matvec(x_, y_);
         benchmark::DoNotOptimize(y_.data());
@@ -105,23 +87,54 @@ BENCHMARK_DEFINE_F(MatrixVectorBenchmark, MyMatrixMatVec)(benchmark::State &stat
     }
 
     const auto n = static_cast<double>(state.range(0));
+    state.SetComplexityN(n);
 }
 
-#if BENCH_EIGEN
-BENCHMARK_REGISTER_F(MatrixVectorBenchmark, EigenMatVec)
+BENCHMARK_DEFINE_F(MatrixVectorBenchmark, MyMatrixMatVecBlocked)(benchmark::State &state) {
+    for (auto _ : state) {
+        y_.noalias() = my_matrix_.matvec_wise(x_);
+        benchmark::DoNotOptimize(y_.data());
+        benchmark::ClobberMemory();
+    }
+
+    const auto n = static_cast<double>(state.range(0));
+    state.SetComplexityN(n);
+}
+
+BENCHMARK_DEFINE_F(MatrixVectorBenchmark, MyMatrixMatVecOld)(benchmark::State &state) {
+    for (auto _ : state) {
+        y_.noalias() = my_matrix_.matvec(x_);
+        benchmark::DoNotOptimize(y_.data());
+        benchmark::ClobberMemory();
+    }
+
+    const auto n = static_cast<double>(state.range(0));
+    state.SetComplexityN(n);
+}
+
+#if 0
+BENCHMARK_REGISTER_F(MatrixVectorBenchmark, MyMatrixMatVecOld)
 ->ArgsProduct({
-    benchmark::CreateDenseRange(1, 5, 1),
-    benchmark::CreateRange(32, 2048, 2)
+    benchmark::CreateDenseRange(100, 150, 10),
+    benchmark::CreateRange(3, 3, 2)
 })
     ->Unit(benchmark::kMillisecond);
 #endif
 
-BENCHMARK_REGISTER_F(MatrixVectorBenchmark, MyMatrixMatVec)
+BENCHMARK_REGISTER_F(MatrixVectorBenchmark, MyMatrixMatVecOld)
 ->ArgsProduct({
-    benchmark::CreateDenseRange(1, 10, 1),
-    benchmark::CreateRange(32, 512, 2)
-})
+                                                                  benchmark::CreateDenseRange(10, 20, 1),
+                                                                  benchmark::CreateRange(256, 256, 2)
+                                                              })
     ->Unit(benchmark::kMillisecond);
+
+BENCHMARK_REGISTER_F(MatrixVectorBenchmark, MyMatrixMatVecBlocked)
+->ArgsProduct({
+                                                                      benchmark::CreateDenseRange(10, 20, 1),
+                                                                      benchmark::CreateRange(256, 256, 2)
+                                                                  })
+    ->Unit(benchmark::kMillisecond);
+
 
 } // namespace
 

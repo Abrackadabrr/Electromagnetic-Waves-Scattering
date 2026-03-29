@@ -5,8 +5,6 @@
 #ifndef ELECTROMAGNETIC_WAVES_SCATTERING_ESA_HPP
 #define ELECTROMAGNETIC_WAVES_SCATTERING_ESA_HPP
 
-#include <operators/volume/OperatorK.hpp>
-
 #include "math/fields/SurfaceVectorField.hpp"
 
 #include "mesh/volume_mesh/CubeMeshWithData.hpp"
