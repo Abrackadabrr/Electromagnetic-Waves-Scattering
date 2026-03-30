@@ -194,7 +194,7 @@ template <typename matrix_t, typename vector_t, typename value_t> struct ACA {
 
         std::random_device rd;  // a seed source for the random number engine
         std::mt19937 gen(rd()); // mersenne_twister_engine seeded with rd()
-        std::uniform_int_distribution<> distrib(0, m);
+        std::uniform_int_distribution<> distrib(0, m - 1);
         initial_cols[0] = distrib(gen);
         initial_cols[1] = distrib(gen);
 
@@ -244,7 +244,7 @@ template <typename matrix_t, typename vector_t, typename value_t> struct ACA {
             rank += 1;
         }
         // вот и кончился алгоритм
-        return {Containers::vector<matrix_t>{std::move(U), std::move(V)}, Containers::vector{false, true}};
+        return {Containers::vector<matrix_t>{std::move(U), matrix_t{V.transpose()}}, Containers::vector{false, false}};
     }
 
     template<typename MatrixElementFunction>

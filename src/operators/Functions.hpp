@@ -18,7 +18,7 @@ namespace EMW::Helmholtz
     // МИНУС градиент по x фундаментального решения уравнения Гельмгольца
     Types::Vector3c V(Types::complex_d k, const Types::Vector3d& x, const Types::Vector3d& y);
 
-    // функция, которая считает подинтегральное выражение для интеграла диаграммы направленности
+    // Подинтегральное выражение для диаграммы направленности
     Types::Vector3c
     sigmaKernel(Types::complex_d k, const Types::Vector3d& tau, const Types::Vector3d& point_on_surface,
                 const Types::Vector3c& j_e, const Types::Vector3c& j_m, Types::complex_d epsilon = {1., 0.});
@@ -26,8 +26,20 @@ namespace EMW::Helmholtz
     // функция для сглаживания сингулярности
     Types::scalar smoother(Types::scalar e, const Types::Vector3d& x, const Types::Vector3d& y);
 
-    Types::Vector3c
-    reducedK_kernel(Types::complex_d k, const Types::Vector3d& x, const Types::Vector3d& y, const Types::Vector3c& j);
+    /**
+     * @brief Ядро интегрального оператора при внесении производных под интеграл
+     *
+     * @note Е. В. Захаров, Г. В. Рыжаков, А. В. Сетуха,
+     * "ЧИСЛЕННОЕ РЕШЕНИЕ ТРЕХМЕРНЫХ ЗАДАЧ ДИФРАКЦИИ ЭЛЕКТРОМАГНИТНЫХ ВОЛН
+     * НА СИСТЕМЕ ИДЕАЛЬНО ПРОВОДЯЩИХ ПОВЕРХНОСТЕЙ МЕТОДОМ ГИПЕРСИНГУЛЯРНЫХ
+     * ИНТЕГРАЛЬНЫХ УРАВНЕНИЙ", "ДИФФЕРЕНЦИАЛЬНЫЕ УРАВНЕНИЯ", 2014, том 50, № 9, с. 1253–1263
+     *
+     * @param r = x - y
+     * @param j ток на ячейке в точке (кусочно-постоянная функция на ячейке)
+     *
+     * @warning Формула верна для кусочно постоянной функции j на ячейке
+     */
+    [[nodiscard]] Types::Vector3c far_zone_integral_kernel(Types::complex_d k, const Types::point_t &r, const Types::Vector3c &j);
 }
 
 namespace EMW::Laplace

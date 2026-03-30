@@ -6,7 +6,7 @@
 #define RESEARCH_MATRUXREPLACEMENT_HPP
 
 
-#include "math/matrix/iterative_solvers_coverage/IdentityPreconditioner.hpp"
+#include "Preconditioning.hpp"
 #include "types/Types.hpp"
 
 #include <Eigen/Core>
@@ -18,17 +18,16 @@ namespace EMW::Math::LinAgl::Matrix::Wrappers
      * @tparam MatrixType -- собственно та самая матрица
      */
     template <typename MatrixType1,
-              typename PreconditionerType = Preconditioning::IdentityPreconditioner<Types::complex_d, MatrixType1>>
+              typename PreconditionerType = Research::VolDie::IdentityPreconditioner<Types::complex_d, MatrixType1>>
     class VolumeOperatorMatrixReplacement : public Eigen::EigenBase<VolumeOperatorMatrixReplacement<
-            MatrixType1, PreconditionerType>>
-    {
+            MatrixType1, PreconditionerType>> {
     public:
         // Required typedefs, constants, and method:
         typedef Types::complex_d Scalar;
         typedef Eigen::NumTraits<Scalar>::Real RealScalar;
         typedef Types::integer StorageIndex;
         constexpr static Types::integer Options_ = 0;
-        constexpr static auto zeroLike = std::numeric_limits<RealScalar>::epsilon();
+        constexpr static auto zeroLike = 1e-7;
 
         enum { ColsAtCompileTime = Eigen::Dynamic, MaxColsAtCompileTime = Eigen::Dynamic, IsRowMajor = false };
 
@@ -46,25 +45,29 @@ namespace EMW::Math::LinAgl::Matrix::Wrappers
         VolumeOperatorMatrixReplacement() = default;
 
         VolumeOperatorMatrixReplacement(const MatrixType1& mat, const Types::VectorX<Scalar>& eps_vec): mat_(mat),
-            epsilon_vec_(eps_vec),
-            precond_(mat_), mask_(Types::VectorX<RealScalar>::Zero(mat_.rows())),
-            inverse_epsilon_vec_(Types::VectorX<RealScalar>::Zero(mat_.rows()))
+            mask_(Types::VectorX<RealScalar>::Zero(mat_.rows())), precond_(mat_)
         {
-            if (epsilon_vec_.size() != mat.cols())
+            if (eps_vec.size() != mat.cols())
             {
                 throw std::invalid_argument("Epsilon is not set up correctly");
             }
             for (size_t i = 0; i < mat.rows(); ++i)
             {
                 mask_[i] = (std::abs(eps_vec[i]) > zeroLike);
-                inverse_epsilon_vec_[i] = std::abs(eps_vec[i]) < zeroLike ? 1 : 1. / epsilon_vec_[i];
             }
+            epsilon_vec_ = eps_vec.cwiseProduct(mask_);
+            // Нули в epsilon_vec_ нужно заполнить единицами и отправить в диагональный предобуславливатель
+            decltype(auto) epsilon_minus_one_for_preconditioner = epsilon_vec_;
+            for (size_t i = 0; i < mat.rows(); ++i) {
+                if (std::abs(epsilon_vec_[i]) < zeroLike)
+                    epsilon_minus_one_for_preconditioner[i] = 1;
+            }
+            // precond_.attach_epsilon_matrix(epsilon_minus_one_for_preconditioner);
         }
 
         const PreconditionerType& get_preconditioner() const { return precond_; }
         const MatrixType1& get_mat() const { return mat_; }
         [[nodiscard]] const Types::VectorX<Scalar>& get_epsilon_vec() const { return epsilon_vec_; }
-        [[nodiscard]] const Types::VectorX<Scalar>& get_inverse_epsilon_vec() const { return inverse_epsilon_vec_; }
         [[nodiscard]] const Types::VectorX<RealScalar>& get_mask() const { return mask_; }
 
         // Изменение правой части согласно насчитанной маске
@@ -78,23 +81,10 @@ namespace EMW::Math::LinAgl::Matrix::Wrappers
             return std::forward<Rhs>(rhs).cwiseProduct(mask_);
         }
 
-        template <typename Solution>
-        [[nodiscard]] Types::VectorXc modify_vec_according_to_inverse_epsilon_sqrt(Solution&& sol) const
-        {
-            return std::forward<Solution>(sol).cwiseProduct(inverse_epsilon_vec_.cwiseSqrt());
-        }
-
-        template <typename Solution>
-        [[nodiscard]] Types::VectorXc modify_vec_according_to_inverse_epsilon(Solution&& sol) const
-        {
-            return std::forward<Solution>(sol).cwiseProduct(inverse_epsilon_vec_);
-        }
-
     private:
         const MatrixType1& mat_;
         // Вектора, которые отвечают за диагональную матрицу epsilon - 1
-        const Types::VectorX<Scalar> epsilon_vec_;
-        Types::VectorX<Scalar> inverse_epsilon_vec_;
+        Types::VectorX<Scalar> epsilon_vec_;
         // Нужна для отсечения лишних элементов в векторе неизвестных (так как кое-где не нужно решать систему)
         Types::VectorX<RealScalar> mask_;
         PreconditionerType precond_;
@@ -133,11 +123,10 @@ namespace Eigen::internal
         assert(alpha == Scalar(1) && "scaling is not implemented");
         EIGEN_ONLY_USED_FOR_DEBUG(alpha);
 #endif
-            Rhs preconditioned = lhs.get_preconditioner().solve(rhs);
-            const auto sqrt_eps_vec = lhs.get_epsilon_vec().cwiseSqrt();
-            const auto inverse_sqrt_eps_vec = lhs.get_inverse_epsilon_vec().cwiseSqrt();
-            dst.noalias() += (rhs.cwiseProduct(inverse_sqrt_eps_vec) - (lhs.get_mat() *
-                Eigen::VectorXcd{rhs.cwiseProduct(sqrt_eps_vec)})).cwiseProduct(lhs.get_mask());
+            const auto& mask = lhs.get_mask();
+            Rhs preconditioned = lhs.get_preconditioner().solve(rhs).cwiseProduct(mask);
+            VectorX<Scalar> tmp = preconditioned.cwiseProduct(lhs.get_epsilon_vec());
+            dst.noalias() += (preconditioned - (lhs.get_mat() * tmp).cwiseProduct(mask));
         }
     };
 }

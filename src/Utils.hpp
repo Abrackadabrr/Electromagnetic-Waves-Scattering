@@ -69,6 +69,30 @@ template <typename T> MemoryUsage get_memory_usage(const Math::LinAgl::Matrix::T
     return {memory_for_full_matrix, memory_for_toeplitz_matrix, -1};
 }
 
+template <typename T> MemoryUsage get_memory_usage(const Math::LinAgl::Matrix::TripleToeplitzBlock<T> &matrix) {
+    const Types::index total_rows = matrix.rows();
+    const Types::index total_cols = matrix.cols();
+
+    const Types::index rows_in_big_block = matrix.rows_in_block();
+    const Types::index third_layer_rows = total_rows / rows_in_big_block;
+
+    const auto &second_layer = matrix.get_block(0, 0);
+    const Types::index second_layer_rows = second_layer.rows() / second_layer.rows_in_block();
+
+    const auto &first_layer = second_layer.get_block(0, 0);
+    const Types::index first_layer_rows = first_layer.rows() / first_layer.rows_in_block();
+
+    const Types::index internal_block_rows = first_layer.rows_in_block();
+    const Types::index internal_block_cols = first_layer.cols_in_block();
+
+    const Types::scalar element_in_gb = static_cast<Types::scalar>(sizeof(T)) / (1024 * 1024 * 1024);
+    const Types::scalar memory_for_full_matrix = total_cols * total_rows * element_in_gb;
+    const Types::scalar memory_for_toeplitz_matrix = internal_block_cols * internal_block_rows *
+                                                     (2 * third_layer_rows - 1) * (2 * second_layer_rows - 1) *
+                                                     (2 * first_layer_rows - 1) * element_in_gb;
+    return {memory_for_full_matrix, memory_for_toeplitz_matrix, -1};
+}
+
 template <typename T>
 MemoryUsage get_memory_usage(const Math::LinAgl::Matrix::ToeplitzToeplitzDynFactoredBlock<T> &matrix) {
     const Types::index total_rows = matrix.rows();
@@ -99,6 +123,39 @@ MemoryUsage get_memory_usage(const Math::LinAgl::Matrix::ToeplitzToeplitzDynFact
             toeplitz_factored_matrix += first_layer_block.memory_usage();
 
     return {memory_for_full_matrix, memory_for_toeplitz_matrix, toeplitz_factored_matrix * element_in_gb};
+}
+
+template <typename T>
+MemoryUsage get_memory_usage(const Math::LinAgl::Matrix::TripleToeplitzFactoredBlock<T> &matrix) {
+    const Types::index total_rows = matrix.rows();
+    const Types::index total_cols = matrix.cols();
+
+    const Types::index rows_in_big_block = matrix.rows_in_block();
+
+    const Types::index third_layer_rows = total_rows / rows_in_big_block;
+
+    const auto &second_layer = matrix.get_block(0, 0);
+    const Types::index second_layer_rows = second_layer.rows() / second_layer.rows_in_block();
+
+    const auto &first_layer = second_layer.get_block(0, 0);
+    const Types::index first_layer_rows = first_layer.rows() / first_layer.rows_in_block();
+
+    const Types::index internal_block_rows = first_layer.rows_in_block();
+    const Types::index internal_block_cols = first_layer.cols_in_block();
+
+    const Types::scalar element_in_gb = static_cast<Types::scalar>(sizeof(T)) / (1024 * 1024 * 1024);
+    const Types::scalar memory_for_full_matrix = total_cols * total_rows * element_in_gb;
+    const Types::scalar memory_for_toeplitz_matrix = internal_block_cols * internal_block_rows *
+                                                     (2 * third_layer_rows - 1) * (2 * second_layer_rows - 1) *
+                                                     (2 * first_layer_rows - 1) * element_in_gb;
+
+    Types::scalar toeplitz_factored_matrix = 0;
+    for (const auto &third_layer_block : matrix.get_blocks().get_values())
+        for (const auto &second_layer_block : third_layer_block.get_blocks().get_values())
+            for (const auto &first_layer_block : second_layer_block.get_blocks().get_values())
+                toeplitz_factored_matrix += first_layer_block.memory_usage();
+
+    return {memory_for_full_matrix, memory_for_toeplitz_matrix, toeplitz_factored_matrix};
 }
 
 } // namespace EMW::Utils

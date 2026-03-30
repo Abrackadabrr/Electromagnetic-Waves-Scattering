@@ -37,7 +37,7 @@ Types::Vector3c sigmaOverCube(Types::complex_d k, const Types::Vector3d &tau,
         return Helmholtz::sigmaKernel(k, tau, {x, y, z}, j_e, j_m, eps);
     };
 
-    return DefiniteIntegrals::integrate<DefiniteIntegrals::NewtonCotess::Quadrature<2, 2, 2>>(
+    return DefiniteIntegrals::integrate<DefiniteIntegrals::NewtonCotess::Quadrature<4, 4, 4>>(
         phi, {left_down_corner.x(), left_down_corner.y(), left_down_corner.z()}, {dx, dy, dz});
 }
 

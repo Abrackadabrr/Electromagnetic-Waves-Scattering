@@ -2,7 +2,6 @@
 // Created by evgen on 27.03.2026.
 //
 
-
 #include <benchmark/benchmark.h>
 
 #include <Eigen/Dense>
@@ -90,17 +89,6 @@ BENCHMARK_DEFINE_F(MatrixVectorBenchmark, MyMatrixMatVecNew)(benchmark::State &s
     state.SetComplexityN(n);
 }
 
-BENCHMARK_DEFINE_F(MatrixVectorBenchmark, MyMatrixMatVecBlocked)(benchmark::State &state) {
-    for (auto _ : state) {
-        y_.noalias() = my_matrix_.matvec_wise(x_);
-        benchmark::DoNotOptimize(y_.data());
-        benchmark::ClobberMemory();
-    }
-
-    const auto n = static_cast<double>(state.range(0));
-    state.SetComplexityN(n);
-}
-
 BENCHMARK_DEFINE_F(MatrixVectorBenchmark, MyMatrixMatVecOld)(benchmark::State &state) {
     for (auto _ : state) {
         y_.noalias() = my_matrix_.matvec(x_);
@@ -112,12 +100,12 @@ BENCHMARK_DEFINE_F(MatrixVectorBenchmark, MyMatrixMatVecOld)(benchmark::State &s
     state.SetComplexityN(n);
 }
 
-#if 0
-BENCHMARK_REGISTER_F(MatrixVectorBenchmark, MyMatrixMatVecOld)
+#if 1
+BENCHMARK_REGISTER_F(MatrixVectorBenchmark, MyMatrixMatVecNew)
 ->ArgsProduct({
-    benchmark::CreateDenseRange(100, 150, 10),
-    benchmark::CreateRange(3, 3, 2)
-})
+                                                                  benchmark::CreateDenseRange(10, 20, 1),
+                                                                  benchmark::CreateRange(256, 256, 2)
+                                                              })
     ->Unit(benchmark::kMillisecond);
 #endif
 
@@ -127,14 +115,6 @@ BENCHMARK_REGISTER_F(MatrixVectorBenchmark, MyMatrixMatVecOld)
                                                                   benchmark::CreateRange(256, 256, 2)
                                                               })
     ->Unit(benchmark::kMillisecond);
-
-BENCHMARK_REGISTER_F(MatrixVectorBenchmark, MyMatrixMatVecBlocked)
-->ArgsProduct({
-                                                                      benchmark::CreateDenseRange(10, 20, 1),
-                                                                      benchmark::CreateRange(256, 256, 2)
-                                                                  })
-    ->Unit(benchmark::kMillisecond);
-
 
 } // namespace
 

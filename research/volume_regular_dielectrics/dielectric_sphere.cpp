@@ -18,10 +18,12 @@
 
 #include "MatrixTraits.hpp"
 #include "MatrixReplacement.hpp"
+#include "Preconditioning.hpp"
 
 #include "math/fields/Utils.hpp"
 #include "math/integration/newton_cotess/Rectangular.hpp"
 #include "math/integration/gauss_quadrature/GaussLegenderPoints.hpp"
+
 
 #include "Utils.hpp"
 
@@ -38,27 +40,27 @@ Types::scalar permittivity_distribution(const Types::point_t &x) {
 
 Types::scalar permittivity_distribution_cube(const Types::point_t &x) {
     return 3 * ((std::abs(x.x()) < CUBE_LENGTH / 2) &&
-    (std::abs(x.y()) < CUBE_LENGTH / 2) &&
-    (std::abs(x.z()) < CUBE_LENGTH / 2)) + 1;
+                (std::abs(x.y()) < CUBE_LENGTH / 2) &&
+                (std::abs(x.z()) < CUBE_LENGTH / 2)) + 1;
 }
 
 int main() {
     // 1. Рисуем сетку
-    constexpr Types::scalar cube_length = 2 * CUBE_LENGTH;
-    constexpr Types::index Nx = 23;
-    constexpr Types::index Ny = 23;
-    constexpr Types::index Nz = 23;
+    constexpr Types::scalar cube_length = 2.1 * SPHERE_RADUIS;
+    constexpr Types::index Nx = 41;
+    constexpr Types::index Ny = 41;
+    constexpr Types::index Nz = 41;
     constexpr Types::scalar mesh_one_axis_size = cube_length / (Nx - 1);
     Mesh::VolumeMesh::CubeMeshWithData mesh{Types::point_t{-cube_length / 2, -cube_length / 2, -cube_length / 2},
                                             (Nx - 1) * mesh_one_axis_size,
                                             (Ny - 1) * mesh_one_axis_size, (Nz - 1) * mesh_one_axis_size, Nx, Ny, Nz};
-    mesh.setName("cube");
+    mesh.setName("sphere");
     // Настраиваем диэлектрическую проницаемость
-    mesh.smoothScalarData<DefiniteIntegrals::NewtonCotess::Quadrature<4, 4, 4>>("eps", permittivity_distribution_cube);
+    mesh.smoothScalarData<DefiniteIntegrals::GaussLegendre::Quadrature<4, 4, 4>>("eps", permittivity_distribution);
 
     // 2. Параметры падающей волны
-    constexpr double freq = 1; // GHz
-    constexpr Types::complex_d k{2 * M_PI / CUBE_LENGTH, 0.};
+    constexpr double freq = 0.3; // GHz
+    constexpr Types::complex_d k{Physics::get_k_on_frquency(freq), 0.};
     Physics::planeWaveCase incident_field{Types::Vector3d{0, 1, 0}, k, Types::Vector3d{1, 0, 0}};
     std::cout << "Длина волны в свободном пространстве = " << 2 * M_PI / k.real() << std::endl;
 
@@ -73,8 +75,15 @@ int main() {
 
     // Матрицу собираем
     Operators::Volume::operator_K_over_cube_mesh operator_K{k, mesh};
-    auto mat = operator_K.compute_galerkin_matrix(std::sqrt(cube_measure));
-    // Собираем матрицу diag(eps - 1) как вектор из значений
+    auto [mat, perm] = operator_K.
+        compute_galerkin_matrix_custom_blocksize_compressed(8, 8, 8, 1. / sqrt(cube_measure), 1e-2);
+    std::cout << Utils::get_memory_usage(mat) << std::endl;
+    std::cout << "Мозаичный ранг = " << Utils::get_memory_usage(mat).toeplitz_and_factored_matrix / (3 * Nx * Nx * Nx) << std::endl;
+    std::cout << std::log2(Nx * Nx * Nx) << std::endl;
+    // Сразу модифицируем правую часть (матрица перестановки)
+    b = perm * b;
+
+    // Собираем матрицу (eps - 1) как вектор из значений
     Types::VectorXc diag_eps = Types::VectorXc::Zero(3 * mesh.getCells().size());
     const auto eps_data = mesh.getScalarData("eps");
     for (size_t idx = 0; idx < mesh.getCells().size(); ++idx) {
@@ -82,21 +91,23 @@ int main() {
         diag_eps[3 * idx + 1] = eps_data[idx] - 1.;
         diag_eps[3 * idx + 2] = eps_data[idx] - 1.;
     }
+    // И его тоже переставляем
+    diag_eps = perm * diag_eps;
+
     Math::LinAgl::Matrix::Wrappers::VolumeOperatorMatrixReplacement A{mat, diag_eps};
+
     // Поправляем правую часть по маске из фиктивных элементов
     b = A.modify_rhs_according_to_mask(b);
     // 4. Решаем систему
-    auto solution = Research::solve<Eigen::GMRES>(A, b, 1000, 2e-3);
-    // ВАЖНО, что тут дополнительно делим на sqrt(epsilon),
-    // потому что в системе была замена переменных
-    solution = A.modify_vec_according_to_inverse_epsilon_sqrt(solution);
+    auto solution = Research::solve<Eigen::GMRES>(A, b, 1000, 1e-3);
+
+    // И теперь переставляем обратно
+    solution = perm.transpose() * solution;
 
     // 5. Преобразовываем в векторное поле на ячейках и пишем в данные сетки
-
     std::vector<Types::Vector3c> field_on_mesh;
     field_on_mesh.reserve(mesh.getCells().size());
     for (size_t idx = 0; idx < mesh.getCells().size(); ++idx) {
-        const auto eps_m_one = std::abs(eps_data[idx]) > 1e-14 ? eps_data[idx] : 1;
         field_on_mesh.emplace_back(solution[3 * idx + 0] / (std::sqrt(cube_measure)),
                                    solution[3 * idx + 1] / (std::sqrt(cube_measure)),
                                    solution[3 * idx + 2] / (std::sqrt(cube_measure)));
@@ -109,10 +120,9 @@ int main() {
     const std::string path =
         "/home/evgen/Education/MasterDegree/thesis/Electromagnetic-Waves-Scattering/research/volume_regular_dielectrics/";
     VTK::volume_mesh_withdata_snapshot(mesh, path);
-    // VTK::volume_mesh_withdata_snapshot(sphere_mesh, path);
 
     // Расчситываем диаграмму направленности
-    int N = 720;
+    int N = 180;
     const auto get_tau_hh = [](Types::scalar phi) { return Types::Vector3d{std::cos(phi), 0, std::sin(phi)}; };
     const auto get_tau_vv = [](Types::scalar phi) { return Types::Vector3d{std::cos(phi), std::sin(phi), 0}; };
 

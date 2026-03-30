@@ -20,6 +20,9 @@ template <typename T> using TripleToeplitzBlock = ToeplitzStructure<T, ToeplitzT
 
 template <typename T> using ToeplitzDynFactoredBlock = ToeplitzStructure<T, DynamicFactoredMatrix<Types::MatrixX<T>>>;
 template <typename T> using ToeplitzToeplitzDynFactoredBlock = ToeplitzStructure<T, ToeplitzDynFactoredBlock<T>>;
+template <typename T> using TripleToeplitzFactoredBlock = ToeplitzStructure<T, ToeplitzToeplitzDynFactoredBlock<T>>;
+
+// Zero toeplitz structures with dense internal blocks
 
 template<typename T>
 ToeplitzBlock<T> ZeroToeplitzBlock(size_t fl, size_t inner_size) {
@@ -43,6 +46,32 @@ TripleToeplitzBlock<T> ZeroTripleToeplitzBlock(size_t fl, size_t sl, size_t tl, 
         return ZeroDoubleToeplitzBlock<T>(fl, sl, inner_size);
     };
     return TripleToeplitzBlock<T>(tl, tl, get_zero_inner_block);
+}
+
+// Zero toeplitz structures with factored inside blocks
+
+template<typename T>
+decltype(auto) ZeroToeplitzFactoredBlock(size_t fl, size_t inner_size) {
+    const auto get_zero_inner_block = [&](size_t i, size_t j) {
+        return DynamicFactoredMatrix<Types::MatrixX<T>>{inner_size, inner_size};
+    };
+    return ToeplitzDynFactoredBlock<T>(fl, fl, get_zero_inner_block);
+}
+
+template<typename T>
+decltype(auto) ZeroDoubleToeplitzFactoredBlock(size_t fl, size_t sl, size_t inner_size) {
+    const auto get_zero_inner_block = [&](size_t i, size_t j) {
+        return ZeroToeplitzFactoredBlock<T>(fl, inner_size);
+    };
+    return ToeplitzToeplitzDynFactoredBlock<T>(sl, sl, get_zero_inner_block);
+}
+
+template<typename T>
+decltype(auto) ZeroTripleToeplitzFactoredBlock(size_t fl, size_t sl, size_t tl, size_t inner_size) {
+    const auto get_zero_inner_block = [&](size_t i, size_t j) {
+        return ZeroDoubleToeplitzFactoredBlock<T>(fl, sl, inner_size);
+    };
+    return TripleToeplitzFactoredBlock<T>(tl, tl, get_zero_inner_block);
 }
 
 } // namespace EMW::Math::LinAgl::Matrix

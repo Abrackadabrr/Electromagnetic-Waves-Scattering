@@ -39,3 +39,19 @@ TEST(VOLUME_MESH_TESTS, SIMPLE_CREATION_AND_SNAPSHOT) {
     VTK::volume_mesh_withdata_snapshot(
         mesh, "/home/evgen/Education/MasterDegree/thesis/Electromagnetic-Waves-Scattering/tests/mesh/volume_mesh/");
 }
+
+TEST(VOLUME_MESH_TESTS, PERMUTATION_CALCULATION) {
+    Types::point_t corner{0, 0, 0};
+    const Types::scalar xs = 1;
+    constexpr size_t N = 3;
+    const Mesh::VolumeMesh::CubeMeshWithData mesh{corner, xs, N};
+
+    const auto p1 = mesh.getPermutationForCubes(1, 2, 2);
+    std::cout << p1.indices() << '\n' << std::endl;
+    Eigen::VectorXi vec = Eigen::VectorXi::Ones(p1.indices().size());
+    for (size_t i = 0; i < p1.indices().size(); i++) {
+        vec[i] = i;
+    }
+    std::cout << vec <<"\n"<<std::endl;
+    std::cout << p1 * vec << std::endl;
+}

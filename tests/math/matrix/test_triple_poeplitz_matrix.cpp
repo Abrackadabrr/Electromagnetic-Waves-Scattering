@@ -8,6 +8,11 @@
 
 #include "math/matrix/Matrix.hpp"
 
+#include <mesh/volume_mesh/CubeMeshWithData.hpp>
+#include <operators/volume/OperatorK.hpp>
+
+#include <random>
+
 using namespace EMW;
 
 std::pair<Types::index, Types::index> full_index_from_block_index(Types::index i1, Types::index j1,
@@ -93,4 +98,41 @@ TEST(TOEPLITZ_MATRIX_TESTS, TRIPLE_TOEPLITZ_SCALAR) {
 
     // Проверка совпадения матриц
     ASSERT_NEAR((full_matrix - trip_toep_matrix.to_dense()).norm(), 0, 1e-14);
+}
+
+constexpr Types::scalar SPHERE_RADUIS = 0.5;
+
+Types::scalar permittivity_distribution(const Types::point_t &x) {
+    return x.norm() < SPHERE_RADUIS ? 2.56 : 1;
+}
+
+TEST(TOEPLITZ_MATRIX_TESTS, VIE_DIFFERENT_ENUMRATION_TEST) {
+    constexpr Types::scalar cube_length = 2.1 * SPHERE_RADUIS;
+    constexpr Types::index Nx = 5;
+    constexpr Types::index Ny = 5;
+    constexpr Types::index Nz = 5;
+    constexpr Types::scalar mesh_one_axis_size = cube_length / (Nx - 1);
+    constexpr Types::scalar basis_fn_norm = 1. / (mesh_one_axis_size * std::sqrt(mesh_one_axis_size));
+    Mesh::VolumeMesh::CubeMeshWithData mesh{Types::point_t{-cube_length / 2, -cube_length / 2, -cube_length / 2},
+                                            (Nx - 1) * mesh_one_axis_size,
+                                            (Ny - 1) * mesh_one_axis_size, (Nz - 1) * mesh_one_axis_size, Nx, Ny, Nz};
+
+    Operators::Volume::operator_K_over_cube_mesh operator_K{{1., 0.}, mesh};
+    auto toeplitz = operator_K.compute_galerkin_matrix(basis_fn_norm);
+
+    auto [mat, perm] = operator_K.compute_galerkin_matrix_custom_blocksize(
+        1, 1, 1, basis_fn_norm);
+
+    std::cout <<  perm.indices() << std::endl;
+
+    const Types::VectorXc x = Types::VectorXc::Random(toeplitz.cols());
+
+    // Плотная умножалка
+    const Types::VectorXc x_permuted = x;
+    const Types::VectorXc y_dense_permuted = mat.matvec(x_permuted);
+    const Types::VectorXc y_dense =  y_dense_permuted;
+
+    // Сравнение для плотной умножалки через toeplitz
+    const auto y_from_dense_toeplitz = toeplitz.matvec(x);
+    ASSERT_NEAR((mat.to_dense() - toeplitz.to_dense()).norm(), 0.0, 1e-14 * toeplitz.to_dense().norm());
 }

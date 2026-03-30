@@ -99,9 +99,21 @@ namespace EMW::Mesh::VolumeMesh
         [[nodiscard]] size_t nx() const { return nx_; };
         [[nodiscard]] size_t ny() const { return ny_; };
         [[nodiscard]] size_t nz() const { return nz_; };
+        [[nodiscard]] size_t nCubesX() const { return nx_ - 1; };
+        [[nodiscard]] size_t nCubesY() const { return ny_ - 1; };
+        [[nodiscard]] size_t nCubesZ() const { return nz_ - 1; };
+        [[nodiscard]] Types::scalar distance(size_t k, size_t p) const
+        {
+            return (cells_[k].center_ - cells_[p].center_).norm();
+        };
 
         // --- Setters --- //
         void setName(const std::string& name) { name_ = name; };
+
+        // --- Specials --- //
+        [[nodiscard]] Eigen::PermutationMatrix<Eigen::Dynamic> getPermutation(size_t Nx, size_t Ny, size_t Nz) const;
+        [[nodiscard]] Eigen::PermutationMatrix<Eigen::Dynamic> getPermutationForCubes(
+            size_t Nx, size_t Ny, size_t Nz) const;
     };
 } // namespace EMW::Mesh::VolumeMesh
 

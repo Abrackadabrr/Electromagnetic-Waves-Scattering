@@ -7,7 +7,7 @@ if (OPENMP_FOUND)
     message("OpenMP Found")
 endif()
 
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -O0")
+# set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -O0")
 
 foreach (TEST IN LISTS TESTS)
     get_filename_component(FILE_NAME ${TEST} NAME_WE)

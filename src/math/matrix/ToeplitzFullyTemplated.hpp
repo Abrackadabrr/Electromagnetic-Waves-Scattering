@@ -64,12 +64,10 @@ namespace EMW::Math::LinAgl::Matrix
 
         /** Умножение матрицы на вектор */
         [[nodiscard]] vector_t matvec(const vector_t& vec) const noexcept;
-        /** Умножение матрицы на вектор */
-        [[nodiscard]] vector_t matvec_wise(const vector_t& vec) const noexcept;
         /**
          * dest += matvec(vec);
          */
-        void matvec(const vector_t& vec, Eigen::Ref<vector_t> dest) const noexcept;
+        void matvec(Eigen::Ref<vector_t> vec, Eigen::Ref<vector_t> dest) const noexcept;
 
         /** Умножение матрицы на число с возвращением копии */
         [[nodiscard]] ToeplitzStructure mull(scalar_t value) const noexcept;
@@ -202,53 +200,9 @@ namespace EMW::Math::LinAgl::Matrix
         return result;
     }
 
+#if 1
     template <typename scalar_t, typename block_t>
-    typename ToeplitzStructure<scalar_t, block_t>::vector_t
-    ToeplitzStructure<scalar_t, block_t>::matvec_wise(const vector_t& vec) const noexcept
-    {
-        assert(vec.size() == cols());
-        // создаем нулевой вектор результата, в который будем записывать ответ
-        vector_t result = vector_t::Zero(rows());
-        // Далее итерируемся по всем уникальным блокам
-        // 1. Итерируемся по блочной строке
-        for (Types::index i = 0; i < blocks.rows(); ++i)
-        {
-            // Достаем ссылку на текущий блок в первой строке
-            const block_t& current_block = blocks(i, 0);
-            // Делаем reshape на вектор, на который умножаем
-            auto sub_vector_reshaped = Eigen::Map<const Types::MatrixXc>(
-                vec.data() + i * cols_in_block_, cols_in_block_, blocks.cols() - i);
-            auto sub_result_reshaped = Eigen::Map<Types::MatrixXc>(result.data(), cols_in_block_,
-                                                                   blocks.cols() - i);
-            // Умножалка
-            sub_result_reshaped += current_block * sub_vector_reshaped;
-        }
-        // 2. Итерируемся по блочному столбцу
-        for (Types::index i = 1; i < blocks.cols(); ++i)
-        {
-            // Достаем ссылку на текущий блок в первой строке
-            const block_t& current_block = blocks(0, i);
-            // Делаем reshape на вектор, на который умножаем
-            auto sub_result_reshaped = Eigen::Map<Types::MatrixXc>(
-                result.data() + i * cols_in_block_, cols_in_block_, blocks.cols() - i);
-            auto sub_vector_reshaped = Eigen::Map<const Types::MatrixXc>(
-                vec.data(), cols_in_block_, blocks.cols() - i);
-            // Умножалка
-            if constexpr (std::is_same_v<block_t, Types::MatrixX<scalar_t>>)
-            {
-                sub_result_reshaped += current_block * sub_vector_reshaped;
-            }
-            else
-            {
-                static_assert(false, "Not implemented yet");
-            }
-        }
-        // И по идее всё
-        return result;
-    }
-
-    template <typename scalar_t, typename block_t>
-    void ToeplitzStructure<scalar_t, block_t>::matvec(const vector_t& vec, Eigen::Ref<vector_t> dest) const noexcept
+    void ToeplitzStructure<scalar_t, block_t>::matvec(Eigen::Ref<vector_t> vec, Eigen::Ref<vector_t> dest) const noexcept
     {
         assert(vec.size() == cols());
         for (Types::index i = 0; i < blocks.rows(); ++i)
@@ -270,7 +224,7 @@ namespace EMW::Math::LinAgl::Matrix
             }
         }
     }
-
+#endif
 
     template <typename scalar_t, typename block_t>
     ToeplitzStructure<scalar_t, block_t> ToeplitzStructure<scalar_t, block_t>::mull(scalar_t value) const noexcept

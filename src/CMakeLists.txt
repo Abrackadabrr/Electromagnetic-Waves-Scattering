@@ -4,6 +4,9 @@ message("Building a library: " ${PROJECT_NAME})
 
 file(GLOB_RECURSE SOURCES *.cpp)
 
+set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE}")
+# -march=native -flto -ftemplate-depth=10000")
+
 add_library(${PROJECT_NAME} STATIC ${SOURCES})
 
 set(TARGET_LIBS eigen)
