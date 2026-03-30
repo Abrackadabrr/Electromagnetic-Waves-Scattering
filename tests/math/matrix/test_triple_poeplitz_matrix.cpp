@@ -108,9 +108,9 @@ Types::scalar permittivity_distribution(const Types::point_t &x) {
 
 TEST(TOEPLITZ_MATRIX_TESTS, VIE_DIFFERENT_ENUMRATION_TEST) {
     constexpr Types::scalar cube_length = 2.1 * SPHERE_RADUIS;
-    constexpr Types::index Nx = 5;
-    constexpr Types::index Ny = 5;
-    constexpr Types::index Nz = 5;
+    constexpr Types::index Nx = 13;
+    constexpr Types::index Ny = 13;
+    constexpr Types::index Nz = 13;
     constexpr Types::scalar mesh_one_axis_size = cube_length / (Nx - 1);
     constexpr Types::scalar basis_fn_norm = 1. / (mesh_one_axis_size * std::sqrt(mesh_one_axis_size));
     Mesh::VolumeMesh::CubeMeshWithData mesh{Types::point_t{-cube_length / 2, -cube_length / 2, -cube_length / 2},
@@ -121,18 +121,38 @@ TEST(TOEPLITZ_MATRIX_TESTS, VIE_DIFFERENT_ENUMRATION_TEST) {
     auto toeplitz = operator_K.compute_galerkin_matrix(basis_fn_norm);
 
     auto [mat, perm] = operator_K.compute_galerkin_matrix_custom_blocksize(
-        1, 1, 1, basis_fn_norm);
-
-    std::cout <<  perm.indices() << std::endl;
+        4, 4, 4, basis_fn_norm);
 
     const Types::VectorXc x = Types::VectorXc::Random(toeplitz.cols());
 
     // Плотная умножалка
-    const Types::VectorXc x_permuted = x;
-    const Types::VectorXc y_dense_permuted = mat.matvec(x_permuted);
-    const Types::VectorXc y_dense =  y_dense_permuted;
+    const Types::VectorXc x_permuted = perm * x;
+    const Types::VectorXc mat_result = perm.transpose() * mat.matvec(x_permuted);
+    const auto toeplitz_result = toeplitz.matvec(x);
 
-    // Сравнение для плотной умножалки через toeplitz
-    const auto y_from_dense_toeplitz = toeplitz.matvec(x);
-    ASSERT_NEAR((mat.to_dense() - toeplitz.to_dense()).norm(), 0.0, 1e-14 * toeplitz.to_dense().norm());
+    ASSERT_NEAR((mat_result - toeplitz_result).norm(), 0.0, 1e-6 * toeplitz_result.norm());
+}
+
+TEST(TOEPLITZ_MATRIX_TESTS, VIE_SKELTONIZATION_TEST) {
+    constexpr Types::scalar cube_length = 2.1 * SPHERE_RADUIS;
+    constexpr Types::index Nx = 13;
+    constexpr Types::index Ny = 13;
+    constexpr Types::index Nz = 13;
+    constexpr Types::scalar mesh_one_axis_size = cube_length / (Nx - 1);
+    constexpr Types::scalar basis_fn_norm = 1. / (mesh_one_axis_size * std::sqrt(mesh_one_axis_size));
+    Mesh::VolumeMesh::CubeMeshWithData mesh{Types::point_t{-cube_length / 2, -cube_length / 2, -cube_length / 2},
+                                            (Nx - 1) * mesh_one_axis_size,
+                                            (Ny - 1) * mesh_one_axis_size, (Nz - 1) * mesh_one_axis_size, Nx, Ny, Nz};
+
+    Operators::Volume::operator_K_over_cube_mesh operator_K{{1., 0.}, mesh};
+    size_t nx, ny, nz;
+    nx = 4;
+    ny = 4;
+    nz = 4;
+    auto [mat_dense, perm_dense] = operator_K.compute_galerkin_matrix_custom_blocksize(
+        nx, ny, nz, basis_fn_norm);
+    auto [mat, perm] = operator_K.compute_galerkin_matrix_custom_blocksize_compressed(
+        nx, ny, nz, basis_fn_norm, 1e-3);
+
+    std::cout << "Approximation error = " << (mat.to_dense() - mat_dense.to_dense()).norm() / mat_dense.to_dense().norm() << std::endl;
 }

@@ -256,6 +256,11 @@ template <typename matrix_t, typename vector_t, typename value_t> struct ACA {
 
         return compute(compute_row, compute_col, n, m, error_control_parameter);
     };
+
+    static Matrix::DynamicFactoredMatrix<matrix_t> svd_postcompression(Matrix::DynamicFactoredMatrix<matrix_t>&& matrix, Types::scalar tolerance) {
+        const matrix_t U = std::move(matrix.template get<0>());
+        const matrix_t V = std::move(matrix.template get<1>());
+    }
 };
 }
 #endif //ADAPTIVE_CROSS_HPP

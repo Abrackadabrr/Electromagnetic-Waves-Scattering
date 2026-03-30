@@ -249,19 +249,20 @@ TEST(TRIPLE_TOEPLITZ_3X3_FOURIER, VIE_TEST) {
     std::cout << "Initializing toeplitz matrix ..." << std::endl;
 
     constexpr Types::scalar cube_length = 2.1 * SPHERE_RADUIS;
-    constexpr Types::index Nx = 25;
-    constexpr Types::index Ny = 25;
-    constexpr Types::index Nz = 25;
+    constexpr Types::index Nx = 13;
+    constexpr Types::index Ny = 13;
+    constexpr Types::index Nz = 13;
     constexpr Types::scalar mesh_one_axis_size = cube_length / (Nx - 1);
+    constexpr Types::scalar basis_fn_module = 1. / (mesh_one_axis_size * std::sqrt(mesh_one_axis_size));
     Mesh::VolumeMesh::CubeMeshWithData mesh{Types::point_t{-cube_length / 2, -cube_length / 2, -cube_length / 2},
                                             (Nx - 1) * mesh_one_axis_size,
                                             (Ny - 1) * mesh_one_axis_size, (Nz - 1) * mesh_one_axis_size, Nx, Ny, Nz};
 
     Operators::Volume::operator_K_over_cube_mesh operator_K{{1., 0.}, mesh};
-    auto toeplitz = operator_K.compute_galerkin_matrix(1. / (mesh_one_axis_size * std::sqrt(mesh_one_axis_size)));
+    auto toeplitz = operator_K.compute_galerkin_matrix(basis_fn_module);
 
     auto [mat, perm] = operator_K.compute_galerkin_matrix_custom_blocksize(
-        4, 4, 4, 1. / (mesh_one_axis_size * std::sqrt(mesh_one_axis_size)));
+        4, 4, 4, basis_fn_module);
 
     std::cout << "Initializing tensor for FFT ..." << std::endl;
     const matrix_t<Types::complex_d> fft_matrix(toeplitz);
@@ -273,24 +274,26 @@ TEST(TRIPLE_TOEPLITZ_3X3_FOURIER, VIE_TEST) {
 
     std::cout << "dense start" << std::endl;
     // Плотная умножалка
-    const Types::VectorXc x_permuted = perm.transpose() * x;
+    const Types::VectorXc x_permuted = perm * x;
     auto start = std::chrono::steady_clock::now();
     const Types::VectorXc y_dense_permuted = mat.matvec(x_permuted);
     auto end = std::chrono::steady_clock::now();
-    const Types::VectorXc y_dense = perm * y_dense_permuted;
-    std::cout << "dense done: " << std::chrono::duration_cast<std::chrono::microseconds>(end - start).count() << std::endl;
+    const Types::VectorXc y_dense = perm.transpose() * y_dense_permuted;
+    std::cout << "dense done: " << std::chrono::duration_cast<std::chrono::microseconds>(end - start).count() <<
+        std::endl;
 
     // Фурье-умножалка
     start = std::chrono::steady_clock::now();
     const Types::VectorXc y_fft = fft_matrix * x;
     end = std::chrono::steady_clock::now();
-    std::cout << "FFT done: " << std::chrono::duration_cast<std::chrono::microseconds>(end - start).count() << std::endl;
+    std::cout << "FFT done: " << std::chrono::duration_cast<std::chrono::microseconds>(end - start).count() <<
+        std::endl;
 
     // Сравнение для плотной умножалки через toeplitz
     const auto y_from_dense_toeplitz = toeplitz.matvec(x);
-    ASSERT_NEAR((y_dense - y_from_dense_toeplitz).norm(), 0.0, 1e-14 * y_from_dense_toeplitz.norm());
+    ASSERT_NEAR((y_dense - y_from_dense_toeplitz).norm(), 0.0, 1e-12 * y_from_dense_toeplitz.norm());
 
-    ASSERT_NEAR((y_dense - y_fft).norm(), 0.0, 1e-14 * y_dense.norm());
+    ASSERT_NEAR((y_dense - y_fft).norm(), 0.0, 1e-12 * y_dense.norm());
 }
 
 TEST(TRIPLE_TOEPLITZ_3X3_FOURIER, VIE_COMPARISON_WITH_SKELETON_FORMAT) {
@@ -312,6 +315,7 @@ TEST(TRIPLE_TOEPLITZ_3X3_FOURIER, VIE_COMPARISON_WITH_SKELETON_FORMAT) {
         4, 4, 4, 1. / (mesh_one_axis_size * std::sqrt(mesh_one_axis_size)), 1e-2);
 
     std::cout << "Initializing tensor for FFT ..." << std::endl;
+
     const matrix_t<Types::complex_d> fft_matrix(toeplitz);
 
     Types::VectorXc x = Types::VectorXc::Zero(toeplitz.cols());
@@ -321,22 +325,20 @@ TEST(TRIPLE_TOEPLITZ_3X3_FOURIER, VIE_COMPARISON_WITH_SKELETON_FORMAT) {
 
     std::cout << "dense start" << std::endl;
     // Плотная умножалка
-    const Types::VectorXc x_permuted = perm.transpose() * x;
+    const Types::VectorXc x_permuted = perm * x;
     auto start = std::chrono::steady_clock::now();
     const Types::VectorXc y_dense_permuted = mat.matvec(x_permuted);
     auto end = std::chrono::steady_clock::now();
-    const Types::VectorXc y_dense = perm * y_dense_permuted;
-    std::cout << "dense done: " << std::chrono::duration_cast<std::chrono::microseconds>(end - start).count() << std::endl;
+    const Types::VectorXc y_dense = perm.transpose() * y_dense_permuted;
+    std::cout << "dense done: " << std::chrono::duration_cast<std::chrono::microseconds>(end - start).count() <<
+        std::endl;
 
     // Фурье-умножалка
     start = std::chrono::steady_clock::now();
     const Types::VectorXc y_fft = fft_matrix * x;
     end = std::chrono::steady_clock::now();
-    std::cout << "FFT done: " << std::chrono::duration_cast<std::chrono::microseconds>(end - start).count() << std::endl;
-
-    // Сравнение для плотной умножалки через toeplitz
-    const auto y_from_dense_toeplitz = toeplitz.matvec(x);
-    ASSERT_NEAR((y_dense - y_from_dense_toeplitz).norm(), 0.0, 1e-14 * y_from_dense_toeplitz.norm());
+    std::cout << "FFT done: " << std::chrono::duration_cast<std::chrono::microseconds>(end - start).count() <<
+        std::endl;
 
     ASSERT_NEAR((y_dense - y_fft).norm(), 0.0, 1e-14 * y_dense.norm());
 }

@@ -197,15 +197,21 @@ Types::scalar operator_K_over_cube_mesh::newton_potential_of_cube(Types::index k
 
 Types::Matrix3c operator_K_over_cube_mesh::galerkin_block_for_cubes(size_t k, size_t p) const {
     const Types::index n_cubes = mesh.getCells().size();
-    // считаем поверхностную часть
-    const auto volume_res = matrix_3_coef(k, p);
-    Types::Matrix3c result = -matrix_2_coef(k, p);
-    // и подправляем общую матрицу
-    result(0, 0) += volume_res;
-    result(1, 1) += volume_res;
-    result(2, 2) += volume_res;
+    // Счёт
+    if (mesh.distance(k, p) > 10)
+        // 1. Если кубы далеко, то считаем через far_zone
+        // Ну например 1. ...
+        return far_zone_interaction(k, p);
 
-    return result;
+    // 2. Иначе считаем через преобразование сингулярного оператора
+    const auto volume_res = matrix_3_coef(k, p);
+    Types::Matrix3c surface_res = -matrix_2_coef(k, p);
+    // и подправляем общую матрицу
+    surface_res(0, 0) += volume_res;
+    surface_res(1, 1) += volume_res;
+    surface_res(2, 2) += volume_res;
+
+    return surface_res;
 }
 
 Types::MatrixXc operator_K_over_cube_mesh::compute_galerkin_matrix_dense(Types::scalar basis_function_module) const {
@@ -257,8 +263,8 @@ operator_K_over_cube_mesh::compute_galerkin_matrix(Types::scalar basis_function_
     for (size_t i3 = 0; i3 < third_layer_toeplitz; ++i3)
         for (size_t j3 = 0; j3 < third_layer_toeplitz; ++j3) {
             for (size_t i2 = 0; i2 < second_layer_toeplitz; ++i2)
-                for (size_t j2 = 0; j2 < second_layer_toeplitz; ++j2)
-                    for (size_t i1 = 0; i1 < first_layer_toeplitz; ++i1)
+                for (size_t i1 = 0; i1 < first_layer_toeplitz; ++i1)
+                    for (size_t j2 = 0; j2 < second_layer_toeplitz; ++j2)
                         for (size_t j1 = 0; j1 < first_layer_toeplitz; ++j1) {
                             auto &&working_block = result.get_block(i3, j3).
                                                           get_block(i2, j2).
@@ -270,15 +276,7 @@ operator_K_over_cube_mesh::compute_galerkin_matrix(Types::scalar basis_function_
                                 // Ищем кубы по трёхмерному индексу
                                 const auto idx1 = mesh.cube_idx(i1, i2, i3);
                                 const auto idx2 = mesh.cube_idx(j1, j2, j3);
-                                // Счёт
-                                const auto volume_res = matrix_3_coef(idx1, idx2);
-                                Types::Matrix3c surface_res = -matrix_2_coef(idx1, idx2);
-                                // и подправляем общую матрицу
-                                surface_res(0, 0) += volume_res;
-                                surface_res(1, 1) += volume_res;
-                                surface_res(2, 2) += volume_res;
-
-                                working_block = surface_res * basis_fn_module_sqr;
+                                working_block = galerkin_block_for_cubes(idx1, idx2) * basis_fn_module_sqr;
                             }
                         }
         }
@@ -317,21 +315,7 @@ operator_K_over_cube_mesh::compute_galerkin_matrix(
                                 const auto idx1 = mesh.cube_idx(start_i.Nx + i1, start_i.Ny + i2, start_i.Nz + i3);
                                 const auto idx2 = mesh.cube_idx(start_j.Nx + j1, start_j.Ny + j2, start_j.Nz + j3);
                                 // Счёт
-                                if (mesh.distance(idx1, idx2) > 1) {
-                                    // Ну например 1. ...
-                                    working_block = far_zone_interaction(idx1, idx2) * basis_fn_module_sqr;
-                                } else {
-                                    // 1. Если кубы далеко, то считаем через far_zone
-                                    // 2. Иначе считаем через преобразование сингулярного оператора
-                                    const auto volume_res = matrix_3_coef(idx1, idx2);
-                                    Types::Matrix3c surface_res = -matrix_2_coef(idx1, idx2);
-                                    // и подправляем общую матрицу
-                                    surface_res(0, 0) += volume_res;
-                                    surface_res(1, 1) += volume_res;
-                                    surface_res(2, 2) += volume_res;
-
-                                    working_block = surface_res * basis_fn_module_sqr;
-                                }
+                                working_block = galerkin_block_for_cubes(idx1, idx2) * basis_fn_module_sqr;
                             }
                         }
     return result;
@@ -431,10 +415,14 @@ operator_K_over_cube_mesh::compute_galerkin_matrix_custom_blocksize_compressed(s
                                     .to_dense();
                                 if (start_i.is_near(start_j, Nx, Ny, Nz)) {
                                     working_block = Math::LinAgl::Matrix::DynamicFactoredMatrix<decltype(dense_block)>{
-                                            {std::move(dense_block)}};
+                                        {std::move(dense_block)}};
                                     if (start_i == start_j)
                                         norm_of_self_interation_block = working_block.get<0>().norm();
                                 } else {
+                                    // Для начала подкрутим точность относительно диагонального
+                                    const auto local_epsilon =
+                                        norm_of_self_interation_block / dense_block.norm() * epsilon;
+                                    // Теперь делаем всё для креста
                                     const auto row_fun = [&dense_block](Types::index m)-> Types::VectorXc {
                                         return dense_block.row(m);
                                     };
@@ -442,8 +430,7 @@ operator_K_over_cube_mesh::compute_galerkin_matrix_custom_blocksize_compressed(s
                                         return dense_block.col(m);
                                     };
                                     working_block = Math::LinAgl::Decompositions::ComplexACA::compute(
-                                        row_fun, col_fun, dense_block.rows(), dense_block.cols(),
-                                        norm_of_self_interation_block * epsilon);
+                                        row_fun, col_fun, dense_block.rows(), dense_block.cols(), local_epsilon);
                                     // Для пущей важности посмотрим на ранг
                                     std::cout << "rank = " << working_block.get<0>().cols() << '\n';
                                 }
