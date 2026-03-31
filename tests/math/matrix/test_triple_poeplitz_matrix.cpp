@@ -133,6 +133,29 @@ TEST(TOEPLITZ_MATRIX_TESTS, VIE_DIFFERENT_ENUMRATION_TEST) {
     ASSERT_NEAR((mat_result - toeplitz_result).norm(), 0.0, 1e-6 * toeplitz_result.norm());
 }
 
+TEST(TOEPLITZ_MATRIX_TESTS, VIE_MATRIX_SYMMETRY_TEST) {
+    constexpr Types::scalar cube_length = 2.1 * SPHERE_RADUIS;
+    constexpr Types::index Nx = 9;
+    constexpr Types::index Ny = 9;
+    constexpr Types::index Nz = 9;
+    constexpr Types::scalar mesh_one_axis_size = cube_length / (Nx - 1);
+    constexpr Types::scalar basis_fn_norm = 1. / (mesh_one_axis_size * std::sqrt(mesh_one_axis_size));
+    Mesh::VolumeMesh::CubeMeshWithData mesh{Types::point_t{-cube_length / 2, -cube_length / 2, -cube_length / 2},
+                                            (Nx - 1) * mesh_one_axis_size,
+                                            (Ny - 1) * mesh_one_axis_size, (Nz - 1) * mesh_one_axis_size, Nx, Ny, Nz};
+
+    Operators::Volume::operator_K_over_cube_mesh operator_K{{1., 0.}, mesh};
+
+    auto [mat, perm] = operator_K.compute_galerkin_matrix_custom_blocksize(
+        2, 2, 2, basis_fn_norm);
+
+    // Матрица должна быть симметричная (но она не то что бы прям совсем симметричная...)
+    std::cout << (mat.get_block(0, 2).to_dense().transpose() - mat.get_block(2, 0).to_dense()).norm() /
+        mat.get_block(0, 2).to_dense().norm() << std::endl;
+}
+
+#include "Utils.hpp"
+
 TEST(TOEPLITZ_MATRIX_TESTS, VIE_SKELTONIZATION_TEST) {
     constexpr Types::scalar cube_length = 2.1 * SPHERE_RADUIS;
     constexpr Types::index Nx = 13;
@@ -155,4 +178,9 @@ TEST(TOEPLITZ_MATRIX_TESTS, VIE_SKELTONIZATION_TEST) {
         nx, ny, nz, basis_fn_norm, 1e-3);
 
     std::cout << "Approximation error = " << (mat.to_dense() - mat_dense.to_dense()).norm() / mat_dense.to_dense().norm() << std::endl;
+
+    // Анализ мозаичного ранга
+    std::cout << Utils::get_memory_usage(mat) << std::endl;
+    std::cout << "Мозаичный ранг = " << Utils::get_elements_for_parametrization(mat) / mat.cols() << std::endl;
+    std::cout << "log2(Nx * Ny * Nz) = " << std::log2(Nx * Ny * Nz) << std::endl;
 }

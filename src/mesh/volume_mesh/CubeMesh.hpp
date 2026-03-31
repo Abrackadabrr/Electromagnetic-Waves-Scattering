@@ -41,6 +41,7 @@ namespace EMW::Mesh::VolumeMesh
         }
 
     public:
+        CubeMesh() = default;
         /**
          * Cетка на прямоугольнике из прямоугольников
          *

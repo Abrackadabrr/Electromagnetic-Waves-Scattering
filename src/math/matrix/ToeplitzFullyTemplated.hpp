@@ -212,7 +212,7 @@ namespace EMW::Math::LinAgl::Matrix
                 // Достаем ссылку на текущий блок (тут как раз проявляется тёплицевость)
                 auto&& current_block = blocks(i, j);
                 // Теперь умножаем на соответствующий подвектор
-                const auto& sub_vector = vec.block(j * cols_in_block_, 0, cols_in_block_, 1);
+                auto sub_vector = vec.block(j * cols_in_block_, 0, cols_in_block_, 1);
                 if constexpr (std::is_same_v<block_t, Types::MatrixX<scalar_t>>)
                 {
                     dest.block(i * rows_in_block_, 0, rows_in_block_, 1) += current_block * sub_vector;

@@ -182,6 +182,11 @@ namespace EMW::Operators::Volume
         compute_galerkin_matrix_custom_blocksize_compressed(size_t Nx, size_t Ny, size_t Nz,
                                                             Types::scalar basis_fn_module,
                                                             Types::scalar epsilon) const;
+
+        [[nodiscard]] matrix_and_permutation<Math::LinAgl::Matrix::TripleToeplitzFactoredBlock<Types::complex_d>>
+        compute_galerkin_matrix_custom_blocksize_compressed(size_t Nx, size_t Ny, size_t Nz,
+                                                    Types::scalar basis_fn_module,
+                                                    Types::scalar epsilon, Math::LinAgl::Matrix::TripleToeplitzBlock<Types::complex_d>& dense_mat) const;
     };
 } // namespace EMW::Operators::Volume
 

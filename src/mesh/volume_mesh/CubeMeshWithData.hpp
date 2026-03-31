@@ -21,6 +21,7 @@ namespace EMW::Mesh::VolumeMesh
 
         using scalarDataContainer = std::vector<Types::complex_d>;
         using vectorDataContainer = std::vector<Types::Vector3c>;
+
         Containers::map<std::string, scalarDataContainer> scalar_data;
         Containers::map<std::string, vectorDataContainer> vector_data;
         Types::index nodesCount;
@@ -43,6 +44,8 @@ namespace EMW::Mesh::VolumeMesh
         }
 
     public:
+        CubeMeshWithData() = default;
+
         CubeMeshWithData(const Types::Vector3d& minCorner, Types::scalar xs, Types::scalar ys, Types::scalar zs,
                          std::size_t nx,
                          std::size_t ny, std::size_t nz) : Base(minCorner, xs, ys, zs, nx, ny, nz),

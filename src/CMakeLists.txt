@@ -4,8 +4,7 @@ message("Building a library: " ${PROJECT_NAME})
 
 file(GLOB_RECURSE SOURCES *.cpp)
 
-set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE}")
-# -march=native -flto -ftemplate-depth=10000")
+set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} -flto") # -march=native -ftemplate-depth=10000")
 
 add_library(${PROJECT_NAME} STATIC ${SOURCES})
 
@@ -21,7 +20,7 @@ if (LAPACK_FOUND)
     message("Lapack found")
 endif()
 
-target_link_libraries(${PROJECT_NAME} PUBLIC LAPACK::LAPACK -llapacke) # OpenMP::OpenMP_CXX)
+target_link_libraries(${PROJECT_NAME} PUBLIC LAPACK::LAPACK -llapacke OpenMP::OpenMP_CXX)
 target_link_libraries(${PROJECT_NAME} PUBLIC ${TARGET_LIBS})
 target_include_directories(${PROJECT_NAME} PUBLIC ${CMAKE_CURRENT_SOURCE_DIR} "${CMAKE_CURRENT_SOURCE_DIR}/..")
 

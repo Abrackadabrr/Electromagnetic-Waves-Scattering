@@ -8,8 +8,11 @@
 #include "math/matrix/DynamicFactoredMatrix.hpp"
 #include "types/Types.hpp"
 
-#include <bits/random.h>
+#include <Eigen/QR>
+#include <Eigen/SVD>
+
 #include <numeric>
+#include <random>
 
 namespace EMW::Math::LinAgl::Decompositions {
 template <typename matrix_t, typename vector_t, typename value_t> struct ACA {
@@ -257,9 +260,76 @@ template <typename matrix_t, typename vector_t, typename value_t> struct ACA {
         return compute(compute_row, compute_col, n, m, error_control_parameter);
     };
 
-    static Matrix::DynamicFactoredMatrix<matrix_t> svd_postcompression(Matrix::DynamicFactoredMatrix<matrix_t>&& matrix, Types::scalar tolerance) {
-        const matrix_t U = std::move(matrix.template get<0>());
-        const matrix_t V = std::move(matrix.template get<1>());
+    static Matrix::DynamicFactoredMatrix<matrix_t> svd_postcompression(
+        Matrix::DynamicFactoredMatrix<matrix_t>&& matrix, Types::scalar tolerance) {
+        if (matrix.factor_number() != 2) {
+            return std::move(matrix);
+        }
+
+        const matrix_t U = matrix.template get<0>();
+        const matrix_t V_transposed = matrix.template get<1>(); // stored as V^T
+
+        if (U.cols() != V_transposed.rows()) {
+            throw std::invalid_argument("ACA::svd_postcompression expects factors U (n x r) and V^T (r x m)");
+        }
+
+        if (U.cols() == 0) {
+            return std::move(matrix);
+        }
+
+        const matrix_t V = V_transposed.transpose();
+        const Types::index rank = U.cols();
+
+        // U = Q1 * R1
+        Eigen::HouseholderQR<matrix_t> qr_u(U);
+        const matrix_t Q1 = qr_u.householderQ() * matrix_t::Identity(U.rows(), rank);
+        const matrix_t R1 = qr_u.matrixQR().topRows(rank).template triangularView<Eigen::Upper>();
+
+        // V = Q2 * R2, where input stores V^T
+        Eigen::HouseholderQR<matrix_t> qr_v(V);
+        const matrix_t Q2 = qr_v.householderQ() * matrix_t::Identity(V.rows(), rank);
+        const matrix_t R2 = qr_v.matrixQR().topRows(rank).template triangularView<Eigen::Upper>();
+
+        // Since A = U * V^T = Q1 * R1 * R2^T * Q2^T
+        const matrix_t compressed_core = R1 * R2.transpose();
+
+        Eigen::BDCSVD<matrix_t> svd(compressed_core, Eigen::ComputeThinU | Eigen::ComputeThinV);
+        const Types::VectorXd singular_values = svd.singularValues();
+
+        if (singular_values.size() == 0) {
+            return std::move(matrix);
+        }
+
+        const Types::scalar safe_tolerance = std::max<Types::scalar>(0, tolerance);
+        const Types::scalar sv_threshold = safe_tolerance * singular_values(0);
+
+        Types::index truncated_rank = 0;
+        for (Types::index i = 0; i < singular_values.size(); ++i) {
+            if (singular_values(i) >= sv_threshold) {
+                truncated_rank += 1;
+            } else {
+                break;
+            }
+        }
+        if (truncated_rank == 0) {
+            truncated_rank = 1;
+        }
+
+        const matrix_t P = svd.matrixU().leftCols(truncated_rank);
+        const matrix_t H = svd.matrixV().leftCols(truncated_rank);
+
+        const auto S =
+            singular_values.head(truncated_rank).template cast<value_t>().asDiagonal();
+
+        const matrix_t left_factor = Q1 * P * S;
+        // A = (Q1 * P * S) * (H* * Q2^T), i.e. factorized as U_new * V_new^T
+        const matrix_t right_factor_transposed = H.adjoint() * Q2.transpose();
+
+        Containers::vector<matrix_t> factors;
+        factors.reserve(2);
+        factors.emplace_back(std::move(left_factor));
+        factors.emplace_back(std::move(right_factor_transposed));
+        return {std::move(factors), Containers::vector<bool>{false, false}};
     }
 };
 }

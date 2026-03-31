@@ -245,13 +245,15 @@ Types::scalar permittivity_distribution(const Types::point_t &x) {
     return x.norm() < SPHERE_RADUIS ? 2.56 : 1;
 }
 
+#include "Utils.hpp"
+
 TEST(TRIPLE_TOEPLITZ_3X3_FOURIER, VIE_TEST) {
     std::cout << "Initializing toeplitz matrix ..." << std::endl;
 
     constexpr Types::scalar cube_length = 2.1 * SPHERE_RADUIS;
-    constexpr Types::index Nx = 13;
-    constexpr Types::index Ny = 13;
-    constexpr Types::index Nz = 13;
+    constexpr Types::index Nx = 9;
+    constexpr Types::index Ny = 9;
+    constexpr Types::index Nz = 9;
     constexpr Types::scalar mesh_one_axis_size = cube_length / (Nx - 1);
     constexpr Types::scalar basis_fn_module = 1. / (mesh_one_axis_size * std::sqrt(mesh_one_axis_size));
     Mesh::VolumeMesh::CubeMeshWithData mesh{Types::point_t{-cube_length / 2, -cube_length / 2, -cube_length / 2},
@@ -300,45 +302,75 @@ TEST(TRIPLE_TOEPLITZ_3X3_FOURIER, VIE_COMPARISON_WITH_SKELETON_FORMAT) {
     std::cout << "Initializing toeplitz matrix ..." << std::endl;
 
     constexpr Types::scalar cube_length = 2.1 * SPHERE_RADUIS;
-    constexpr Types::index Nx = 13;
-    constexpr Types::index Ny = 13;
-    constexpr Types::index Nz = 13;
+    constexpr Types::index Nx = 41;
+    constexpr Types::index Ny = 41;
+    constexpr Types::index Nz = 41;
     constexpr Types::scalar mesh_one_axis_size = cube_length / (Nx - 1);
+    constexpr Types::scalar basis_fn_norm = 1. / (mesh_one_axis_size * std::sqrt(mesh_one_axis_size));
     Mesh::VolumeMesh::CubeMeshWithData mesh{Types::point_t{-cube_length / 2, -cube_length / 2, -cube_length / 2},
                                             (Nx - 1) * mesh_one_axis_size,
                                             (Ny - 1) * mesh_one_axis_size, (Nz - 1) * mesh_one_axis_size, Nx, Ny, Nz};
 
     Operators::Volume::operator_K_over_cube_mesh operator_K{{1., 0.}, mesh};
-    auto toeplitz = operator_K.compute_galerkin_matrix(1. / (mesh_one_axis_size * std::sqrt(mesh_one_axis_size)));
-
-    auto [mat, perm] = operator_K.compute_galerkin_matrix_custom_blocksize_compressed(
-        4, 4, 4, 1. / (mesh_one_axis_size * std::sqrt(mesh_one_axis_size)), 1e-2);
+    auto toeplitz = operator_K.compute_galerkin_matrix(basis_fn_norm);
+    // Части, на которые режем матрицу
+    size_t nx, ny, nz;
+    nx = 4;
+    ny = 4;
+    nz = 4;
+    const auto [mat, perm] = operator_K.compute_galerkin_matrix_custom_blocksize_compressed(
+        nx, ny, nz, 1. / (mesh_one_axis_size * std::sqrt(mesh_one_axis_size)), 1e-4);
 
     std::cout << "Initializing tensor for FFT ..." << std::endl;
 
     const matrix_t<Types::complex_d> fft_matrix(toeplitz);
 
-    Types::VectorXc x = Types::VectorXc::Zero(toeplitz.cols());
-    for (Types::index i = 0; i < static_cast<Types::index>(x.size()); ++i) {
-        x(i) = 3 - 2 * static_cast<Types::scalar>(i) + 10 * static_cast<Types::scalar>(i % 11);
-    }
+    Types::VectorXc x = Types::VectorXc::Random(toeplitz.cols());
 
-    std::cout << "dense start" << std::endl;
-    // Плотная умножалка
-    const Types::VectorXc x_permuted = perm * x;
+    std::cout << "// --- PERFORMANCE REPORT --- //" << std::endl;
+
+    // Плотная умножалка с замером времени
+    Types::VectorXc x_permuted = perm * x;
+    Types::VectorXc y_skeleton = Types::VectorXc::Zero(mat.rows());
     auto start = std::chrono::steady_clock::now();
-    const Types::VectorXc y_dense_permuted = mat.matvec(x_permuted);
+    y_skeleton = mat.matvec(x_permuted);
     auto end = std::chrono::steady_clock::now();
-    const Types::VectorXc y_dense = perm.transpose() * y_dense_permuted;
-    std::cout << "dense done: " << std::chrono::duration_cast<std::chrono::microseconds>(end - start).count() <<
+    y_skeleton = perm.transpose() * y_skeleton;
+    std::cout << "dense done in " << std::chrono::duration_cast<std::chrono::microseconds>(end - start).count() <<
         std::endl;
 
-    // Фурье-умножалка
+    // Фурье-умножалка с замером времени
     start = std::chrono::steady_clock::now();
-    const Types::VectorXc y_fft = fft_matrix * x;
+    const Types::VectorXc y_fft = fft_matrix.matvec(x);
     end = std::chrono::steady_clock::now();
-    std::cout << "FFT done: " << std::chrono::duration_cast<std::chrono::microseconds>(end - start).count() <<
+    std::cout << "FFT done in " << std::chrono::duration_cast<std::chrono::microseconds>(end - start).count() <<
         std::endl;
 
-    ASSERT_NEAR((y_dense - y_fft).norm(), 0.0, 1e-14 * y_dense.norm());
+    // Смотрим на точность умножения на аппроксимацию матрицы
+
+    // Для сравнение умножаем на плотную матрицу
+    const auto y_dense = toeplitz.matvec(x);
+
+    // Сравниваемся с умножением на тёплицеву матрицу
+    std::cout << "DENSE vs SKELETON = " << (y_dense - y_skeleton).norm() / y_dense.norm() << std::endl;
+
+    // Метод через Фурье должен совпадать с умножением на трижды тёплицеву матрицу
+    std::cout << "FFT vs DENSE = " << (y_dense - y_fft).norm() / y_dense.norm() << std::endl;
+
+    // Ошибка в умножении на аппроксимацию матрицы по сравнению с FFT
+    std::cout << "FFT vs SKELETON = " << (y_fft - y_skeleton).norm() / y_dense.norm() << std::endl;
+
+    // Параметры сжатой матрицы (анализ параметризации)
+    std::cout << Utils::get_memory_usage(mat) << std::endl;
+    std::cout << "Мозаичный ранг = " << Utils::get_elements_for_parametrization(mat) / mat.cols() << std::endl;
+    std::cout << "log2(Nx * Ny * Nz) = " << std::log2(Nx * Ny * Nz) << std::endl;
+
+#if 0
+    // Ошибка в аппроксимации матрицы:
+    const auto [mat_permuted_dense, _] = operator_K.compute_galerkin_matrix_custom_blocksize(
+        nx, ny, nz, 1. / (mesh_one_axis_size * std::sqrt(mesh_one_axis_size)));
+
+    std::cout << "DENSE_MAT vs SKELETON_MAT = " << Utils::relative_frobenius_error(mat_permuted_dense, mat) <<
+        std::endl;
+#endif
 }

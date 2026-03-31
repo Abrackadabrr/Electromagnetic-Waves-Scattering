@@ -24,7 +24,6 @@
 #include "math/integration/newton_cotess/Rectangular.hpp"
 #include "math/integration/gauss_quadrature/GaussLegenderPoints.hpp"
 
-
 #include "Utils.hpp"
 
 #include <iostream>
@@ -55,6 +54,8 @@ int main() {
                                             (Nx - 1) * mesh_one_axis_size,
                                             (Ny - 1) * mesh_one_axis_size, (Nz - 1) * mesh_one_axis_size, Nx, Ny, Nz};
     mesh.setName("sphere");
+    const Types::scalar cube_measure = mesh.dx() * mesh.dy() * mesh.dz();
+    const Types::scalar basis_fn_module = 1. / sqrt(cube_measure);
     // Настраиваем диэлектрическую проницаемость
     mesh.smoothScalarData<DefiniteIntegrals::GaussLegendre::Quadrature<4, 4, 4>>("eps", permittivity_distribution);
 
@@ -64,25 +65,23 @@ int main() {
     Physics::planeWaveCase incident_field{Types::Vector3d{0, 1, 0}, k, Types::Vector3d{1, 0, 0}};
     std::cout << "Длина волны в свободном пространстве = " << 2 * M_PI / k.real() << std::endl;
 
-    // 3. Галеркинская проекция
+    // 3. Галеркинская проекция правой части
     Operators::Volume::ProjectorOnMesh proj{mesh};
-    const Types::scalar cube_measure = mesh.dx() * mesh.dy() * mesh.dz();
-    std::cout << "Объем элемента сетки: " << cube_measure << std::endl;
     auto rhs = proj([incident_field](Types::point_t p) { return incident_field.value(p); });
-    std::cout << "Rhs rows = " << rhs.rows() << std::endl;
     // Поправляем правую часть
-    Types::VectorXc b = rhs / std::sqrt(cube_measure);
+    Types::VectorXc b = rhs * basis_fn_module;
 
-    // Матрицу собираем
+    // 4. Галеркинская проекция оператора (две матрицы: точная и апроксимированная)
+    size_t nx, ny, nz;
+    nx = 4;
+    ny = 4;
+    nz = 4;
     Operators::Volume::operator_K_over_cube_mesh operator_K{k, mesh};
-    auto [mat, perm] = operator_K.
-        compute_galerkin_matrix_custom_blocksize_compressed(8, 8, 8, 1. / sqrt(cube_measure), 1e-2);
-    std::cout << Utils::get_memory_usage(mat) << std::endl;
-    std::cout << "Мозаичный ранг = " << Utils::get_memory_usage(mat).toeplitz_and_factored_matrix / (3 * Nx * Nx * Nx) << std::endl;
-    std::cout << std::log2(Nx * Nx * Nx) << std::endl;
+    auto mat_full = Math::LinAgl::Matrix::ZeroTripleToeplitzBlock<Types::complex_d>(1, 1, 1, 1);
+    auto [mat_compressed, perm] = operator_K.
+        compute_galerkin_matrix_custom_blocksize_compressed(nx, ny, nz, basis_fn_module, 1e-5, mat_full);
     // Сразу модифицируем правую часть (матрица перестановки)
     b = perm * b;
-
     // Собираем матрицу (eps - 1) как вектор из значений
     Types::VectorXc diag_eps = Types::VectorXc::Zero(3 * mesh.getCells().size());
     const auto eps_data = mesh.getScalarData("eps");
@@ -94,23 +93,28 @@ int main() {
     // И его тоже переставляем
     diag_eps = perm * diag_eps;
 
-    Math::LinAgl::Matrix::Wrappers::VolumeOperatorMatrixReplacement A{mat, diag_eps};
+    Math::LinAgl::Matrix::Wrappers::VolumeOperatorMatrixReplacement A_compressed{mat_compressed, diag_eps};
+    Math::LinAgl::Matrix::Wrappers::VolumeOperatorMatrixReplacement A_full{mat_full, diag_eps};
 
+    // 5. Решаем системы
     // Поправляем правую часть по маске из фиктивных элементов
-    b = A.modify_rhs_according_to_mask(b);
-    // 4. Решаем систему
-    auto solution = Research::solve<Eigen::GMRES>(A, b, 1000, 1e-3);
+    b = A_compressed.modify_rhs_according_to_mask(b);
+    auto solution_full = Research::solve<Eigen::GMRES>(A_compressed, b, 1000, 1e-3);
+    auto solution_compressed = Research::solve<Eigen::GMRES>(A_full, b, 1000, 1e-3);
+    // Смотрим относительную норму ошибки в решении
+    std::cout << "FULL_SOL vs SKELETON_SOL = " << (solution_full - solution_compressed).norm() / solution_full.norm() <<
+        std::endl;
 
     // И теперь переставляем обратно
-    solution = perm.transpose() * solution;
+    const Types::VectorXc solution = perm.transpose() * solution_full;
 
-    // 5. Преобразовываем в векторное поле на ячейках и пишем в данные сетки
+    // 6. Преобразовываем в векторное поле на ячейках и пишем в данные сетки
     std::vector<Types::Vector3c> field_on_mesh;
     field_on_mesh.reserve(mesh.getCells().size());
     for (size_t idx = 0; idx < mesh.getCells().size(); ++idx) {
-        field_on_mesh.emplace_back(solution[3 * idx + 0] / (std::sqrt(cube_measure)),
-                                   solution[3 * idx + 1] / (std::sqrt(cube_measure)),
-                                   solution[3 * idx + 2] / (std::sqrt(cube_measure)));
+        field_on_mesh.emplace_back(solution[3 * idx + 0] * basis_fn_module,
+                                   solution[3 * idx + 1] * basis_fn_module,
+                                   solution[3 * idx + 2] * basis_fn_module);
     }
 
     // Добавляем поле
@@ -121,7 +125,7 @@ int main() {
         "/home/evgen/Education/MasterDegree/thesis/Electromagnetic-Waves-Scattering/research/volume_regular_dielectrics/";
     VTK::volume_mesh_withdata_snapshot(mesh, path);
 
-    // Расчситываем диаграмму направленности
+    // 8. Расчситываем диаграмму направленности
     int N = 180;
     const auto get_tau_hh = [](Types::scalar phi) { return Types::Vector3d{std::cos(phi), 0, std::sin(phi)}; };
     const auto get_tau_vv = [](Types::scalar phi) { return Types::Vector3d{std::cos(phi), std::sin(phi), 0}; };
@@ -130,28 +134,34 @@ int main() {
     std::vector<Types::scalar> phis{view.begin(), view.end()};
 
     std::vector<Types::scalar> rsp_hh{};
-    rsp_hh.reserve(N);
+    rsp_hh.resize(N);
     std::vector<Types::scalar> rsp_vv{};
-    rsp_vv.reserve(N);
+    rsp_vv.resize(N);
 
-    for (auto &&p : phis) {
-        rsp_vv.push_back(std::log(ESA::calculateRSP(get_tau_vv(p), k, "solution", mesh)));
-        rsp_hh.push_back(std::log(ESA::calculateRSP(get_tau_hh(p), k, "solution", mesh)));
+#pragma omp parallel for num_threads(14)
+    for (size_t i = 0; i < N; i++) {
+        rsp_vv[i] = (std::log(ESA::calculateRSP(get_tau_vv(phis[i]), k, "solution", mesh)));
+        rsp_hh[i] = (std::log(ESA::calculateRSP(get_tau_hh(phis[i]), k, "solution", mesh)));
     }
+
     auto degree_view = view | std::views::transform([&](Types::scalar phi) { return phi * 180 / M_PI; });
     std::vector<Types::scalar> phis_degree{degree_view.begin(), degree_view.end()};
     std::ofstream rsp_vv_file{path + "sigma_vv.csv"};
     std::ofstream rsp_hh_file{path + "sigma_hh.csv"};
     Utils::to_csv(phis_degree, rsp_vv, "angle", "rsp", rsp_vv_file);
     Utils::to_csv(phis_degree, rsp_hh, "angle", "rsp", rsp_hh_file);
+
+    // 8. Проводим анализ матрицы
+    std::cout << Utils::get_memory_usage(mat_compressed) << std::endl;
+    std::cout << "Мозаичный ранг = " << Utils::get_elements_for_parametrization(mat_compressed) /
+        mat_compressed.cols() << std::endl;
+
 };
 
 // Надо сделать:
 // 1) Уточнить, что такое VV и HH в Гибсоне
 // 2) Попробовать убрать единицу из множителя (eps-1) для хорошей обусловленности.
 //    Ну с корнем идея сработала, но кажется, что здесь справится диагональный предобуславливатель.
-// 3) Сделать блочно-тёплицев формат полностью, оценить степень сжатия матрицы
-// 4) Написать умножалку через FFT и сравнить производительность моей умножалки и умножалки через FFT.
 
 // Наблюдения:
 // 1. если честно считать eps на кубах, то количество итераций GMRES учаличивается в 2-2.5 раза

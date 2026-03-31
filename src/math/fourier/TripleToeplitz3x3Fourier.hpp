@@ -80,6 +80,8 @@ public:
     using tensor_type = TripleToeplitz3x3Tensor<scalar_t>;
     using triple_toeplitz_block_type = LinAgl::Matrix::TripleToeplitzBlock<scalar_t>;
 
+    TripleToeplitz3x3Fourier() = default;
+
 private:
     static constexpr Types::index block_size_ = 3;
 
