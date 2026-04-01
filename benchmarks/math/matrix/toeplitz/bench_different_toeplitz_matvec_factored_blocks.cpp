@@ -7,11 +7,13 @@
 
 #include <Eigen/Dense>
 #include <complex>
-#include <cstdint>
 #include <memory>
 #include <random>
 
 #include "math/matrix/Matrix.hpp"
+
+#include <mesh/volume_mesh/CubeMeshWithData.hpp>
+#include <operators/volume/OperatorK.hpp>
 
 using Complex = std::complex<double>;
 using MatrixXc = Eigen::Matrix<Complex, Eigen::Dynamic, Eigen::Dynamic>;
@@ -26,45 +28,44 @@ using doubleToepFactor = EMW::Math::LinAgl::Matrix::ToeplitzToeplitzDynFactoredB
 using tripleToepFactor = EMW::Math::LinAgl::Matrix::TripleToeplitzFactoredBlock<Complex>;
 
 
-decltype(auto) make_toeplitz_block(size_t block_size, size_t fl) {
-    auto tp_mat = EMW::Math::LinAgl::Matrix::ZeroToeplitzBlock<Complex>(fl, block_size);
-
-    for (size_t idx = 0; idx < fl; ++idx) {
-        for (size_t jdx = 0; jdx < fl; ++jdx) {
-            tp_mat.get_block(idx, jdx) = MatrixXc::Random(block_size, block_size);
-        }
-    }
-    return tp_mat;
-}
-
-decltype(auto) make_double_toeplitz_block(size_t block_size, size_t fl, size_t sl) {
-    auto tp_mat = EMW::Math::LinAgl::Matrix::ZeroDoubleToeplitzBlock<Complex>(block_size, fl, sl);
-
-    for (size_t idx_s = 0; idx_s < sl; ++idx_s) {
-        for (size_t jdx_s = 0; jdx_s < sl; ++jdx_s) {
-            for (size_t idx_f = 0; idx_f < fl; ++idx_f) {
-                for (size_t jdx_f = 0; jdx_f < fl; ++jdx_f) {
-                    tp_mat.get_block(idx_s, jdx_s).get_block(idx_f, idx_f) =
-                        MatrixXc::Random(block_size, block_size);
-                }
-            }
-        }
-    }
-    return tp_mat;
-}
-
-using namespace EMW::Types;
+using namespace EMW;
 
 class MatrixVectorBenchmark : public benchmark::Fixture {
 public:
     void SetUp(const benchmark::State &state) override {
     openblas_set_num_threads(1);
-        size_t inner_size = state.range(0);
-        size_t fl = state.range(1);
-        size_t sl = state.range(2);
+        size_t Nx = state.range(0);
+        size_t Ny = state.range(1);
+        size_t Nz = state.range(2);
+        size_t nx = state.range(3);
+        size_t ny = state.range(4);
+        size_t nz = state.range(5);
 
-        m_dense_2 = make_double_toeplitz_block(inner_size, fl, sl);
-        m_dense_1 = make_toeplitz_block(inner_size, fl);
+        // Сетка на кубе
+        constexpr Types::scalar cube_length = 2.1;
+        const Types::scalar mesh_one_axis_size = cube_length / (Nx - 1);
+        Mesh::VolumeMesh::CubeMeshWithData mesh{Types::point_t{-cube_length / 2, -cube_length / 2, -cube_length / 2},
+                                                (Nx - 1) * mesh_one_axis_size,
+                                                (Ny - 1) * mesh_one_axis_size, (Nz - 1) * mesh_one_axis_size, Nx, Ny, Nz};
+        const Types::scalar cube_measure = mesh.dx() * mesh.dy() * mesh.dz();
+        const Types::scalar basis_fn_module = 1. / sqrt(cube_measure);
+
+        // Считаем плотную и сжатую матрицы одновременно
+        Types::complex_d k{2 * M_PI, 0};
+        Operators::Volume::operator_K_over_cube_mesh operator_K{k, mesh};
+        auto mat_full = Math::LinAgl::Matrix::ZeroTripleToeplitzBlock<Types::complex_d>(1, 1, 1, 1);
+        auto [mat_compressed, perm] = operator_K.
+            compute_galerkin_matrix_custom_blocksize_compressed(nx, ny, nz, 1, 1e-5, mat_full);
+
+        // Собираем матрицы разных форматов
+        m_dense_3 = std::move(mat_full);
+        m_compressed_3 = std::move(mat_compressed);
+
+        m_compressed_2 = m_compressed_3.get_block(0, 0);
+        m_compressed_1 = m_compressed_2.get_block(0, 0);
+
+        m_dense_2 = m_dense_3.get_block(0, 0);
+        m_dense_1 = m_dense_2.get_block(0, 0);
 
         // Случайные вектора, на которые умножаем
         x_3 = VectorXc::Random(m_compressed_3.cols());
@@ -94,8 +95,8 @@ protected:
 
 BENCHMARK_DEFINE_F(MatrixVectorBenchmark, InplaceMatvec)(benchmark::State &state) {
     for (auto _ : state) {
-        m_dense_1.matvec(x_1, y_1);
-        benchmark::DoNotOptimize(y_1.data());
+        m_compressed_3.matvec(x_3, y_3);
+        benchmark::DoNotOptimize(y_3.data());
         benchmark::ClobberMemory();
     }
 
@@ -106,8 +107,8 @@ BENCHMARK_DEFINE_F(MatrixVectorBenchmark, InplaceMatvec)(benchmark::State &state
 BENCHMARK_DEFINE_F(MatrixVectorBenchmark, RawDataMatvec)(benchmark::State &state) {
     openblas_set_num_threads(1);
     for (auto _ : state) {
-        m_dense_1.matvec_wise(x_1.data(), x_1.size(), y_1.data(), y_1.size());
-        benchmark::DoNotOptimize(y_1.data());
+        m_compressed_3.matvec_wise(x_3.data(), x_3.size(), y_3.data(), y_3.size());
+        benchmark::DoNotOptimize(y_3.data());
         benchmark::ClobberMemory();
     }
     const auto n = static_cast<double>(state.range(0));
@@ -115,17 +116,11 @@ BENCHMARK_DEFINE_F(MatrixVectorBenchmark, RawDataMatvec)(benchmark::State &state
 };
 
 BENCHMARK_REGISTER_F(MatrixVectorBenchmark, InplaceMatvec)
-->Args({4 * 4 * 4 * 3, 10, 1})
-->Args({4 * 4 * 4 * 3, 20, 1})
-->Args({256, 40, 1})
-->Args({512, 20, 1})
+->Args({161, 21, 13, 4, 4, 4})
 ->Unit({benchmark::kMillisecond});
 
 BENCHMARK_REGISTER_F(MatrixVectorBenchmark, RawDataMatvec)
-->Args({4 * 4 * 4 * 3, 10, 1})
-->Args({4 * 4 * 4 * 3, 20, 1})
-->Args({256, 40, 1})
-->Args({512, 20, 1})
+->Args({161, 21, 13, 4, 4, 4})
 ->Unit({benchmark::kMillisecond});
 
 BENCHMARK_MAIN();

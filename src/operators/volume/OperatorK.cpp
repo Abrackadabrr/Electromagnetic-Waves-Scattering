@@ -339,7 +339,8 @@ operator_K_over_cube_mesh::compute_galerkin_matrix_custom_blocksize(size_t Nx, s
                                                                         third_layer_toeplitz, inner_size);
 
     // Циклы для расчета трижды теплицевой матрицы
-    for (size_t i3 = 0; i3 < third_layer_toeplitz; ++i3)
+    for (size_t i3 = 0; i3 < third_layer_toeplitz; ++i3) {
+        // цикл по первой строке в блоке
         for (size_t j3 = 0; j3 < third_layer_toeplitz; ++j3) {
             for (size_t i2 = 0; i2 < second_layer_toeplitz; ++i2)
                 for (size_t i1 = 0; i1 < first_layer_toeplitz; ++i1)
@@ -363,6 +364,7 @@ operator_K_over_cube_mesh::compute_galerkin_matrix_custom_blocksize(size_t Nx, s
                                 // Что-то мне не очень это нравится.
                             }
                         }
+        }
         }
     return {result, mesh.getPermutation(Nx, Ny, Nz)};
 }
