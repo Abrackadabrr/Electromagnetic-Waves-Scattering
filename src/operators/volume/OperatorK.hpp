@@ -24,6 +24,7 @@ namespace EMW::Operators::Volume
     {
         const Mesh::VolumeMesh::CubeMesh& mesh;
         Types::complex_d wave_number;
+        Types::index nearnes_tresholds = 2;
 
         struct Idx3d
         {

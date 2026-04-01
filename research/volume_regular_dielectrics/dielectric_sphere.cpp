@@ -60,7 +60,7 @@ int main() {
     mesh.smoothScalarData<DefiniteIntegrals::GaussLegendre::Quadrature<4, 4, 4>>("eps", permittivity_distribution);
 
     // 2. Параметры падающей волны
-    constexpr double freq = 0.3; // GHz
+    constexpr double freq = 1; // GHz
     constexpr Types::complex_d k{Physics::get_k_on_frquency(freq), 0.};
     Physics::planeWaveCase incident_field{Types::Vector3d{0, 1, 0}, k, Types::Vector3d{1, 0, 0}};
     std::cout << "Длина волны в свободном пространстве = " << 2 * M_PI / k.real() << std::endl;
@@ -100,10 +100,10 @@ int main() {
     // Поправляем правую часть по маске из фиктивных элементов
     b = A_compressed.modify_rhs_according_to_mask(b);
     auto solution_full = Research::solve<Eigen::GMRES>(A_compressed, b, 1000, 1e-3);
-    auto solution_compressed = Research::solve<Eigen::GMRES>(A_full, b, 1000, 1e-3);
+    // auto solution_compressed = Research::solve<Eigen::GMRES>(A_full, b, 1000, 1e-3);
     // Смотрим относительную норму ошибки в решении
-    std::cout << "FULL_SOL vs SKELETON_SOL = " << (solution_full - solution_compressed).norm() / solution_full.norm() <<
-        std::endl;
+    //std::cout << "FULL_SOL vs SKELETON_SOL = " << (solution_full - solution_compressed).norm() / solution_full.norm() <<
+    //    std::endl;
 
     // И теперь переставляем обратно
     const Types::VectorXc solution = perm.transpose() * solution_full;

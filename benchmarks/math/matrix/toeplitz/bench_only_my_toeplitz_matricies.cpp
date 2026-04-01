@@ -59,6 +59,7 @@ VectorXc make_random_vector(size_t n) {
     return x;
 }
 
+
 class MatrixVectorBenchmark : public benchmark::Fixture {
 public:
     void SetUp(const benchmark::State &state) override {
@@ -69,6 +70,7 @@ public:
         my_matrix_ = std::move(tp);
         x_ = make_random_vector(my_matrix_.rows());
         y_ = VectorXc::Zero(my_matrix_.rows());
+
     }
 
 protected:
@@ -89,6 +91,18 @@ BENCHMARK_DEFINE_F(MatrixVectorBenchmark, MyMatrixMatVecNew)(benchmark::State &s
     state.SetComplexityN(n);
 }
 
+BENCHMARK_DEFINE_F(MatrixVectorBenchmark, MyMatrixMatVecWithoutCopy)(benchmark::State &state) {
+    for (auto _ : state) {
+        my_matrix_.matvec(x_.data(), x_.size(), y_);
+        benchmark::DoNotOptimize(y_.data());
+        benchmark::ClobberMemory();
+    }
+
+    const auto n = static_cast<double>(state.range(0));
+    state.SetComplexityN(n);
+}
+
+
 BENCHMARK_DEFINE_F(MatrixVectorBenchmark, MyMatrixMatVecOld)(benchmark::State &state) {
     for (auto _ : state) {
         y_.noalias() = my_matrix_.matvec(x_);
@@ -100,20 +114,25 @@ BENCHMARK_DEFINE_F(MatrixVectorBenchmark, MyMatrixMatVecOld)(benchmark::State &s
     state.SetComplexityN(n);
 }
 
-#if 1
+
 BENCHMARK_REGISTER_F(MatrixVectorBenchmark, MyMatrixMatVecNew)
 ->ArgsProduct({
-                                                                  benchmark::CreateDenseRange(10, 20, 1),
-                                                                  benchmark::CreateRange(256, 256, 2)
+                                                                  benchmark::CreateDenseRange(100, 200, 10),
+                                                                  benchmark::CreateRange(3, 3, 2)
                                                               })
     ->Unit(benchmark::kMillisecond);
-#endif
+
 
 BENCHMARK_REGISTER_F(MatrixVectorBenchmark, MyMatrixMatVecOld)
 ->ArgsProduct({
-                                                                  benchmark::CreateDenseRange(10, 20, 1),
-                                                                  benchmark::CreateRange(256, 256, 2)
-                                                              })
+                                                                  benchmark::CreateDenseRange(100, 200, 10),
+                                                                  benchmark::CreateRange(3, 3, 2)})
+    ->Unit(benchmark::kMillisecond);
+
+BENCHMARK_REGISTER_F(MatrixVectorBenchmark, MyMatrixMatVecWithoutCopy)
+->ArgsProduct({
+                                                                          benchmark::CreateDenseRange(100, 200, 10),
+                                                                          benchmark::CreateRange(3, 3, 2)})
     ->Unit(benchmark::kMillisecond);
 
 } // namespace

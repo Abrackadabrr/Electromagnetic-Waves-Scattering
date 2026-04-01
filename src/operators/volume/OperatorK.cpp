@@ -43,7 +43,7 @@ Types::Matrix3c operator_K_over_cube_mesh::matrix_2_coef(Types::index k, Types::
                     auto face_k = faces_k[face_k_idx];
                     auto face_p = faces_p[face_p_idx];
 
-                    if ((cube_k.center_ - cube_p.center_).norm() < 6 * h) {
+                    if ((cube_k.center_ - cube_p.center_).norm() < nearnes_tresholds * h) {
                         // то интегрируемся с выделением особенности
                         // 1. Интеграл от ньютонова потенциала 2д ячейки
                         const auto analytical_integrand = [&face_k, &face_p](Types::scalar x, Types::scalar y) {
@@ -55,7 +55,7 @@ Types::Matrix3c operator_K_over_cube_mesh::matrix_2_coef(Types::index k, Types::
                         const auto singular_part =
                             Math::Constants::inverse_4PI<Types::scalar>() * DefiniteIntegrals::integrate<
                                 DefiniteIntegrals::NewtonCotess::Quadrature<
-                                    4, 4>>(analytical_integrand, {0, 0}, {1, 1});
+                                    2, 2>>(analytical_integrand, {0, 0}, {1, 1});
                         result(i, j) += multiplier * singular_part;
 
                         // 2. Интеграл от ограниченного остатка
@@ -67,8 +67,8 @@ Types::Matrix3c operator_K_over_cube_mesh::matrix_2_coef(Types::index k, Types::
                                        x2, y2);
                         };
                         const auto regular_part = DefiniteIntegrals::integrate<
-                            DefiniteIntegrals::NewtonCotess::Quadrature<
-                                4, 4, 4, 4>>(
+                            DefiniteIntegrals::GaussLegendre::Quadrature<
+                                2, 2, 2, 2>>(
                             residual_integrand, {0, 0, 0, 0}, {1, 1, 1, 1});
                         result(i, j) += multiplier * regular_part;
 
@@ -82,8 +82,8 @@ Types::Matrix3c operator_K_over_cube_mesh::matrix_2_coef(Types::index k, Types::
                         };
 
                         result(i, j) += multiplier * DefiniteIntegrals::integrate<
-                            DefiniteIntegrals::NewtonCotess::Quadrature<
-                                4, 4, 4, 4>>(
+                            DefiniteIntegrals::GaussLegendre::Quadrature<
+                                2, 2, 2, 2>>(
                             integrand, {0, 0, 0, 0}, {1, 1, 1, 1});
                     }
                 }
@@ -103,7 +103,7 @@ Types::complex_d operator_K_over_cube_mesh::matrix_3_coef(Types::index k, Types:
     // чтобы это зафорсить, нужно обобщить формулу для самоэнергии
     // куба на параллелограмм и тогда все будить чики бамбони
 
-    if ((cube_k.center_ - cube_p.center_).norm() < 6 * h) {
+    if ((cube_k.center_ - cube_p.center_).norm() < nearnes_tresholds * h) {
         // интегрирование с выделением особенности
         // Ограниченная часть от функции
         const auto integrand_bounded_part = [wn = wave_number](Types::scalar x1, Types::scalar y1, Types::scalar z1,
@@ -190,8 +190,8 @@ Types::scalar operator_K_over_cube_mesh::newton_potential_of_cube(Types::index k
     const auto integrand = [x = r.x(), y = r.y(), z = r.z(), cut_of_cube_integral](Types::scalar z_dash) {
         return cut_of_cube_integral(x, y, z, z_dash);
     };
-    return DefiniteIntegrals::integrate<DefiniteIntegrals::GaussLegendre::Quadrature<2>>(integrand, {0}, {dz / 2}) +
-           DefiniteIntegrals::integrate<DefiniteIntegrals::GaussLegendre::Quadrature<2>>(
+    return DefiniteIntegrals::integrate<DefiniteIntegrals::GaussLegendre::Quadrature<3>>(integrand, {0}, {dz / 2}) +
+           DefiniteIntegrals::integrate<DefiniteIntegrals::GaussLegendre::Quadrature<3>>(
                integrand, {dz / 2}, {dz / 2});
 }
 

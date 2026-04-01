@@ -8,7 +8,7 @@ add_subdirectory(../../third_party third_party)
 add_subdirectory(../../visualisation visualisation)
 
 # Setting some flags
-set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} -march=native -flto")
+set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} -flto")
 message(${CMAKE_CXX_FLAGS_RELEASE})
 
 find_package(OpenMP)

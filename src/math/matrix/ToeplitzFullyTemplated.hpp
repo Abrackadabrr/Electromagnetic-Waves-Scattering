@@ -8,6 +8,8 @@
 #include "ToeplitzContainer.hpp"
 #include "types/Types.hpp"
 
+#include <cblas.h>
+
 #include <cassert>
 #include <iostream>
 
@@ -68,6 +70,11 @@ namespace EMW::Math::LinAgl::Matrix
          * dest += matvec(vec);
          */
         void matvec(Eigen::Ref<vector_t> vec, Eigen::Ref<vector_t> dest) const noexcept;
+
+        void matvec(scalar_t* vec, size_t vec_size, Eigen::Ref<vector_t> dest) const noexcept;
+
+        void matvec(scalar_t* vec, size_t vec_size, scalar_t* dest, size_t dest_size) const noexcept;
+        void matvec_wise(scalar_t* vec, size_t vec_size, scalar_t* dest, size_t dest_size) const noexcept;
 
         /** Умножение матрицы на число с возвращением копии */
         [[nodiscard]] ToeplitzStructure mull(scalar_t value) const noexcept;
@@ -200,9 +207,9 @@ namespace EMW::Math::LinAgl::Matrix
         return result;
     }
 
-#if 1
     template <typename scalar_t, typename block_t>
-    void ToeplitzStructure<scalar_t, block_t>::matvec(Eigen::Ref<vector_t> vec, Eigen::Ref<vector_t> dest) const noexcept
+    void ToeplitzStructure<scalar_t, block_t>::matvec(Eigen::Ref<vector_t> vec,
+                                                      Eigen::Ref<vector_t> dest) const noexcept
     {
         assert(vec.size() == cols());
         for (Types::index i = 0; i < blocks.rows(); ++i)
@@ -215,7 +222,7 @@ namespace EMW::Math::LinAgl::Matrix
                 auto sub_vector = vec.block(j * cols_in_block_, 0, cols_in_block_, 1);
                 if constexpr (std::is_same_v<block_t, Types::MatrixX<scalar_t>>)
                 {
-                    dest.block(i * rows_in_block_, 0, rows_in_block_, 1) += current_block * sub_vector;
+                    dest.block(i * rows_in_block_, 0, rows_in_block_, 1).noalias() += current_block * sub_vector;
                 }
                 else
                 {
@@ -224,7 +231,136 @@ namespace EMW::Math::LinAgl::Matrix
             }
         }
     }
+
+    template <typename scalar_t, typename block_t>
+    void ToeplitzStructure<scalar_t, block_t>::matvec_wise(scalar_t* vec, size_t vec_size,
+                                                           scalar_t* dest, size_t dest_size) const noexcept
+    {
+#define USE_EIGEN 0
+        assert(vec_size == static_cast<size_t>(cols()));
+        assert(dest_size == static_cast<size_t>(rows()));
+
+        auto* additional_workspace = new scalar_t[vec_size];
+
+        const Types::index block_rows = blocks.rows();
+        const Types::index block_cols = blocks.cols();
+
+        // 1) Уникальные блоки первой строки: B(0, d), d = 0..block_cols-1.
+        // Каждый из них встречается на диагонали (i, i + d).
+        for (Types::index d = 0; d < block_cols; ++d)
+        {
+            const auto& current_block = blocks(0, d);
+            const Types::index repeats = block_cols - d;
+            // Теперь есть варианты:
+            if constexpr (std::is_same_v<block_t, Types::MatrixX<scalar_t>>) {
+#if USE_EIGEN
+                // 1. Если блок -- это плотная матрица, то я делаю матмулл
+                // reshape вектора
+                auto vector_reshaped = Eigen::Map<dense_matrix_t>{vec + d * rows_in_block_, rows_in_block_, repeats};
+                // reshape места, куда прибавляем
+                auto dest_reshapsed = Eigen::Map<dense_matrix_t>{dest, rows_in_block_, repeats};
+                // матмул
+                dest_reshapsed.noalias() += current_block * vector_reshaped;
+#else
+                // умножалка через блас
+                const scalar_t alpha{1.0, 0.0};
+                const scalar_t beta {1.0, 0.0}; // для C = C + A*B
+                cblas_zgemm(
+                    CblasColMajor,
+                    CblasNoTrans, CblasNoTrans,
+                    rows_in_block_, repeats, cols_in_block_,
+                    &alpha,
+                    current_block.data(), rows_in_block_,   // lda = rows(A)
+                    vec + d * rows_in_block_, cols_in_block_,   // ldb = rows(B)
+                    &beta,
+                    dest, rows_in_block_); // ldc = rows(C)
 #endif
+            }
+            else if constexpr (std::is_same_v<block_t, DynamicFactoredMatrix<dense_matrix_t>>)
+            {
+                // 2. Если блок -- это факторизованная плотная матрица, то я вызываю имеющийся там матмулл
+                // reshape вектора
+                auto vector_reshaped = Eigen::Map<dense_matrix_t>{vec + d * rows_in_block_, rows_in_block_, repeats};
+                // reshape места, куда прибавляем
+                auto dest_reshapsed = Eigen::Map<dense_matrix_t>{dest, rows_in_block_, repeats};
+                // matmull
+                current_block.matmull(vector_reshaped, dest_reshapsed, additional_workspace);
+            }
+            else
+            {
+                // 3. Если там чето непонятное (например, очередная тёплицева структура), то я сваливаюсь в цепочку
+                // матвеков, которые иммитируют матмул
+                for (Types::index i = 0; i < repeats; ++i)
+                {
+                    const Types::index row_block = i;
+                    const Types::index col_block = i + d;
+
+                    scalar_t* x_ptr = vec + static_cast<size_t>(col_block * cols_in_block_);
+                    scalar_t* y_ptr = dest + static_cast<size_t>(row_block * rows_in_block_);
+                    current_block.matvec_wise(x_ptr, cols_in_block_, y_ptr, rows_in_block_);
+                }
+            }
+        }
+
+        // 2) Уникальные блоки первого столбца (кроме [0,0]): B(k, 0), k = 1..block_rows-1.
+        // Каждый из них встречается на диагонали (j + k, j).
+        // Алгоритм действий абсолютно такой же
+        for (Types::index k = 1; k < block_rows; ++k)
+        {
+            const auto& current_block = blocks(k, 0);
+            const Types::index repeats = block_rows - k;
+            // Теперь есть варианты:
+            if constexpr (std::is_same_v<block_t, Types::MatrixX<scalar_t>>)
+            {
+#if USE_EIGEN
+                // 1. Если блок -- это плотная матрица, то я делаю умножалку через блас
+                // reshape вектора
+                auto vector_reshaped = Eigen::Map<dense_matrix_t>{vec, rows_in_block_, repeats};
+                // reshape места, куда прибавляем
+                auto dest_reshapsed = Eigen::Map<dense_matrix_t>{dest + k * cols_in_block_, rows_in_block_, repeats};
+                // матмул
+                dest_reshapsed.noalias() += current_block * vector_reshaped;
+#else
+                const scalar_t alpha{1.0, 0.0};
+                const scalar_t beta {1.0, 0.0}; // для C = C + A*B
+                cblas_zgemm(
+                    CblasColMajor,
+                    CblasNoTrans, CblasNoTrans,
+                    rows_in_block_, repeats, cols_in_block_,
+                    &alpha,
+                    current_block.data(), rows_in_block_,   // lda = rows(A)
+                    vec, cols_in_block_,   // ldb = rows(B)
+                    &beta,
+                    dest + k * rows_in_block_, rows_in_block_); // ldc = rows(C)
+#endif
+            }
+            else if constexpr (std::is_same_v<block_t, DynamicFactoredMatrix<dense_matrix_t>>)
+            {
+                // 2. Если блок -- это факторизованная плотная матрица, то я вызываю имеющийся там матмулл
+                // reshape вектора
+                auto vector_reshaped = Eigen::Map<dense_matrix_t>{vec, rows_in_block_, repeats};
+                // reshape места, куда прибавляем
+                auto dest_reshapsed = Eigen::Map<dense_matrix_t>{dest + k * rows_in_block_, rows_in_block_, repeats};
+                // matmull как метод факторизованной матрицы
+                current_block.matmull(vector_reshaped, dest_reshapsed, additional_workspace);
+            }
+            else
+            {
+                // 3. Если там чето непонятное (например, очередная тёплицева структура), то я сваливаюсь в цепочку
+                // матвеков, которые иммитируют матмул
+                for (Types::index j = 0; j < repeats; ++j)
+                {
+                    const Types::index row_block = j + k;
+                    const Types::index col_block = j;
+
+                    scalar_t* x_ptr = vec + static_cast<size_t>(col_block * cols_in_block_);
+                    scalar_t* y_ptr = dest + static_cast<size_t>(row_block * rows_in_block_);
+
+                    current_block.matvec_wise(x_ptr, cols_in_block_, y_ptr, rows_in_block_);
+                }
+            }
+        }
+    }
 
     template <typename scalar_t, typename block_t>
     ToeplitzStructure<scalar_t, block_t> ToeplitzStructure<scalar_t, block_t>::mull(scalar_t value) const noexcept
@@ -234,8 +370,7 @@ namespace EMW::Math::LinAgl::Matrix
     }
 
     template <typename scalar_t, typename block_t>
-    void
-    ToeplitzStructure<scalar_t, block_t>::mull_inplace(scalar_t value) noexcept
+    void ToeplitzStructure<scalar_t, block_t>::mull_inplace(scalar_t value) noexcept
     {
         std::cout << "Mull inplace" << std::endl;
         for (Types::index index = 0, total = blocks.get_actual_size(); index != total; ++index)
@@ -303,5 +438,99 @@ ToeplitzStructure<scalar_t, block_t> & operator*=(ToeplitzStructure<scalar_t, bl
     }
 }
 
+#if 0
+// Code from codex
+
+template <typename scalar_t, typename block_t>
+    void ToeplitzStructure<scalar_t, block_t>::matvec_wise_block(scalar_t* vec, size_t vec_size,
+                                                                 scalar_t* dest, size_t dest_size) const noexcept
+    {
+        matmul_wise(vec, vec_size, 1, dest, dest_size, 1);
+    }
+
+    template <typename scalar_t, typename block_t>
+    void ToeplitzStructure<scalar_t, block_t>::matmul_wise(scalar_t* rhs, size_t rhs_rows, size_t rhs_cols,
+                                                           scalar_t* dest, size_t dest_rows,
+                                                           size_t dest_cols) const noexcept
+    {
+        assert(rhs != nullptr);
+        assert(dest != nullptr);
+        assert(rhs_rows == static_cast<size_t>(cols()));
+        assert(dest_rows == static_cast<size_t>(rows()));
+        assert(rhs_cols == dest_cols);
+
+        Eigen::Map<const dense_matrix_t> rhs_matrix(rhs, static_cast<Eigen::Index>(rhs_rows),
+                                                    static_cast<Eigen::Index>(rhs_cols));
+        Eigen::Map<dense_matrix_t> dest_matrix(dest, static_cast<Eigen::Index>(dest_rows),
+                                               static_cast<Eigen::Index>(dest_cols));
+        matmul_wise(rhs_matrix, dest_matrix);
+    }
+
+    template <typename scalar_t, typename block_t>
+    void ToeplitzStructure<scalar_t, block_t>::matmul_wise(Eigen::Ref<const dense_matrix_t> rhs,
+                                                           Eigen::Ref<dense_matrix_t> dest) const noexcept
+    {
+        assert(rhs.rows() == cols());
+        assert(dest.rows() == rows());
+        assert(rhs.cols() == dest.cols());
+
+        const Types::index block_rows = blocks.rows();
+        const Types::index block_cols = blocks.cols();
+        const Types::index rhs_cols = static_cast<Types::index>(rhs.cols());
+
+        // 1) Уникальные блоки первой строки.
+        for (Types::index d = 0; d < block_cols; ++d)
+        {
+            const auto& current_block = blocks(0, d);
+            const Types::index repeats = std::min(block_rows, block_cols - d);
+
+            for (Types::index i = 0; i < repeats; ++i)
+            {
+                auto x_block = rhs.block(static_cast<Eigen::Index>((i + d) * cols_in_block_), 0,
+                                         static_cast<Eigen::Index>(cols_in_block_),
+                                         static_cast<Eigen::Index>(rhs_cols));
+                auto y_block = dest.block(static_cast<Eigen::Index>(i * rows_in_block_), 0,
+                                          static_cast<Eigen::Index>(rows_in_block_),
+                                          static_cast<Eigen::Index>(rhs_cols));
+
+                if constexpr (std::is_same_v<block_t, Types::MatrixX<scalar_t>>)
+                {
+                    y_block.noalias() += current_block * x_block;
+                }
+                else
+                {
+                    current_block.matmul_wise(x_block, y_block);
+                }
+            }
+        }
+
+        // 2) Уникальные блоки первого столбца (кроме [0,0]).
+        for (Types::index k = 1; k < block_rows; ++k)
+        {
+            const auto& current_block = blocks(k, 0);
+            const Types::index repeats = std::min(block_cols, block_rows - k);
+
+            for (Types::index j = 0; j < repeats; ++j)
+            {
+                auto x_block = rhs.block(static_cast<Eigen::Index>(j * cols_in_block_), 0,
+                                         static_cast<Eigen::Index>(cols_in_block_),
+                                         static_cast<Eigen::Index>(rhs_cols));
+                auto y_block = dest.block(static_cast<Eigen::Index>((j + k) * rows_in_block_), 0,
+                                          static_cast<Eigen::Index>(rows_in_block_),
+                                          static_cast<Eigen::Index>(rhs_cols));
+
+                if constexpr (std::is_same_v<block_t, Types::MatrixX<scalar_t>>)
+                {
+                    y_block.noalias() += current_block * x_block;
+                }
+                else
+                {
+                    current_block.matmul_wise(x_block, y_block);
+                }
+            }
+        }
+    }
+
+#endif
 
 #endif //TOEPLITZFULLYTEMPLATED_HPP

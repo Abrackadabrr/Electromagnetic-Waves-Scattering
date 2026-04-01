@@ -8,8 +8,6 @@ set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} -flto") # -march=native 
 
 add_library(${PROJECT_NAME} STATIC ${SOURCES})
 
-set(TARGET_LIBS eigen)
-
 find_package(OpenMP)
 if (OPENMP_FOUND)
     message("OpenMP Found")
@@ -20,8 +18,13 @@ if (LAPACK_FOUND)
     message("Lapack found")
 endif()
 
-target_link_libraries(${PROJECT_NAME} PUBLIC LAPACK::LAPACK -llapacke OpenMP::OpenMP_CXX)
-target_link_libraries(${PROJECT_NAME} PUBLIC ${TARGET_LIBS})
+find_package(BLAS REQUIRED)
+if (BLAS_FOUND)
+    message("Blas found")
+endif()
+
+target_link_libraries(${PROJECT_NAME} PUBLIC Eigen3::Eigen LAPACK::LAPACK -llapacke OpenMP::OpenMP_CXX ${BLAS_LIBRARIES})
+target_compile_definitions(${PROJECT_NAME} PUBLIC EIGEN_USE_BLAS)
 target_include_directories(${PROJECT_NAME} PUBLIC ${CMAKE_CURRENT_SOURCE_DIR} "${CMAKE_CURRENT_SOURCE_DIR}/..")
 
 # target_compile_options(${PROJECT_NAME} PUBLIC)
