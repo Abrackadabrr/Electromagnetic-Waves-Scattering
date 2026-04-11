@@ -34,7 +34,7 @@ constexpr Types::scalar SPHERE_RADUIS = 0.5;
 constexpr Types::scalar CUBE_LENGTH = 0.5;
 
 Types::scalar permittivity_distribution(const Types::point_t &x) {
-    return x.norm() < SPHERE_RADUIS ? 2.56 : 1;
+    return x.norm() < SPHERE_RADUIS ? sqrt(2 - x.squaredNorm()) : 1;
 }
 
 Types::scalar permittivity_distribution_cube(const Types::point_t &x) {
@@ -44,16 +44,18 @@ Types::scalar permittivity_distribution_cube(const Types::point_t &x) {
 }
 
 int main() {
+    Eigen::setNbThreads(1);
+    openblas_set_num_threads(1);
     // 1. Рисуем сетку
-    constexpr Types::scalar cube_length = 2.1 * SPHERE_RADUIS;
-    constexpr Types::index Nx = 41;
-    constexpr Types::index Ny = 41;
-    constexpr Types::index Nz = 41;
+    constexpr Types::scalar cube_length = 2;
+    constexpr Types::index Nx = 11;
+    constexpr Types::index Ny = 11;
+    constexpr Types::index Nz = 11;
     constexpr Types::scalar mesh_one_axis_size = cube_length / (Nx - 1);
     Mesh::VolumeMesh::CubeMeshWithData mesh{Types::point_t{-cube_length / 2, -cube_length / 2, -cube_length / 2},
                                             (Nx - 1) * mesh_one_axis_size,
                                             (Ny - 1) * mesh_one_axis_size, (Nz - 1) * mesh_one_axis_size, Nx, Ny, Nz};
-    mesh.setName("sphere");
+    mesh.setName("for_bulat");
     const Types::scalar cube_measure = mesh.dx() * mesh.dy() * mesh.dz();
     const Types::scalar basis_fn_module = 1. / sqrt(cube_measure);
     // Настраиваем диэлектрическую проницаемость
@@ -61,7 +63,7 @@ int main() {
 
     // 2. Параметры падающей волны
     constexpr double freq = 1; // GHz
-    constexpr Types::complex_d k{Physics::get_k_on_frquency(freq), 0.};
+    constexpr Types::complex_d k{1, 0.};
     Physics::planeWaveCase incident_field{Types::Vector3d{0, 1, 0}, k, Types::Vector3d{1, 0, 0}};
     std::cout << "Длина волны в свободном пространстве = " << 2 * M_PI / k.real() << std::endl;
 
@@ -79,7 +81,7 @@ int main() {
     Operators::Volume::operator_K_over_cube_mesh operator_K{k, mesh};
     auto mat_full = Math::LinAgl::Matrix::ZeroTripleToeplitzBlock<Types::complex_d>(1, 1, 1, 1);
     auto [mat_compressed, perm] = operator_K.
-        compute_galerkin_matrix_custom_blocksize_compressed(nx, ny, nz, basis_fn_module, 1e-5, mat_full);
+        compute_galerkin_matrix_custom_blocksize_compressed(nx, ny, nz, basis_fn_module, 1e-6, mat_full);
     // Сразу модифицируем правую часть (матрица перестановки)
     b = perm * b;
     // Собираем матрицу (eps - 1) как вектор из значений
@@ -99,11 +101,11 @@ int main() {
     // 5. Решаем системы
     // Поправляем правую часть по маске из фиктивных элементов
     b = A_compressed.modify_rhs_according_to_mask(b);
-    auto solution_full = Research::solve<Eigen::GMRES>(A_compressed, b, 1000, 1e-3);
-    // auto solution_compressed = Research::solve<Eigen::GMRES>(A_full, b, 1000, 1e-3);
+    auto solution_full = Research::solve<Eigen::GMRES>(A_compressed, b, 1000, 1e-5);
+//    auto solution_compressed = Research::solve<Eigen::GMRES>(A_full, b, 1000, 1e-3);
     // Смотрим относительную норму ошибки в решении
-    //std::cout << "FULL_SOL vs SKELETON_SOL = " << (solution_full - solution_compressed).norm() / solution_full.norm() <<
-    //    std::endl;
+//    std::cout << "FULL_SOL vs SKELETON_SOL = " << (solution_full - solution_compressed).norm() / solution_full.norm() <<
+//        std::endl;
 
     // И теперь переставляем обратно
     const Types::VectorXc solution = perm.transpose() * solution_full;
@@ -146,7 +148,7 @@ int main() {
 
     auto degree_view = view | std::views::transform([&](Types::scalar phi) { return phi * 180 / M_PI; });
     std::vector<Types::scalar> phis_degree{degree_view.begin(), degree_view.end()};
-    std::ofstream rsp_vv_file{path + "sigma_vv.csv"};
+    std::ofstream rsp_vv_file{path + "sigma_vv_" + std::to_string(Nx) + ".csv" };
     std::ofstream rsp_hh_file{path + "sigma_hh.csv"};
     Utils::to_csv(phis_degree, rsp_vv, "angle", "rsp", rsp_vv_file);
     Utils::to_csv(phis_degree, rsp_hh, "angle", "rsp", rsp_hh_file);
@@ -159,7 +161,6 @@ int main() {
 };
 
 // Надо сделать:
-// 1) Уточнить, что такое VV и HH в Гибсоне
 // 2) Попробовать убрать единицу из множителя (eps-1) для хорошей обусловленности.
 //    Ну с корнем идея сработала, но кажется, что здесь справится диагональный предобуславливатель.
 

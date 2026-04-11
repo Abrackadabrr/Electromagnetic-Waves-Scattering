@@ -23,7 +23,7 @@ endif ()
 
 set(TARGET_LIBS eigen visual OpenMP::OpenMP_CXX)  #  + OpenMP::OpenMP_CXX
 
-list(APPEND TASKS regular_cube.cpp dielectric_sphere.cpp toeplitz_example.cpp)
+list(APPEND TASKS regular_cube.cpp dielectric_sphere.cpp toeplitz_example.cpp singular_values_versus_distance.cpp)
 
 foreach (TASK IN LISTS TASKS)
     get_filename_component(FILE_NAME ${TASK} NAME_WE)
