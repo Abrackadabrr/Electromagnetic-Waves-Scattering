@@ -265,7 +265,7 @@ template <typename matrix_t, typename vector_t, typename value_t> struct ACA {
         if (matrix.factor_number() != 2) {
             return std::move(matrix);
         }
-
+        // tolerance = tolerance / matrix.template get<0>().cols();
         const matrix_t U = matrix.template get<0>();
         const matrix_t V_transposed = matrix.template get<1>(); // stored as V^T
 

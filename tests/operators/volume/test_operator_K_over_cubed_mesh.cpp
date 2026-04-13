@@ -11,6 +11,8 @@
 
 #include "experiment/PhysicalCondition.hpp"
 
+#include <Utils.hpp>
+
 
 using namespace EMW;
 
@@ -173,7 +175,7 @@ TEST_F(VOLUME_OPERATOR_OVER_CUBE_MESH_TESTS, TOEPLITZ_DENSE_COMPARISON) {
 
 TEST_F(VOLUME_OPERATOR_OVER_CUBE_MESH_TESTS, TOEPLITZ_TOEPLITZ_COMPARISON) {
     constexpr Types::scalar total_mesh_size = 0.1;
-    constexpr Types::index Nx = 15;
+    constexpr Types::index Nx = 17;
     constexpr Types::scalar cube_size = total_mesh_size / (Nx - 1);
     constexpr Types::scalar basis_fn_module = 1. / sqrt(cube_size * cube_size * cube_size);
     constexpr Types::scalar rel_tol = 2e-14;
@@ -191,14 +193,14 @@ TEST_F(VOLUME_OPERATOR_OVER_CUBE_MESH_TESTS, TOEPLITZ_TOEPLITZ_COMPARISON) {
     };
 
     // Собираем тёплицеву матрицу
-    auto toep_mat = operator_K.compute_galerkin_matrix(basis_fn_module);
+    auto [toep_mat, _] = operator_K.compute_galerkin_matrix_custom_blocksize(1, 1, 1, basis_fn_module);
     auto toep_mat_str = toeplitz_structure(toep_mat);
     std::cout << "Toep Matrix (" << toep_mat.rows() << ", " << toep_mat.cols() << ')' << std::endl;
     std::cout << "3: " << toep_mat_str[0] << "\n2: " << toep_mat_str[1] << "\n1: " << toep_mat_str[2] <<
         "\ninner: " << toep_mat_str[3] << std::endl;
 
     // Собираем тёплицеву матрицу, но с блоками побольше
-    auto [big_toep_mat, perm] = operator_K.compute_galerkin_matrix_custom_blocksize(7, 2, 2, basis_fn_module);
+    auto [big_toep_mat, perm] = operator_K.compute_galerkin_matrix_custom_blocksize(4, 2, 2, basis_fn_module);
     toep_mat_str = toeplitz_structure(big_toep_mat);
     std::cout << "Big Matrix (" << big_toep_mat.rows() << ", " << big_toep_mat.cols() << ')' << std::endl;
     std::cout << "3: " << toep_mat_str[0] << "\n2: " << toep_mat_str[1] << "\n1: " << toep_mat_str[2] <<
@@ -210,8 +212,10 @@ TEST_F(VOLUME_OPERATOR_OVER_CUBE_MESH_TESTS, TOEPLITZ_TOEPLITZ_COMPARISON) {
 }
 
 TEST_F(VOLUME_OPERATOR_OVER_CUBE_MESH_TESTS, TOEPLITZ_COMPARISON_WITH_ACA_COMPRESSED) {
+    Eigen::setNbThreads(1);
+    openblas_set_num_threads(1);
     constexpr Types::scalar total_mesh_size = 0.1;
-    constexpr Types::index Nx = 21;
+    constexpr Types::index Nx = 17;
     constexpr Types::scalar cube_size = total_mesh_size / (Nx - 1);
     constexpr Types::scalar basis_fn_module = 1. / sqrt(cube_size * cube_size * cube_size);
     constexpr Types::scalar rel_tol = 2e-14;
@@ -221,12 +225,45 @@ TEST_F(VOLUME_OPERATOR_OVER_CUBE_MESH_TESTS, TOEPLITZ_COMPARISON_WITH_ACA_COMPRE
     Operators::Volume::operator_K_over_cube_mesh operator_K{k, mesh};
     std::cout << "Computing toeplitz matrix ..." << std::endl;
     auto toep_mat = operator_K.compute_galerkin_matrix_custom_blocksize(4, 4, 4, basis_fn_module);
-    std::cout << "Computing compressed matrix ..." << std::endl;
+    std::cout << "End. Computing compressed matrix ..." << std::endl;
     auto compressed_mat = operator_K.
-        compute_galerkin_matrix_custom_blocksize_compressed(4, 4, 4, basis_fn_module, 1e-2);
-
+        compute_galerkin_matrix_custom_blocksize_compressed(4, 4, 4, basis_fn_module, 1e-5);
+    std::cout << "End. Computing error" << std::endl;
     const auto full_toep = toep_mat.matrix.to_dense();
     const auto full_compressed = compressed_mat.matrix.to_dense();
 
     std::cout << (full_toep - full_compressed).norm() / full_toep.norm() << std::endl;
 }
+
+TEST_F(VOLUME_OPERATOR_OVER_CUBE_MESH_TESTS, TOEPLITZ_MATVEC_COMPARISON_WITH_ACA_COMPRESSED) {
+    Eigen::setNbThreads(1);
+    openblas_set_num_threads(1);
+    constexpr Types::scalar total_mesh_size = 0.1;
+    constexpr Types::index Nx = 17;
+    constexpr Types::scalar cube_size = total_mesh_size / (Nx - 1);
+    constexpr Types::scalar basis_fn_module = 1. / sqrt(cube_size * cube_size * cube_size);
+    constexpr Types::scalar rel_tol = 2e-14;
+
+    // берем кубическую сетку на кубе
+    Mesh::VolumeMesh::CubeMesh mesh{Types::point_t{0, 0, 0}, cube_length, Nx};
+    Operators::Volume::operator_K_over_cube_mesh operator_K{k, mesh};
+    std::cout << "Computing toeplitz matrix ..." << std::endl;
+    auto toep_mat = operator_K.compute_galerkin_matrix_custom_blocksize(4, 4, 4, basis_fn_module);
+    std::cout << "End. Computing compressed matrix ..." << std::endl;
+    auto compressed_mat = operator_K.
+        compute_galerkin_matrix_custom_blocksize_compressed(4, 4, 4, basis_fn_module, 1e-5);
+    std::cout << Utils::get_memory_usage(compressed_mat.matrix) << std::endl;
+    std::cout << compressed_mat.matrix.cols() << " " <<
+        Utils::get_elements_for_parametrization(compressed_mat.matrix) / compressed_mat.matrix.cols() << std::endl;
+    std::cout << "End. Computing error" << std::endl;
+
+    Types::VectorXc x = Types::VectorXc::Random(toep_mat.matrix.cols());
+
+    const auto full_toep = toep_mat.matrix * x;;
+    const auto full_compressed = compressed_mat.matrix * x;
+
+    std::cout << (full_toep - full_compressed).norm() / full_toep.norm() << std::endl;
+
+    std::cout << compressed_mat.matrix.get_block(0, 2).get_block(0,2).get_block(0, 2).to_dense().norm() << std::endl;
+}
+

@@ -11,7 +11,6 @@
 #include <type_traits>
 
 namespace EMW::Math::Fourier {
-
 /**
  * Compact storage for the unique coefficients of a 3-level Toeplitz matrix
  * with dense 3x3 internal blocks: levels_x * levels_y * levels_z * 3 * 3.

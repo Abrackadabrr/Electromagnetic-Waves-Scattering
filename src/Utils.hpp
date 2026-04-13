@@ -35,6 +35,7 @@ namespace EMW::Utils
         }
     }
 
+
     struct MemoryUsage
     {
         Types::scalar full_matrix;
@@ -196,6 +197,7 @@ namespace EMW::Utils
         Types::scalar ref_frobenius_sq = 0;
         Types::scalar diff_frobenius_sq = 0;
 
+#pragma omp parallel for collapse(2) reduction(+:ref_frobenius_sq) reduction(+:diff_frobenius_sq)
         for (Types::index i3 = 0; i3 < reference.rows_in_toeplitrz(); ++i3)
             for (Types::index j3 = 0; j3 < reference.cols_in_toeplitrz(); ++j3)
             {

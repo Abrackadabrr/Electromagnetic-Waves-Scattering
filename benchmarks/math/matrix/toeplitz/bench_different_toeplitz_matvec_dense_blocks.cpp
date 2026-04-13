@@ -21,11 +21,6 @@ using singleToep = EMW::Math::LinAgl::Matrix::ToeplitzBlock<Complex>;
 using doubleToep = EMW::Math::LinAgl::Matrix::ToeplitzToeplitzBlock<Complex>;
 using tripleToep = EMW::Math::LinAgl::Matrix::TripleToeplitzBlock<Complex>;
 
-using singleToepFactor = EMW::Math::LinAgl::Matrix::ToeplitzDynFactoredBlock<Complex>;
-using doubleToepFactor = EMW::Math::LinAgl::Matrix::ToeplitzToeplitzDynFactoredBlock<Complex>;
-using tripleToepFactor = EMW::Math::LinAgl::Matrix::TripleToeplitzFactoredBlock<Complex>;
-
-
 decltype(auto) make_toeplitz_block(size_t block_size, size_t fl) {
     auto tp_mat = EMW::Math::LinAgl::Matrix::ZeroToeplitzBlock<Complex>(fl, block_size);
 
@@ -67,11 +62,11 @@ public:
         m_dense_1 = make_toeplitz_block(inner_size, fl);
 
         // Случайные вектора, на которые умножаем
-        x_3 = VectorXc::Random(m_compressed_3.cols());
+        x_3 = VectorXc::Random(m_dense_2.cols());
         x_2 = VectorXc::Random(m_dense_2.cols());
         x_1 = VectorXc::Random(m_dense_1.cols());
         // Результаты умножения
-        y_3 = VectorXc::Zero(m_compressed_3.cols());
+        y_3 = VectorXc::Zero(m_dense_2.cols());
         y_2 = VectorXc::Zero(m_dense_2.cols());
         y_1 = VectorXc::Zero(m_dense_1.cols());
     }
@@ -80,12 +75,10 @@ protected:
     VectorXc x_3;
     VectorXc x_2;
     VectorXc x_1;
+
     VectorXc y_3; // multiplication result;
     VectorXc y_2; // multiplication result;
     VectorXc y_1; // multiplication result;
-    tripleToepFactor m_compressed_3;
-    doubleToepFactor m_compressed_2;
-    singleToepFactor m_compressed_1;
 
     tripleToep m_dense_3;
     doubleToep m_dense_2;
@@ -94,38 +87,30 @@ protected:
 
 BENCHMARK_DEFINE_F(MatrixVectorBenchmark, InplaceMatvec)(benchmark::State &state) {
     for (auto _ : state) {
-        m_dense_2.matvec(x_2, y_2);
-        benchmark::DoNotOptimize(y_2.data());
+        m_dense_1.matvec(x_1, y_1);
+        benchmark::DoNotOptimize(y_1.data());
         benchmark::ClobberMemory();
     }
-
-    const auto n = static_cast<double>(state.range(0));
-    state.SetComplexityN(n);
 }
 
 BENCHMARK_DEFINE_F(MatrixVectorBenchmark, RawDataMatvec)(benchmark::State &state) {
+    Eigen::setNbThreads(1);
     openblas_set_num_threads(1);
     for (auto _ : state) {
-        m_dense_2.matvec_wise(x_2.data(), x_2.size(), y_2.data(), y_2.size());
-        benchmark::DoNotOptimize(y_2.data());
+        m_dense_1.matvec_wise(x_1.data(), x_1.size(), y_1.data(), y_1.size());
+        benchmark::DoNotOptimize(y_1.data());
         benchmark::ClobberMemory();
     }
-    const auto n = static_cast<double>(state.range(0));
-    state.SetComplexityN(n);
 };
 
+const int INNER_SIZE_4_4 = 4 * 4 * 4 * 3;
+
 BENCHMARK_REGISTER_F(MatrixVectorBenchmark, InplaceMatvec)
-->Args({4 * 4 * 4 * 3, 10, 3})
-->Args({4 * 4 * 4 * 3, 20, 3})
-->Args({256, 40, 4})
-->Args({512, 40, 2})
-->Unit({benchmark::kMillisecond});
+->ArgsProduct({ {INNER_SIZE_4_4, 256, 512, 1024, 2048}, {3, 7, 10, 15, 20, 25, 30, 35, 40, 50}, {1}})
+->Unit({benchmark::kMicrosecond});
 
 BENCHMARK_REGISTER_F(MatrixVectorBenchmark, RawDataMatvec)
-->Args({4 * 4 * 4 * 3, 10, 3})
-->Args({4 * 4 * 4 * 3, 20, 3})
-->Args({256, 40, 4})
-->Args({512, 40, 2})
-->Unit({benchmark::kMillisecond});
+->ArgsProduct({ {INNER_SIZE_4_4, 256, 512, 1024, 2048}, {3, 7, 10, 15, 20, 25, 30, 35, 40, 50}, {1}})
+->Unit({benchmark::kMicrosecond});
 
 BENCHMARK_MAIN();

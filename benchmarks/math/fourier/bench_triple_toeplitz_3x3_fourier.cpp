@@ -4,6 +4,8 @@
 
 #include <benchmark/benchmark.h>
 
+#define EIGEN_USE_BLAS
+
 #include "math/fourier/TripleToeplitz3x3Fourier.hpp"
 
 #include "mesh/volume_mesh/CubeMeshWithData.hpp"
@@ -15,7 +17,7 @@
 using namespace EMW;
 
 namespace {
-constexpr Types::scalar SPHERE_RADUIS = 1;
+constexpr Types::scalar SPHERE_RADUIS = 0.5;
 
 using toeplitz_t = Math::LinAgl::Matrix::TripleToeplitzBlock<Types::complex_d>;
 using skeleton_t = Math::LinAgl::Matrix::TripleToeplitzFactoredBlock<Types::complex_d>;
@@ -42,14 +44,15 @@ public:
         auto operator_k_ = Operators::Volume::operator_K_over_cube_mesh(
             Types::complex_d{6 * M_PI, 0.}, mesh_);
 
-        toeplitz_ = operator_k_.compute_galerkin_matrix(basis_fn_norm);
-        fourier_ = fourier_t(toeplitz_);
+        auto [toeplitz, _] = operator_k_.compute_galerkin_matrix_custom_blocksize(1, 1, 1,basis_fn_norm);
+        fourier_ = fourier_t(toeplitz);
 
         std::cout << "Fourier matrx: " << std::endl;
-        std::cout << Utils::get_memory_usage(toeplitz_) << std::endl;
+        std::cout << Utils::get_memory_usage(toeplitz) << std::endl;
 
-        x_ = Types::VectorXc::Random(toeplitz_.cols());
-        y_ = Types::VectorXc::Zero(toeplitz_.rows());
+        x_ = Types::VectorXc::Random(toeplitz.cols());
+        y_ = Types::VectorXc::Zero(toeplitz.rows());
+        reference_ = fourier_.matvec(x_);
     }
 
 protected:
@@ -58,6 +61,7 @@ protected:
 
     Types::VectorXc x_;
     Types::VectorXc y_;
+    Types::VectorXc reference_;
 };
 
 class TripleToeplitz3x3SkeletonBenchmark : public benchmark::Fixture {
@@ -84,13 +88,23 @@ public:
             Types::complex_d{6 * M_PI, 0.}, mesh_);
 
         auto [skeleton, perm] = operator_k_.compute_galerkin_matrix_custom_blocksize_compressed(
-            block_side, block_side, block_side, basis_fn_norm, 1e-5);
+            block_side, block_side, block_side, basis_fn_norm, 1e-3);
         skeleton_ = std::move(skeleton);
         perm_ = std::move(perm);
 
         x_ = Types::VectorXc::Random(skeleton_.cols());
         x_permuted_ = perm_ * x_;
         y_ = Types::VectorXc::Zero(skeleton_.rows());
+
+        auto [toeplitz, _] = operator_k_.compute_galerkin_matrix_custom_blocksize(1, 1, 1,basis_fn_norm);
+        auto fourier = fourier_t(toeplitz);
+
+        std::cout << "Fourier matrx: " << std::endl;
+        std::cout << Utils::get_memory_usage(toeplitz) << std::endl;
+
+        x_ = Types::VectorXc::Random(toeplitz.cols());
+        y_ = Types::VectorXc::Zero(toeplitz.rows());
+        reference_ = fourier.matvec(x_);
 
         std::cout << "N = " << nodes_per_axis << std::endl;
         std::cout << Utils::get_memory_usage(skeleton_) << std::endl;
@@ -104,18 +118,22 @@ protected:
     Types::VectorXc x_;
     Types::VectorXc x_permuted_;
     Types::VectorXc y_;
+    Types::VectorXc reference_;
 };
 
 BENCHMARK_DEFINE_F(TripleToeplitz3x3SkeletonBenchmark, SkeletonFormatMatVec)(benchmark::State &state) {
+    y_ = skeleton_.matvec(x_permuted_);
     for (auto _ : state) {
         y_ = skeleton_.matvec(x_permuted_);
         benchmark::DoNotOptimize(y_.data());
         benchmark::ClobberMemory();
     }
+    std::cout << (perm_.transpose() * y_ - reference_).norm() / reference_.norm() << std::endl;
     // state.counters["unknowns"] = static_cast<double>(x_.size());
 }
 
 BENCHMARK_DEFINE_F(TripleToeplitz3x3FourierBenchmark, FourierMatVec)(benchmark::State &state) {
+    y_ = fourier_.matvec(x_);
     for (auto _ : state) {
         y_ = fourier_.matvec(x_);
         benchmark::DoNotOptimize(y_.data());
@@ -125,11 +143,15 @@ BENCHMARK_DEFINE_F(TripleToeplitz3x3FourierBenchmark, FourierMatVec)(benchmark::
 }
 
 BENCHMARK_REGISTER_F(TripleToeplitz3x3SkeletonBenchmark, SkeletonFormatMatVec)
-->Args({41, 4})
+->Args({53, 4})
+->Args({57, 4})
+->Args({61, 4})
         ->Unit(benchmark::kMillisecond);
 
 BENCHMARK_REGISTER_F(TripleToeplitz3x3FourierBenchmark, FourierMatVec)
-->Args({41, 4})
+->Args({53, 4})
+->Args({57, 4})
+->Args({61, 4})
         ->Unit(benchmark::kMillisecond);
 } // namespace
 

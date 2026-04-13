@@ -250,7 +250,8 @@ namespace EMW::Math::LinAgl::Matrix
             const auto& current_block = blocks(0, d);
             const Types::index repeats = block_cols - d;
 
-            if constexpr (std::is_same_v<block_t, Types::MatrixX<scalar_t>>) {
+            if constexpr (std::is_same_v<block_t, Types::MatrixX<scalar_t>>)
+            {
 #if USE_EIGEN
                 // 1. Если блок -- это плотная матрица, то я делаю матмулл
                 // reshape вектора
@@ -262,14 +263,14 @@ namespace EMW::Math::LinAgl::Matrix
 #else
                 // умножалка через блас
                 const scalar_t alpha{1.0, 0.0};
-                const scalar_t beta {1.0, 0.0}; // для C = C + A*B
+                const scalar_t beta{1.0, 0.0}; // для C = C + A*B
                 cblas_zgemm(
                     CblasColMajor,
                     CblasNoTrans, CblasNoTrans,
                     rows_in_block_, repeats, cols_in_block_,
                     &alpha,
-                    current_block.data(), rows_in_block_,   // lda = rows(A)
-                    vec + d * rows_in_block_, cols_in_block_,   // ldb = rows(B)
+                    current_block.data(), rows_in_block_, // lda = rows(A)
+                    vec + d * rows_in_block_, cols_in_block_, // ldb = rows(B)
                     &beta,
                     dest, rows_in_block_); // ldc = rows(C)
 #endif
@@ -282,7 +283,6 @@ namespace EMW::Math::LinAgl::Matrix
             }
             else
             {
-
                 for (Types::index i = 0; i < repeats; ++i)
                 {
                     scalar_t* x_ptr = vec + (d + i) * rows_in_block_;
@@ -309,14 +309,14 @@ namespace EMW::Math::LinAgl::Matrix
                 dest_reshapsed.noalias() += current_block * vector_reshaped;
 #else
                 const scalar_t alpha{1.0, 0.0};
-                const scalar_t beta {1.0, 0.0}; // для C = C + A*B
+                const scalar_t beta{1.0, 0.0}; // для C = C + A*B
                 cblas_zgemm(
                     CblasColMajor,
                     CblasNoTrans, CblasNoTrans,
                     rows_in_block_, repeats, cols_in_block_,
                     &alpha,
-                    current_block.data(), rows_in_block_,   // lda = rows(A)
-                    vec, cols_in_block_,   // ldb = rows(B)
+                    current_block.data(), rows_in_block_, // lda = rows(A)
+                    vec, cols_in_block_, // ldb = rows(B)
                     &beta,
                     dest + k * rows_in_block_, rows_in_block_); // ldc = rows(C)
 #endif
@@ -331,14 +331,13 @@ namespace EMW::Math::LinAgl::Matrix
             {
                 for (Types::index j = 0; j < repeats; ++j)
                 {
-                    const Types::index row_block = j + k;
-                    const Types::index col_block = j;
                     scalar_t* x_ptr = vec + j * cols_in_block_;
                     scalar_t* y_ptr = dest + (j + k) * rows_in_block_;
                     current_block.matvec_wise(x_ptr, cols_in_block_, y_ptr, rows_in_block_);
                 }
             }
         }
+        delete[] additional_workspace;
     }
 
     template <typename scalar_t, typename block_t>
