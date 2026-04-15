@@ -8,19 +8,26 @@ set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} -flto") # -march=native 
 
 add_library(${EMW_LIBRARY_NAME} STATIC ${SOURCES})
 
+# Find packages to use in core lib build
 find_package(OpenMP)
 if (OPENMP_FOUND)
     message("OpenMP Found")
+else()
+    message(FATAL_ERROR "src/CMakeLists.txt: You use EMW core lib, but CMake cannot find OpenMP library")
 endif ()
 
 find_package(LAPACK REQUIRED)
 if (LAPACK_FOUND)
     message("Lapack found")
+else()
+    message(FATAL_ERROR "src/CMakeLists.txt: You use EMW core lib, but CMake cannot find LAPACK library")
 endif ()
 
 find_package(BLAS REQUIRED)
 if (BLAS_FOUND)
     message("Blas found")
+else()
+    message(FATAL_ERROR "src/CMakeLists.txt: You use EMW core lib, but CMake cannot find BLAS library")
 endif ()
 
 target_link_libraries(${EMW_LIBRARY_NAME} PUBLIC Eigen3::Eigen LAPACK::LAPACK -llapacke OpenMP::OpenMP_CXX ${BLAS_LIBRARIES})
