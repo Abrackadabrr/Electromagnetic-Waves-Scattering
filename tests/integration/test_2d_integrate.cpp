@@ -9,6 +9,7 @@
 #include "math/integration/newton_cotess/Rectangular.hpp"
 #include "math/integration/Quadrature.hpp"
 
+
 using EMW::Types::scalar;
 using namespace EMW;
 namespace GL = DefiniteIntegrals::GaussLegendre;
