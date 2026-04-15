@@ -2,7 +2,7 @@
 // Created by evgen on 24.12.2024.
 //
 
-#include "VTKFunctions.hpp"
+#include "visualisation/include/VTKFunctions.hpp"
 
 #include "mesh/SurfaceMesh.hpp"
 #include "mesh/Utils.hpp"
