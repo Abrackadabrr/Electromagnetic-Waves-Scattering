@@ -24,7 +24,7 @@ scalar f_pow(scalar x, scalar y, scalar z, scalar p, scalar q, scalar m) {
 }
 
 class GAUSSIAN_QUADRATURE : public ::testing::Test {
-  protected:
+protected:
     scalar prec = 4e-15;
 };
 
@@ -65,43 +65,47 @@ TEST_F(GAUSSIAN_QUADRATURE, TEST_3RD_ORDER) {
 }
 
 TEST_F(GAUSSIAN_QUADRATURE, TEST_GRAVITATIONAL_ENERGY) {
-    const Types::scalar l = 3;
+    const Types::scalar lx = sqrt(0.001);
+    const Types::scalar ly = sqrt(0.001);
+    const Types::scalar lz = sqrt(0.001);
     // аналитика
-    const Types::scalar an_res = Math::AnalyticalIntegration::self_newtonian_energy_over_cube(l);
+    const Types::scalar an_res = Math::AnalyticalIntegration::self_newtonian_energy_over_cube(lx);
 
     // интегрирование новое
-    const auto integrand = [l](scalar x, scalar y, scalar z) {
+    const auto integrand = [lx, ly, lz](scalar x, scalar y, scalar z) {
         const Types::point_t point{x, y, z};
-        return Math::AnalyticalIntegration::newtonian_potential_of_parallelepiped(point, l / 2., l / 2., l / 2.);
+        return Math::AnalyticalIntegration::newtonian_potential_of_parallelepiped(point, lx / 2., ly / 2., lz / 2.);
     };
     const auto res =
-        DefiniteIntegrals::integrate<GL::Quadrature<5, 5, 5>>(integrand, {-l / 2, -l / 2, -l / 2}, {l, l, l});
+        DefiniteIntegrals::integrate<GL::Quadrature<7, 7, 7>>(integrand, {-lx / 2, -ly / 2, -lz / 2}, {lx, ly, lz});
 
     // интегрирование старое (квадратура в квадратуре в квадратуре)
-    const auto cut_of_cube_integral = [l](scalar x, scalar y, scalar z, scalar z_dash) {
+    const auto cut_of_cube_integral = [lx, ly](scalar x, scalar y, scalar z, scalar z_dash) {
         // Интегрирование по сечениям куба
         const Containers::vector<Types::point_t> points1 = {
-            {-l / 2, -l / 2, z_dash},
-            {l / 2, -l / 2, z_dash},
-            {l / 2, l / 2, z_dash},
-            {-l / 2, l / 2, z_dash},
+            {-lx / 2, -ly / 2, z_dash},
+            {lx / 2, -ly / 2, z_dash},
+            {lx / 2, ly / 2, z_dash},
+            {-lx / 2, ly / 2, z_dash},
         };
         const Mesh::IndexedCell cell1({0, 1, 2, 3}, points1);
         return Math::AnalyticalIntegration::integrate_1_div_r(Types::point_t{x, y, z}, cell1);
     };
-    const auto newtonian_potential_of_cube = [l, cut_of_cube_integral](scalar x, scalar y, scalar z) {
+    const auto newtonian_potential_of_cube = [lz, cut_of_cube_integral](scalar x, scalar y, scalar z) {
         const auto integrand = [x, y, z, cut_of_cube_integral](Types::scalar z_dash) {
             return cut_of_cube_integral(x, y, z, z_dash);
         };
-        return DefiniteIntegrals::integrate<GL::Quadrature<4>>(integrand, {-l/2}, {l/2}) +
-            DefiniteIntegrals::integrate<GL::Quadrature<4>>(integrand, {0}, {l/2});
+        return DefiniteIntegrals::integrate<GL::Quadrature<4>>(integrand, {-lz / 2}, {lz / 2}) +
+               DefiniteIntegrals::integrate<GL::Quadrature<4>>(integrand, {0}, {lz / 2});
     };
     const auto res_old =
-        DefiniteIntegrals::integrate<GL::Quadrature<7, 7, 7>>(newtonian_potential_of_cube, {-l / 2, -l / 2, -l / 2}, {l, l, l});
-
+        DefiniteIntegrals::integrate<GL::Quadrature<7, 7, 7>>(newtonian_potential_of_cube, {-lx / 2, -ly / 2, -lz / 2},
+                                                              {lx, ly, lz});
 
     std::cout.precision(16);
     std::cout << res << std::endl;
+    std::cout << res / 1.599359851613408 << std::endl; // хз че за ошибка тут в расчетах
     std::cout << an_res << std::endl;
     std::cout << res_old << std::endl;
+    std::cout << std::abs((res_old - an_res)/an_res) << std::endl;
 }

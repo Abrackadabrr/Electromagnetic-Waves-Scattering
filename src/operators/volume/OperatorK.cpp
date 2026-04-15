@@ -96,6 +96,8 @@ Types::Matrix3c operator_K_over_cube_mesh::matrix_2_coef(Types::index k, Types::
 Types::complex_d operator_K_over_cube_mesh::matrix_3_coef(Types::index k, Types::index p) const {
     const auto &cube_k = mesh.getCells()[k];
     const auto &cube_p = mesh.getCells()[p];
+    const auto &k_corner = mesh.leftDownCorner(k);
+    const auto &p_corner = mesh.leftDownCorner(p);
     const auto h = mesh.h();
     const Types::complex_d k2 = wave_number * wave_number;
 
@@ -107,8 +109,7 @@ Types::complex_d operator_K_over_cube_mesh::matrix_3_coef(Types::index k, Types:
         // интегрирование с выделением особенности
         // Ограниченная часть от функции
         const auto integrand_bounded_part = [wn = wave_number](Types::scalar x1, Types::scalar y1, Types::scalar z1,
-                                                               Types::scalar x2, Types::scalar y2,
-                                                               Types::scalar z2) {
+                                                               Types::scalar x2, Types::scalar y2, Types::scalar z2) {
             return Helmholtz::F_bounded_part(wn, {x1, y1, z1}, {x2, y2, z2});
         };
         //  Ньютонов потенциал куба в правильном формате
@@ -119,17 +120,14 @@ Types::complex_d operator_K_over_cube_mesh::matrix_3_coef(Types::index k, Types:
         const auto regular_part =
             DefiniteIntegrals::integrate<DefiniteIntegrals::GaussLegendre::Quadrature<
                 2, 2, 2, 2, 2, 2>>(
-                integrand_bounded_part, {mesh.leftDownCorner(k)[0], mesh.leftDownCorner(k)[1],
-                                         mesh.leftDownCorner(k)[2],
-                                         mesh.leftDownCorner(p)[0], mesh.leftDownCorner(p)[1],
-                                         mesh.leftDownCorner(p)[2]},
+                integrand_bounded_part, {k_corner.x(), k_corner.y(), k_corner.z(),
+                                         p_corner.x(), p_corner.y(), p_corner.z()},
                 {mesh.dx(), mesh.dy(), mesh.dz(), mesh.dx(), mesh.dy(), mesh.dz()});
         const auto singular_part =
             Math::Constants::inverse_4PI<Types::scalar>() *
             DefiniteIntegrals::integrate<DefiniteIntegrals::GaussLegendre::Quadrature<
                 3, 3, 3>>(
-                potential_of_cube_k, {mesh.leftDownCorner(p)[0], mesh.leftDownCorner(p)[1],
-                                      mesh.leftDownCorner(p)[2]},
+                potential_of_cube_k, {p_corner.x(), p_corner.y(), p_corner.z()},
                 {mesh.dx(), mesh.dy(), mesh.dz()});
         return k2 * (regular_part + singular_part);
     }
@@ -138,34 +136,32 @@ Types::complex_d operator_K_over_cube_mesh::matrix_3_coef(Types::index k, Types:
     // просто берем фундаментальное решение уравнения Гельмгольца
     // и интегрируем его по двум кубам.
     const auto integrand = [wn = wave_number](Types::scalar x1, Types::scalar y1, Types::scalar z1,
-                                              Types::scalar x2, Types::scalar y2,
-                                              Types::scalar z2) {
+                                              Types::scalar x2, Types::scalar y2, Types::scalar z2) {
         return Helmholtz::F(wn, {x1, y1, z1}, {x2, y2, z2});
     };
-    return k2 * DefiniteIntegrals::integrate<DefiniteIntegrals::NewtonCotess::Quadrature<2, 2, 2, 2, 2, 2>>(
-               integrand, {mesh.leftDownCorner(k)[0], mesh.leftDownCorner(k)[1], mesh.leftDownCorner(k)[2],
-                           mesh.leftDownCorner(p)[0], mesh.leftDownCorner(p)[1], mesh.leftDownCorner(p)[2]},
+    return k2 * DefiniteIntegrals::integrate<DefiniteIntegrals::GaussLegendre::Quadrature<2, 2, 2, 2, 2, 2>>(
+               integrand, {k_corner.x(), k_corner.y(), k_corner.z(), p_corner.x(), p_corner.y(), p_corner.z()},
                {mesh.dx(), mesh.dy(), mesh.dz(), mesh.dx(), mesh.dy(), mesh.dz()});
 }
 
 Types::Matrix3c operator_K_over_cube_mesh::far_zone_interaction(Types::index k, Types::index p) const {
     // Просто интегрируем выражение для поля в дальней зоне
+    const auto &k_corner = mesh.leftDownCorner(k);
+    const auto &p_corner = mesh.leftDownCorner(p);
     Types::Matrix3c interaction_block = Types::Matrix3c::Zero();
     for (size_t i = 0; i < 3; ++i) {
-        Types::Vector3d j = Types::Vector3d::Zero();
-        j[i] = 1;
+        Types::Vector3c j = Types::Vector3c::Zero();
+        j[i] = {1., 0};
         const auto integrand = [wn = wave_number, j](Types::scalar x1, Types::scalar y1, Types::scalar z1,
-                                                     Types::scalar x2, Types::scalar y2,
-                                                     Types::scalar z2) {
+                                                     Types::scalar x2, Types::scalar y2, Types::scalar z2) {
             return Helmholtz::far_zone_integral_kernel(wn, Types::point_t{x1, y1, z1} - Types::point_t{x2, y2, z2}, j);
         };
         interaction_block.col(i) = DefiniteIntegrals::integrate<DefiniteIntegrals::GaussLegendre::Quadrature<
             2, 2, 2, 2, 2, 2>>(
-            integrand, {mesh.leftDownCorner(k)[0], mesh.leftDownCorner(k)[1], mesh.leftDownCorner(k)[2],
-                        mesh.leftDownCorner(p)[0], mesh.leftDownCorner(p)[1], mesh.leftDownCorner(p)[2]},
+            integrand, {k_corner.x(), k_corner.y(), k_corner.z(), p_corner.x(), p_corner.y(), p_corner.z()},
             {mesh.dx(), mesh.dy(), mesh.dz(), mesh.dx(), mesh.dy(), mesh.dz()});
     }
-    return interaction_block;
+    return Math::Constants::inverse_4PI<Types::scalar>() * interaction_block;
 }
 
 Types::scalar operator_K_over_cube_mesh::newton_potential_of_cube(Types::index k, Types::point_t r) const {
@@ -196,12 +192,12 @@ Types::scalar operator_K_over_cube_mesh::newton_potential_of_cube(Types::index k
 }
 
 Types::Matrix3c operator_K_over_cube_mesh::galerkin_block_for_cubes(size_t k, size_t p) const {
-    const Types::index n_cubes = mesh.getCells().size();
-    // Счёт
+#if 0
+    // 1. Если кубы далеко, то считаем через far_zone
     if (mesh.distance(k, p) > 10)
-        // 1. Если кубы далеко, то считаем через far_zone
-        // Ну например 1. ...
+        // Ну например 10. ...
         return far_zone_interaction(k, p);
+#endif
 
     // 2. Иначе считаем через преобразование сингулярного оператора
     const auto volume_res = matrix_3_coef(k, p);
@@ -610,7 +606,7 @@ operator_K_over_cube_mesh::compute_galerkin_matrix_custom_blocksize_compressed(s
                     }
     }
 
-    #pragma omp parallel for num_threads(14) shared(result) firstprivate(Nx, Ny, Nz, basis_fn_module)
+#pragma omp parallel for num_threads(14) shared(result) firstprivate(Nx, Ny, Nz, basis_fn_module)
     for (size_t i3 = 1; i3 < third_layer_toeplitz; ++i3) {
         // цикл по первой строке в матрице
         size_t j3 = 0;
@@ -665,5 +661,6 @@ operator_K_over_cube_mesh::compute_galerkin_matrix_custom_blocksize_compressed(s
     }
     return {result, mesh.getPermutation(Nx, Ny, Nz)};
 }
+
 
 }

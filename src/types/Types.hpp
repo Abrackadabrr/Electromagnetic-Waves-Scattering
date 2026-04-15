@@ -13,14 +13,15 @@
 #include <set>
 
 namespace EMW::Types {
+    // Scalars
     using scalar = double;
     using index = std::size_t;
     using integer = long int;
     using complex_d = std::complex<scalar>;
 
+    // Linalg
     template<typename t>
     using Vector3 = Eigen::Matrix<t, 3, 1>;
-
     using Vector3d = Vector3<scalar>;
     using point_t = Vector3d;
     using Vector2d = Eigen::Matrix<scalar, 2, 1>;
@@ -37,6 +38,9 @@ namespace EMW::Types {
     template<typename t> using DiagonalMatrixX = Eigen::DiagonalMatrix<t, Eigen::Dynamic>;
     using DiagonalMatrixXd = DiagonalMatrixX<Types::scalar>;
     using DiagonalMatrixXc = DiagonalMatrixX<Types::complex_d>;
+
+    using PermutationMatrix = Eigen::PermutationMatrix<Eigen::Dynamic>;
+
 };
 
 namespace EMW::Containers {

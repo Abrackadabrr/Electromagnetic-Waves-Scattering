@@ -52,7 +52,7 @@ Types::scalar self_newtonian_energy_over_cube(Types::scalar length) {
 }
 
 // Первообразная, после тройного интегрирования 1/|r| по кубу
-static Types::scalar primitive_F(Types::scalar x, Types::scalar y, Types::scalar z) {
+Types::scalar primitive_F(Types::scalar x, Types::scalar y, Types::scalar z) {
     constexpr Types::scalar eps = std::numeric_limits<Types::scalar>::epsilon();
     const Types::scalar R = std::sqrt(x*x + y*y + z*z);
     if (std::abs(R) < eps)

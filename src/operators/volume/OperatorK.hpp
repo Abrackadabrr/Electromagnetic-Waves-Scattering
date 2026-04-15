@@ -60,7 +60,7 @@ namespace EMW::Operators::Volume
         struct matrix_and_permutation
         {
             matrix_t matrix;
-            Eigen::PermutationMatrix<Eigen::Dynamic> P;
+            Types::PermutationMatrix P;
         };
 
     public:

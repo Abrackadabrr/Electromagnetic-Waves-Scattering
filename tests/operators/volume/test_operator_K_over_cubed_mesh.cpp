@@ -19,15 +19,30 @@ using namespace EMW;
 class VOLUME_OPERATOR_OVER_CUBE_MESH_TESTS : public ::testing::Test {
 protected:
     Types::scalar cube_length{};
-    size_t Nx5{};
     Types::complex_d k{};
 
     void SetUp() override {
         cube_length = 0.1;
-        Nx5 = 5;
         k = {2.0 * Math::Constants::PI<Types::scalar>() / cube_length, 0};
     }
 };
+
+TEST_F(VOLUME_OPERATOR_OVER_CUBE_MESH_TESTS, SingularIntegrationTest) {
+    constexpr size_t N = 40;
+    cube_length = 1;
+    const Types::complex_d low_freq_k = {6 * Math::Constants::PI<Types::scalar>(), 0.};
+    Mesh::VolumeMesh::CubeMesh mesh{Types::point_t{-cube_length / 2, -cube_length / 2, -cube_length / 2},
+                                    cube_length, N};
+    Operators::Volume::operator_K_over_cube_mesh op_K{low_freq_k, mesh};
+    // Сравнение расчета через сингулярное интегрирование и через интегрирование в дальней зоне
+    const Types::index idx1 = 0, idx2 = mesh.getCells().size() - 1;
+    std::cout << "distance = " << mesh.distance(idx1, idx2) << std::endl;
+    const auto sing_res = op_K.galerkin_block_for_cubes(idx1, idx2);
+    const auto far_res = op_K.far_zone_interaction(idx1, idx2);
+
+    const Types::scalar rel_err = std::abs((sing_res - far_res).norm() / far_res.norm());
+    std::cout << rel_err << std::endl;
+}
 
 TEST_F(VOLUME_OPERATOR_OVER_CUBE_MESH_TESTS, SimpleTripleBlockToeplitzTest) {
     constexpr size_t Nx2 = 2;
@@ -264,6 +279,5 @@ TEST_F(VOLUME_OPERATOR_OVER_CUBE_MESH_TESTS, TOEPLITZ_MATVEC_COMPARISON_WITH_ACA
 
     std::cout << (full_toep - full_compressed).norm() / full_toep.norm() << std::endl;
 
-    std::cout << compressed_mat.matrix.get_block(0, 2).get_block(0,2).get_block(0, 2).to_dense().norm() << std::endl;
+    std::cout << compressed_mat.matrix.get_block(0, 2).get_block(0, 2).get_block(0, 2).to_dense().norm() << std::endl;
 }
-

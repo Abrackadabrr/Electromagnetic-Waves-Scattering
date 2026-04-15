@@ -55,19 +55,21 @@ Types::Vector3c sigmaKernel(Types::complex_d k, const Types::Vector3d &tau, cons
 }
 
 Types::Vector3c far_zone_integral_kernel(Types::complex_d k, const Types::point_t &r, const Types::Vector3c &j) {
-    const Types::scalar inv_r_sqr_norm = r.squaredNorm();
+    const Types::scalar inv_r_sqr_norm = 1. / r.squaredNorm();
     const Types::scalar inv_r_norm = std::sqrt(inv_r_sqr_norm);
     const Types::scalar inv_r_qube_norm = inv_r_sqr_norm * inv_r_norm;
     const Types::complex_d exponent = std::exp(Math::Constants::i * k * (1. / inv_r_norm));
     const Types::complex_d k_sqr_div_r_norm = k * k * inv_r_norm;
-    const Types::complex_d ik_dir_r_sqr_norm = Math::Constants::i * k * inv_r_sqr_norm;
-    const Types::complex_d first_part = -inv_r_qube_norm + ik_dir_r_sqr_norm + k_sqr_div_r_norm;
+    const Types::complex_d ik_div_r_sqr_norm = Math::Constants::i * k * inv_r_sqr_norm;
+    const Types::complex_d first_part = -inv_r_qube_norm + ik_div_r_sqr_norm + k_sqr_div_r_norm;
     const Types::complex_d second_part =
-        static_cast<Types::scalar>(3) * inv_r_qube_norm - static_cast<Types::scalar>(3) * ik_dir_r_sqr_norm -
-        k_sqr_div_r_norm;
+        static_cast<Types::scalar>(3) * (inv_r_qube_norm - ik_div_r_sqr_norm) - k_sqr_div_r_norm;
     const auto j_dot_r = Math::quasiDot(j, r);
-    return exponent * (j * first_part + r * (j_dot_r * second_part));
+    return exponent * (j * first_part + (r * inv_r_sqr_norm) * j_dot_r * second_part );
+    // умножение второй части на inv_r_sqr_norm,
+    // т.к.  в формулах должен быть единичный вектор направления r :-)
 }
+
 } // namespace EMW::Helmholtz
 
 namespace EMW::Laplace {

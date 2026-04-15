@@ -187,6 +187,7 @@ namespace EMW::Math::LinAgl::Matrix
         // создаем нулевой вектор результата, в который будем записывать ответ
         vector_t result = vector_t::Zero(rows());
         // Далее итерируемся по всем блокам (потому что обычное умножение, а не потому что бесструктурная матрица!)
+#pragma omp parallel for num_threads(14) shared(result, blocks, vec) schedule(static)
         for (Types::index i = 0; i < blocks.rows(); ++i)
         {
             for (Types::index j = 0; j < blocks.cols(); ++j)
@@ -414,7 +415,8 @@ ToeplitzStructure<scalar_t, block_t> & operator*=(ToeplitzStructure<scalar_t, bl
     {
         Types::VectorXc result = Types::VectorXc::Zero(matrix.cols());
         // TODO: убрать const_cast.
-        matrix.matvec_wise(const_cast<scalar_t*>(vector.data()), vector.size(), result.data(), result.size());
+        // matrix.matvec_wise(const_cast<scalar_t*>(vector.data()), vector.size(), result.data(), result.size());
+        result = matrix.matvec(vector);
         return result;
     }
 }
