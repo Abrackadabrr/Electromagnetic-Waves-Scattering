@@ -10,5 +10,5 @@ else()
     message(FATAL_ERROR "visualisation/CMakeLists.txt: You use visualisation in EMW, but CMake cannot find VTK library")
 endif()
 
-target_link_libraries(${EMW_VISUAL_LIB} PRIVATE ${EMW_LIBRARY_NAME} ${VTK_LIBRARIES})
+target_link_libraries(${EMW_VISUAL_LIB} PUBLIC ${EMW_LIBRARY_NAME} ${VTK_LIBRARIES})
 target_include_directories(${EMW_VISUAL_LIB} PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
