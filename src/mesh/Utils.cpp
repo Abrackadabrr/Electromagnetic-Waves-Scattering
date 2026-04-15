@@ -5,8 +5,6 @@
 #include "mesh/Utils.hpp"
 #include "Parser.hpp"
 
-#include <research/lattice/SpecificLatticeEquations.hpp>
-
 namespace EMW::Mesh::Utils {
 
 Mesh::SurfaceMesh loadTriangularMesh(int nNodes, int nCells, std::string type) {

@@ -11,4 +11,4 @@ else()
 endif()
 
 target_link_libraries(${EMW_VISUAL_LIB} PUBLIC ${EMW_LIBRARY_NAME} ${VTK_LIBRARIES})
-target_include_directories(${EMW_VISUAL_LIB} PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
+target_include_directories(${EMW_VISUAL_LIB} PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/.." "${CMAKE_CURRENT_SOURCE_DIR}/../visualization/include/")

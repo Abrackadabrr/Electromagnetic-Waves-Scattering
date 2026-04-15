@@ -2,7 +2,7 @@
 // Created by evgen on 30.01.24.
 //
 
-#include "VTKFunctions.hpp"
+#include "visualisation/include/VTKFunctions.hpp"
 #include <ranges>
 #include <vtkPoints.h>
 #include <vtkPolygon.h>
