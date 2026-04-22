@@ -12,15 +12,9 @@ namespace numedie::math::integration::base_routines::quadrature_utils {
 /*
  * Тип узла интегрирования в барицентрических координатах
  */
-// TODO: разделить веса и точка в два отдельных массива для лучшей кэш-локальности
-template <int dim> struct Node {
-  using point_t = Containers::array_d<dim>;
-  // барицентрические координаты (без последней координаты, которая вычисляется
-  // по предыдущим)
-  point_t point;
-  // веса квадратуры в этих координатах
-  Types::scalar weight;
-};
+template <int dim>
+using bar_point_t = Containers::array_d<dim>;
+
 
 template <Types::index dimention_, Types::index order_> struct BasePoints {
   static constexpr unsigned dim = dimention_;
