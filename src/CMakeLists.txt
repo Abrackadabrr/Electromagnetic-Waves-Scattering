@@ -34,9 +34,3 @@ target_link_libraries(${EMW_LIBRARY_NAME} PUBLIC Eigen3::Eigen LAPACK::LAPACK -l
 target_compile_definitions(${EMW_LIBRARY_NAME} PUBLIC EIGEN_USE_BLAS)
 target_include_directories(${EMW_LIBRARY_NAME} PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/../include/"
         "${CMAKE_CURRENT_SOURCE_DIR}/../include/EMW/" "${CMAKE_CURRENT_SOURCE_DIR}/..")
-
-# target_compile_options(${PROJECT_NAME} PUBLIC)
-
-# ENABLING PGO
-# target_compile_options(${PROJECT_NAME} PUBLIC -fprofile-generate)
-# target_link_options(${PROJECT_NAME} PUBLIC -fprofile-generate)
