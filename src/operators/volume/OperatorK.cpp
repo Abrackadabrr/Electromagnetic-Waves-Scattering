@@ -11,7 +11,7 @@
 
 #include "operators/Functions.hpp"
 
-#include <math/matrix/decompositions/Decompositions.hpp>
+#include "math/matrix/decompositions/Decompositions.hpp"
 
 namespace EMW::Operators::Volume {
 namespace Gl = DefiniteIntegrals::GaussLegendre;
@@ -68,7 +68,7 @@ Types::Matrix3c operator_K_over_cube_mesh::matrix_2_coef(Types::index k, Types::
                         };
                         const auto regular_part = DefiniteIntegrals::integrate<
                             DefiniteIntegrals::GaussLegendre::Quadrature<
-                                2, 2, 2, 2>>(
+                                4, 4, 4, 4>>(
                             residual_integrand, {0, 0, 0, 0}, {1, 1, 1, 1});
                         result(i, j) += multiplier * regular_part;
 
@@ -83,7 +83,7 @@ Types::Matrix3c operator_K_over_cube_mesh::matrix_2_coef(Types::index k, Types::
 
                         result(i, j) += multiplier * DefiniteIntegrals::integrate<
                             DefiniteIntegrals::GaussLegendre::Quadrature<
-                                2, 2, 2, 2>>(
+                                4, 4, 4, 4>>(
                             integrand, {0, 0, 0, 0}, {1, 1, 1, 1});
                     }
                 }
@@ -126,7 +126,7 @@ Types::complex_d operator_K_over_cube_mesh::matrix_3_coef(Types::index k, Types:
         const auto singular_part =
             Math::Constants::inverse_4PI<Types::scalar>() *
             DefiniteIntegrals::integrate<DefiniteIntegrals::GaussLegendre::Quadrature<
-                3, 3, 3>>(
+                4, 4, 4>>(
                 potential_of_cube_k, {p_corner.x(), p_corner.y(), p_corner.z()},
                 {mesh.dx(), mesh.dy(), mesh.dz()});
         return k2 * (regular_part + singular_part);
