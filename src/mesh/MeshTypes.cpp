@@ -2,7 +2,7 @@
 // Created by evgen on 30.01.24.
 //
 
-#include "MeshTypes.hpp"
+#include "mesh/MeshTypes.hpp"
 
 namespace EMW::Mesh {
 IndexedCell::IndexedCell(const Containers::array<Types::index, 4> &points,

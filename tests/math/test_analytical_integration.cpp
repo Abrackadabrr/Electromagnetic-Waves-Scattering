@@ -1,6 +1,7 @@
 //
 // Created by evgen on 23.08.24.
 //
+
 #include "gtest/gtest.h"
 
 #include "math/integration/analytical/SingularIntegration.hpp"

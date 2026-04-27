@@ -2,7 +2,7 @@
 // Created by evgen on 30.01.24.
 //
 
-#include "SurfaceMesh.hpp"
+#include "mesh/SurfaceMesh.hpp"
 
 #include <iostream>
 #include <ranges>

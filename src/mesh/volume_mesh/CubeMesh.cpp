@@ -2,7 +2,7 @@
 // Created by evgen on 17.01.2026.
 //
 
-#include "CubeMesh.hpp"
+#include "mesh/volume_mesh/CubeMesh.hpp"
 
 namespace EMW::Mesh::VolumeMesh {
 CubeMesh::CubeMesh(Types::Vector3d minCorner, Types::scalar xs, Types::scalar ys, Types::scalar zs, std::size_t nx,

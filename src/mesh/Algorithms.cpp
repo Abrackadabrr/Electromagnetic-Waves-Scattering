@@ -2,7 +2,7 @@
 // Created by evgen on 19.08.24.
 //
 #if 1
-#include "Algorithms.hpp"
+#include "mesh/Algorithms.hpp"
 
 namespace EMW::Mesh::Algorithm {
 Types::scalar sign(Mesh::point_t p1, Mesh::point_t p2, Mesh::point_t p3) {

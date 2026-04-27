@@ -2,7 +2,7 @@
 // Created by evgen on 31.01.24.
 //
 
-#include "MatrixGeneration.hpp"
+#include "slae_generation/MatrixGeneration.hpp"
 #include "math/Productions.hpp"
 #include "math/integration/gauss_quadrature/GaussLegenderPoints.hpp"
 #include "math/integration/newton_cotess/Rectangular.hpp"

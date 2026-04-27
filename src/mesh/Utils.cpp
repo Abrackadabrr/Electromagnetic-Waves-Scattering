@@ -3,7 +3,7 @@
 //
 
 #include "mesh/Utils.hpp"
-#include "Parser.hpp"
+#include "mesh/Parser.hpp"
 
 namespace EMW::Mesh::Utils {
 

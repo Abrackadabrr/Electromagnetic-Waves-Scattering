@@ -2,7 +2,7 @@
 // Created by evgen on 17.01.2026.
 //
 
-#include "OperatorK.hpp"
+#include "operators/volume/OperatorK.hpp"
 
 #include "math/integration/Quadrature.hpp"
 #include "math/integration/analytical/SingularIntegration.hpp"

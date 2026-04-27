@@ -2,7 +2,7 @@
 // Created by evgen on 10.02.2026.
 //
 
-#include "CubeMeshWithData.hpp"
+#include "mesh/volume_mesh/CubeMeshWithData.hpp"
 
 #include <ranges>
 

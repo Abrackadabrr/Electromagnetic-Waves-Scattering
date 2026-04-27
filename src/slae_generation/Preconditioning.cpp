@@ -2,7 +2,7 @@
 // Created by evgen on 21.10.2024.
 //
 
-#include "Preconditioning.hpp"
+#include "slae_generation/Preconditioning.hpp"
 #include "slae_generation/MatrixGeneration.hpp"
 
 #include <operators/OperatorK.hpp>

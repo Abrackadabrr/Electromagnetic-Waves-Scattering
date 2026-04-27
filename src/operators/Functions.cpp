@@ -2,7 +2,8 @@
 // Created by evgen on 08.02.24.
 //
 
-#include "Functions.hpp"
+#include "operators/Functions.hpp"
+
 #include "math/MathConstants.hpp"
 #include "math/Productions.hpp"
 

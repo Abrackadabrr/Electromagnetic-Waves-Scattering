@@ -2,11 +2,10 @@
 // Created by evgen on 23.08.24.
 //
 
-#include "SingularIntegration.hpp"
+#include "math/integration/analytical/SingularIntegration.hpp"
 #include "math/MathConstants.hpp"
 
 #include <cmath>
-#include <iostream>
 
 namespace EMW::Math::AnalyticalIntegration {
 

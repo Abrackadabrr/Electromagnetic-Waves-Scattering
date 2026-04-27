@@ -2,7 +2,7 @@
 // Created by evgen on 14.10.2024.
 //
 
-#include "Parser.hpp"
+#include "mesh/Parser.hpp"
 #include "third_party/csv/csv.h"
 namespace EMW::Parser {
 

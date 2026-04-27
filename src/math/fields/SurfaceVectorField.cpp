@@ -2,7 +2,7 @@
 // Created by evgen on 02.08.24.
 //
 
-#include "SurfaceVectorField.hpp"
+#include "math/fields/SurfaceVectorField.hpp"
 
 #include "math/MathConstants.hpp"
 #include "math/Productions.hpp"

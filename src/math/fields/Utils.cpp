@@ -3,6 +3,9 @@
 //
 
 #include "Utils.hpp"
+#include "math/fields/SurfaceScalarField.h"
+#include "math/fields/SurfaceVectorField.hpp"
+
 #include <ranges>
 
 namespace EMW::Math::FieldUtils {
