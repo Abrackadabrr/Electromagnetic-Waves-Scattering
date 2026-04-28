@@ -14,13 +14,13 @@ endif()
 
 find_package(BLAS REQUIRED)
 
-# set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -O3")
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS}")
 
 foreach (TEST IN LISTS BENCHS)
     get_filename_component(FILE_NAME ${TEST} NAME_WE)
     set(EXE_NAME ${FILE_NAME})
     add_executable(${EXE_NAME} ${TEST})
     message("BENCH: ${EXE_NAME}")
-    target_link_libraries(${EXE_NAME} PRIVATE ${PROJECT_NAME} ${BLAS_LIBRARIES} benchmark::benchmark benchmark::benchmark_main)
+    target_link_libraries(${EXE_NAME} PRIVATE ${EMW_LIBRARY_NAME} ${BLAS_LIBRARIES} benchmark::benchmark benchmark::benchmark_main)
     target_compile_definitions(${EXE_NAME} PRIVATE EIGEN_USE_BLAS)
 endforeach ()

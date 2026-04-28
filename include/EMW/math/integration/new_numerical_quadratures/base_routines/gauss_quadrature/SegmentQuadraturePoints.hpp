@@ -10,12 +10,6 @@
 
 namespace EMW::Math::Integration::Numerical::GaussianQuadratures
 {
-    template <unsigned int dimension_, unsigned int order_>
-    struct GaussianPoints
-    {
-        static_assert("We have no quadrature of such dimension and order");
-    };
-
     template <>
     struct GaussianPoints<1, 1> : QuadratureUtils::BasePoints<1, 1>
     {
