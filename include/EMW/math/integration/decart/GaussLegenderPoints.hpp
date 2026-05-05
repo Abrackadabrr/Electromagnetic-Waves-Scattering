@@ -6,9 +6,9 @@
 #define ELECTROMAGNETIC_WAVES_SCATTERING_GAUSSLEGENDERPOINTS_HPP
 
 #include "types/Types.hpp"
-#include "math/integration/QuadraturePoints.hpp"
+#include "math/integration/decart/QuadraturePoints.hpp"
 
-namespace EMW::DefiniteIntegrals::GaussLegendre {
+namespace EMW::Math::Integration::Numerical::Decart::GaussLegendre {
 
     template<Types::index... N>
     struct Quadrature {

@@ -7,7 +7,7 @@
 
 #include "EMW/types/Types.hpp"
 
-namespace EMW::Math::Integration::Numerical
+namespace EMW::Math::Integration::Numerical::Simplicial
 {
     namespace QuadratureUtils
     {
@@ -25,8 +25,9 @@ namespace EMW::Math::Integration::Numerical
         /*
          * Бариценртическая координата
          */
-        template<typename scalar, size_t dim_>
-        struct BarPoint {
+        template <typename scalar, size_t dim_>
+        struct BarPoint
+        {
             static_assert(false, "We have no barycantic coordinates for this dimension");
         };
 
@@ -49,7 +50,7 @@ namespace EMW::Math::Integration::Numerical
 
             // TODO: add the consept
             template <typename cell_t,
-            typename = std::void_t<
+                      typename = std::void_t<
                           decltype(std::declval<std::remove_cvref_t<cell_t>>().barycentric(scalar{}, scalar{})),
                           typename std::remove_cvref_t<cell_t>::point_t>>
             constexpr decltype(auto) to_domain(cell_t&& cell) const
@@ -90,13 +91,10 @@ namespace EMW::Math::Integration::Numerical
         };
     }
 
-    namespace GaussianQuadratures
+    template <unsigned int dimension_, unsigned int order_>
+    struct GaussianPoints
     {
-        template <unsigned int dimension_, unsigned int order_>
-        struct GaussianPoints
-        {
-            static_assert("We have no quadrature of such dimension and order");
-        };
-    }
+        static_assert("We have no quadrature of such dimension and order");
+    };
 }
 #endif //ELECTROMAGNETIC_WAVES_SCATTERING_QUADRATUREPOINTS_HPP

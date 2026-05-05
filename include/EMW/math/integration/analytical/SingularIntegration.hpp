@@ -8,7 +8,7 @@
 #include "mesh/MeshTypes.hpp"
 #include "types/Types.hpp"
 
-namespace EMW::Math::AnalyticalIntegration {
+namespace EMW::Math::Integration::Analytical {
 /**
  * Интегрирование функции 1/|r - r'| по поверхностной ячейке (треугольник или четырёхугольник)
  * @param point - r

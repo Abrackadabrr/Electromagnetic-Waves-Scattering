@@ -7,7 +7,7 @@
 
 #include "types/Types.hpp"
 
-namespace EMW::DefiniteIntegrals {
+namespace EMW::Math::Integration::Numerical::Decart {
 
     template<Types::index dim>
     struct Node {

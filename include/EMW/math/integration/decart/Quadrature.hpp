@@ -9,7 +9,7 @@
 #include "types/TypeTraits.hpp"
 #include "types/FunctionExtraction.hpp"
 
-namespace EMW::DefiniteIntegrals {
+namespace EMW::Math::Integration::Numerical::Decart {
 
     namespace detail {
 

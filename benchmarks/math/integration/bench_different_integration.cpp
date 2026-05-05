@@ -7,11 +7,7 @@
 #include "EMW/Utils.hpp"
 #include "EMW/mesh/MeshTypes.hpp"
 
-#include "math/integration/Quadrature.hpp"
-#include "math/integration/gauss_quadrature/GaussLegenderPoints.hpp"
-
-#include <math/integration/new_numerical_quadratures/base_routines/GeneralQuadrature.hpp>
-#include <math/integration/new_numerical_quadratures/base_routines/gauss_quadrature/TriangleQuadraturePoints.hpp>
+#include "math/integration/NumericalIntegration.hpp"
 
 #include <complex>
 
@@ -27,10 +23,6 @@ Types::complex_d f(Types::point_t p) {
     const double r = p.norm();
     const double k = 10;
     return std::exp(1i * r * k) / r;
-}
-
-constexpr Types::Vector3c f_vect_(const Types::point_t &p) {
-    return {1.i, 0.i, 0.i};
 }
 
 Types::Vector3c f_vect(const Types::point_t &p) {
@@ -56,7 +48,7 @@ BENCHMARK_DEFINE_F(IntegrationBenches, OldIntegration)(benchmark::State &state) 
     };
     Types::complex_d result{};
     for (auto _ : state) {
-        result = DefiniteIntegrals::integrate<DefiniteIntegrals::GaussLegendre::Quadrature<4, 4>>(
+        result = DecartIntegration::integrate<DecartIntegration::GaussLegendre::Quadrature<4, 4>>(
             integrand, {0, 0}, {1., 1.});
         benchmark::DoNotOptimize(result);
         benchmark::ClobberMemory();
@@ -81,15 +73,12 @@ BENCHMARK_DEFINE_F(IntegrationBenches, OldIntegrationVect)(benchmark::State &sta
 
     Types::Vector3c result{};
     for (auto _ : state) {
-        result = DefiniteIntegrals::integrate<DefiniteIntegrals::GaussLegendre::Quadrature<5, 5>>(
+        result = DecartIntegration::integrate<DecartIntegration::GaussLegendre::Quadrature<3, 3>>(
             integrand, {0, 0}, {1., 1.});
         benchmark::DoNotOptimize(result);
         benchmark::ClobberMemory();
     }
 }
-
-namespace intNew = Math::Integration::Numerical;
-namespace newGL = Math::Integration::Numerical::GaussianQuadratures;
 
 BENCHMARK_DEFINE_F(IntegrationBenches, NewIntegration)(benchmark::State &state) {
     Containers::vector<Types::point_t> points;
@@ -102,8 +91,8 @@ BENCHMARK_DEFINE_F(IntegrationBenches, NewIntegration)(benchmark::State &state) 
     Types::complex_d result{};
     double mes = h * h / 2.;
     for (auto _ : state) {
-        result = mes * intNew::quadrature_sum<newGL::GaussianPoints<2, 5>>(f, points[0], points[1], points[2]);
-        result += mes * intNew::quadrature_sum<newGL::GaussianPoints<2, 5>>(f, points[2], points[3], points[0]);
+        result = mes * SimplicialIntegration::quadrature_sum<SimplicialIntegration::GaussianPoints<2, 5>>(f, points[0], points[1], points[2]);
+        result += mes * SimplicialIntegration::quadrature_sum<SimplicialIntegration::GaussianPoints<2, 5>>(f, points[2], points[3], points[0]);
         benchmark::DoNotOptimize(result);
         benchmark::ClobberMemory();
     }
@@ -120,8 +109,8 @@ BENCHMARK_DEFINE_F(IntegrationBenches, NewIntegrationVect)(benchmark::State &sta
     Types::Vector3c result{};
     double mes = h * h / 2.;
     for (auto _ : state) {
-        result = mes * intNew::quadrature_sum<newGL::GaussianPoints<2, 4>>(f_vect, points[0], points[1], points[2]);
-        result += mes * intNew::quadrature_sum<newGL::GaussianPoints<2, 4>>(f_vect, points[2], points[3], points[0]);
+        result = mes * SimplicialIntegration::quadrature_sum<SimplicialIntegration::GaussianPoints<2, 5>>(f_vect, points[0], points[1], points[2]);
+        result += mes * SimplicialIntegration::quadrature_sum<SimplicialIntegration::GaussianPoints<2, 5>>(f_vect, points[2], points[3], points[0]);
         benchmark::DoNotOptimize(result);
         benchmark::ClobberMemory();
     }

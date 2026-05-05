@@ -9,9 +9,7 @@
 
 #include "types/Types.hpp"
 #include "mesh/volume_mesh/CubeMesh.hpp"
-
-#include "math/integration/Quadrature.hpp"
-
+#include "math/integration/decart/Quadrature.hpp"
 
 namespace EMW::Mesh::VolumeMesh
 {
@@ -162,7 +160,7 @@ namespace EMW::Mesh::VolumeMesh
         const auto integral_over_cube = [&function_to_integrate, this](const CellsType& cell)
         {
             const auto ldc = this->nodes_[cell.nodes_[0]];
-            return DefiniteIntegrals::integrate<Quadrature>(function_to_integrate, {ldc.x(), ldc.y(), ldc.z()},
+            return Math::Integration::Numerical::Decart::integrate<Quadrature>(function_to_integrate, {ldc.x(), ldc.y(), ldc.z()},
                                                             {this->dx(), this->dy(), this->dz()}) /
                 (this->dx() * this->dy() * this->dz());
         };

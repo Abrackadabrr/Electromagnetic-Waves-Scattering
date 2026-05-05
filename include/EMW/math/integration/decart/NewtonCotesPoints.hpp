@@ -6,9 +6,9 @@
 #define ELECTROMAGNETIC_WAVES_SCATTERING_NK_HPP
 
 #include "types/Types.hpp"
-#include "math/integration/QuadraturePoints.hpp"
+#include "math/integration/decart/QuadraturePoints.hpp"
 
-namespace EMW::DefiniteIntegrals::NewtonCotess {
+namespace EMW::Math::Integration::Numerical::Decart::NewtonCotess {
 
     template<Types::index... N>
     struct Quadrature {

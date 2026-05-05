@@ -4,17 +4,15 @@
 
 #include "operators/volume/OperatorK.hpp"
 
-#include "math/integration/Quadrature.hpp"
+#include "math/integration/NumericalIntegration.hpp"
 #include "math/integration/analytical/SingularIntegration.hpp"
-#include "math/integration/gauss_quadrature/GaussLegenderPoints.hpp"
-#include "math/integration/newton_cotess/Rectangular.hpp"
 
 #include "operators/Functions.hpp"
 
 #include "math/matrix/decompositions/Decompositions.hpp"
 
 namespace EMW::Operators::Volume {
-namespace Gl = DefiniteIntegrals::GaussLegendre;
+namespace Gl = DecartIntegration::GaussLegendre;
 
 Types::Matrix3c operator_K_over_cube_mesh::matrix_2_coef(Types::index k, Types::index p) const {
     Types::Matrix3c result = Types::Matrix3c::Zero();
@@ -48,13 +46,13 @@ Types::Matrix3c operator_K_over_cube_mesh::matrix_2_coef(Types::index k, Types::
                         // 1. Интеграл от ньютонова потенциала 2д ячейки
                         const auto analytical_integrand = [&face_k, &face_p](Types::scalar x, Types::scalar y) {
                             const auto point = face_k.parametrization(x, y);
-                            const auto integrand_value = Math::AnalyticalIntegration::integrate_1_div_r(point, face_p);
+                            const auto integrand_value = Math::Integration::Analytical::integrate_1_div_r(point, face_p);
                             return integrand_value * face_k.multiplier(
                                        x, y);
                         };
                         const auto singular_part =
-                            Math::Constants::inverse_4PI<Types::scalar>() * DefiniteIntegrals::integrate<
-                                DefiniteIntegrals::NewtonCotess::Quadrature<
+                            Math::Constants::inverse_4PI<Types::scalar>() * DecartIntegration::integrate<
+                                DecartIntegration::NewtonCotess::Quadrature<
                                     2, 2>>(analytical_integrand, {0, 0}, {1, 1});
                         result(i, j) += multiplier * singular_part;
 
@@ -66,8 +64,8 @@ Types::Matrix3c operator_K_over_cube_mesh::matrix_2_coef(Types::index k, Types::
                             return Helmholtz::F_bounded_part(wn, x, y) * face_p.multiplier(x1, y1) * face_k.multiplier(
                                        x2, y2);
                         };
-                        const auto regular_part = DefiniteIntegrals::integrate<
-                            DefiniteIntegrals::GaussLegendre::Quadrature<
+                        const auto regular_part = DecartIntegration::integrate<
+                            DecartIntegration::GaussLegendre::Quadrature<
                                 4, 4, 4, 4>>(
                             residual_integrand, {0, 0, 0, 0}, {1, 1, 1, 1});
                         result(i, j) += multiplier * regular_part;
@@ -81,8 +79,8 @@ Types::Matrix3c operator_K_over_cube_mesh::matrix_2_coef(Types::index k, Types::
                             return Helmholtz::F(wn, x, y) * face_p.multiplier(x1, y1) * face_k.multiplier(x2, y2);
                         };
 
-                        result(i, j) += multiplier * DefiniteIntegrals::integrate<
-                            DefiniteIntegrals::GaussLegendre::Quadrature<
+                        result(i, j) += multiplier * DecartIntegration::integrate<
+                            DecartIntegration::GaussLegendre::Quadrature<
                                 4, 4, 4, 4>>(
                             integrand, {0, 0, 0, 0}, {1, 1, 1, 1});
                     }
@@ -118,14 +116,14 @@ Types::complex_d operator_K_over_cube_mesh::matrix_3_coef(Types::index k, Types:
         };
 
         const auto regular_part =
-            DefiniteIntegrals::integrate<DefiniteIntegrals::GaussLegendre::Quadrature<
+            DecartIntegration::integrate<DecartIntegration::GaussLegendre::Quadrature<
                 2, 2, 2, 2, 2, 2>>(
                 integrand_bounded_part, {k_corner.x(), k_corner.y(), k_corner.z(),
                                          p_corner.x(), p_corner.y(), p_corner.z()},
                 {mesh.dx(), mesh.dy(), mesh.dz(), mesh.dx(), mesh.dy(), mesh.dz()});
         const auto singular_part =
             Math::Constants::inverse_4PI<Types::scalar>() *
-            DefiniteIntegrals::integrate<DefiniteIntegrals::GaussLegendre::Quadrature<
+            DecartIntegration::integrate<DecartIntegration::GaussLegendre::Quadrature<
                 4, 4, 4>>(
                 potential_of_cube_k, {p_corner.x(), p_corner.y(), p_corner.z()},
                 {mesh.dx(), mesh.dy(), mesh.dz()});
@@ -139,7 +137,7 @@ Types::complex_d operator_K_over_cube_mesh::matrix_3_coef(Types::index k, Types:
                                               Types::scalar x2, Types::scalar y2, Types::scalar z2) {
         return Helmholtz::F(wn, {x1, y1, z1}, {x2, y2, z2});
     };
-    return k2 * DefiniteIntegrals::integrate<DefiniteIntegrals::GaussLegendre::Quadrature<2, 2, 2, 2, 2, 2>>(
+    return k2 * DecartIntegration::integrate<DecartIntegration::GaussLegendre::Quadrature<2, 2, 2, 2, 2, 2>>(
                integrand, {k_corner.x(), k_corner.y(), k_corner.z(), p_corner.x(), p_corner.y(), p_corner.z()},
                {mesh.dx(), mesh.dy(), mesh.dz(), mesh.dx(), mesh.dy(), mesh.dz()});
 }
@@ -156,7 +154,7 @@ Types::Matrix3c operator_K_over_cube_mesh::far_zone_interaction(Types::index k, 
                                                      Types::scalar x2, Types::scalar y2, Types::scalar z2) {
             return Helmholtz::far_zone_integral_kernel(wn, Types::point_t{x1, y1, z1} - Types::point_t{x2, y2, z2}, j);
         };
-        interaction_block.col(i) = DefiniteIntegrals::integrate<DefiniteIntegrals::GaussLegendre::Quadrature<
+        interaction_block.col(i) = DecartIntegration::integrate<DecartIntegration::GaussLegendre::Quadrature<
             2, 2, 2, 2, 2, 2>>(
             integrand, {k_corner.x(), k_corner.y(), k_corner.z(), p_corner.x(), p_corner.y(), p_corner.z()},
             {mesh.dx(), mesh.dy(), mesh.dz(), mesh.dx(), mesh.dy(), mesh.dz()});
@@ -180,14 +178,14 @@ Types::scalar operator_K_over_cube_mesh::newton_potential_of_cube(Types::index k
             {corner.x(), corner.y() + dy, corner.z() + z_dash},
         };
         const Mesh::IndexedCell cell1({0, 1, 2, 3}, points1);
-        return Math::AnalyticalIntegration::integrate_1_div_r(Types::point_t{x, y, z}, cell1);
+        return Math::Integration::Analytical::integrate_1_div_r(Types::point_t{x, y, z}, cell1);
     };
 
     const auto integrand = [x = r.x(), y = r.y(), z = r.z(), cut_of_cube_integral](Types::scalar z_dash) {
         return cut_of_cube_integral(x, y, z, z_dash);
     };
-    return DefiniteIntegrals::integrate<DefiniteIntegrals::GaussLegendre::Quadrature<3>>(integrand, {0}, {dz / 2}) +
-           DefiniteIntegrals::integrate<DefiniteIntegrals::GaussLegendre::Quadrature<3>>(
+    return DecartIntegration::integrate<DecartIntegration::GaussLegendre::Quadrature<3>>(integrand, {0}, {dz / 2}) +
+           DecartIntegration::integrate<DecartIntegration::GaussLegendre::Quadrature<3>>(
                integrand, {dz / 2}, {dz / 2});
 }
 

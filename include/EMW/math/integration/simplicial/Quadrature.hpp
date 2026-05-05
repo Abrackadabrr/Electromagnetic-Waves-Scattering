@@ -7,7 +7,7 @@
 
 #include "EMW/types/Types.hpp"
 
-namespace EMW::Math::Integration::Numerical
+namespace EMW::Math::Integration::Numerical::Simplicial
 {
     namespace detail
     {
@@ -53,6 +53,12 @@ namespace EMW::Math::Integration::Numerical
             std::make_index_sequence<quadrature::nodes.size()>{});
     };
 
+    /**
+     * Квадратурная сумма для симплициальной области в пространстве произвольной размерности
+     *
+     * @param callable интегранд
+     * @param vertexes вершины симплекса соотвествующей размерности
+     */
     template <typename quadrature, typename integrand_t, typename... vertex_t>
     constexpr decltype(auto) quadrature_sum(integrand_t&& callable, vertex_t&&... vertexes)
     {

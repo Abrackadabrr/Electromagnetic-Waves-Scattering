@@ -6,9 +6,9 @@
 #define TRIANGLEQUADRATUREPOINTS_HPP
 
 #include "EMW/types/Types.hpp"
-#include "EMW/math/integration/new_numerical_quadratures/base_routines/QuadratureUtils.hpp"
+#include "EMW/math/integration/simplicial/QuadratureUtils.hpp"
 
-namespace EMW::Math::Integration::Numerical::GaussianQuadratures
+namespace EMW::Math::Integration::Numerical::Simplicial
 {
     template <>
     struct GaussianPoints<2, 1> : QuadratureUtils::BasePoints<2, 1>

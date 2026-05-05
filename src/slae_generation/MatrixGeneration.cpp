@@ -4,8 +4,7 @@
 
 #include "slae_generation/MatrixGeneration.hpp"
 #include "math/Productions.hpp"
-#include "math/integration/gauss_quadrature/GaussLegenderPoints.hpp"
-#include "math/integration/newton_cotess/Rectangular.hpp"
+#include "math/integration/decart/Integration.hpp"
 #include "operators/OperatorK.hpp"
 #include "operators/OperatorR.hpp"
 
@@ -28,10 +27,10 @@ Types::complex_d getFirstPartIntegral(const Mesh::IndexedCell &cell_i, const Mes
     if ((cell_i.collPoint_ - cell_j.collPoint_).norm() < 1e-10) {
         // std::cout << "Self affecting" << std::endl;
         return EMW::OperatorK::detail::K1OverSingularCellRnDWithSingularityExtraction<
-            DefiniteIntegrals::GaussLegendre::Quadrature<4, 4>>(cell_i.collPoint_, cell_j, k);
+            DecartIntegration::GaussLegendre::Quadrature<4, 4>>(cell_i.collPoint_, cell_j, k);
     }
     return EMW::OperatorK::detail::K1OverSingularCellReducedAndDivided<
-        DefiniteIntegrals::GaussLegendre::Quadrature<4, 4>>(cell_i.collPoint_, cell_j, k);
+        DecartIntegration::GaussLegendre::Quadrature<4, 4>>(cell_i.collPoint_, cell_j, k);
 }
 
 Types::complex_d getFirstPartIntegral(Types::index i, Types::index j, Types::complex_d k,
@@ -41,7 +40,7 @@ Types::complex_d getFirstPartIntegral(Types::index i, Types::index j, Types::com
 
 Types::Matrix3c getZeroPartIntegral(const Mesh::IndexedCell &cell_i, const Mesh::IndexedCell &cell_j,
                                     Types::complex_d k) {
-    return EMW::OperatorK::detail::K0TensorOverSingularCell<DefiniteIntegrals::GaussLegendre::Quadrature<4>>(
+    return EMW::OperatorK::detail::K0TensorOverSingularCell<DecartIntegration::GaussLegendre::Quadrature<4>>(
         cell_i.collPoint_, cell_j, k);
 }
 
@@ -90,7 +89,7 @@ namespace DiscreteR {
 MatrixCoefs getMatrixCoefs(const Mesh::IndexedCell &cell_i, const Mesh::IndexedCell &cell_j, Types::complex_d k) {
     // честно рассчитываем
     const Types::Vector3c integral =
-        OperatorR::detail::forMatrix::commonIntegralPart<DefiniteIntegrals::GaussLegendre::Quadrature<4, 4>>(
+        OperatorR::detail::forMatrix::commonIntegralPart<DecartIntegration::GaussLegendre::Quadrature<4, 4>>(
             cell_j, cell_i.collPoint_, k);
 #if 1
     const Types::complex_d a11 = Math::quasiDot(integral, cell_j.tau[0].cross(cell_i.tau[0]));
