@@ -1,0 +1,12 @@
+//
+// Created by evgen on 06.05.2026.
+//
+
+#ifndef ELECTROMAGNETIC_WAVES_SCATTERING_SIMPLICIALRANGE_HPP
+#define ELECTROMAGNETIC_WAVES_SCATTERING_SIMPLICIALRANGE_HPP
+
+namespace EMW::Math::Integration::Numerical::Simplicial::QuadratureUtils {
+
+}
+
+#endif // ELECTROMAGNETIC_WAVES_SCATTERING_SIMPLICIALRANGE_HPP

@@ -6,6 +6,7 @@
 #define GENERALQUADRATURE_HPP
 
 #include "EMW/types/Types.hpp"
+#include "math/integration/simplicial/SimplicialRange.hpp"
 
 namespace EMW::Math::Integration::Numerical::Simplicial
 {
@@ -61,6 +62,28 @@ namespace EMW::Math::Integration::Numerical::Simplicial
      */
     template <typename quadrature, typename integrand_t, typename... vertex_t>
     constexpr decltype(auto) quadrature_sum(integrand_t&& callable, vertex_t&&... vertexes)
+    {
+        static_assert(quadrature::dim + 1 == sizeof...(vertexes),
+                      "quadrature_sum could only be used for simplicial cells (segments, triangles, tetrahedrons,...)");
+
+        decltype(auto) points = detail::get_points<quadrature>(
+            std::make_index_sequence<quadrature::nodes.size()>{},
+            std::forward<vertex_t>(vertexes)...);
+
+        return detail::sum_impl<quadrature>(
+            std::forward<integrand_t>(callable), points,
+            std::make_index_sequence<quadrature::nodes.size()>{});
+    };
+
+    /**
+     * Квадратурная сумма для симплициальной области в пространстве произвольной размерности
+     *
+     * @param callable интегранд
+     * @param level уровень подразбиения ячейки
+     * @param vertexes вершины симплекса соотвествующей размерности
+     */
+    template <typename quadrature, typename integrand_t, typename... vertex_t>
+    constexpr decltype(auto) quadrature_sum(integrand_t&& callable, size_t level, vertex_t&&... vertexes)
     {
         static_assert(quadrature::dim + 1 == sizeof...(vertexes),
                       "quadrature_sum could only be used for simplicial cells (segments, triangles, tetrahedrons,...)");

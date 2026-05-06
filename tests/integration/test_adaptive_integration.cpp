@@ -71,6 +71,23 @@ TEST_F(ADAPTIVE_QUADRATURE, EXPONENT_ADAPTIVE_TEST) {
     ASSERT_NEAR(std::abs(single_res * single_res * single_res - result.first), 0, rTol);
 }
 
+TEST_F(ADAPTIVE_QUADRATURE, EXPONENT_ADAPTIVE_TEST_TWODIM) {
+    constexpr scalar k = 1;
+    const auto lambda = [&k](const scalar x, const scalar y) { return std::exp(1i * k * (x + y)); };
+    const auto single_res = (std::exp(k * 1i) - 1.) / (1i * k);
+    constexpr scalar rTol = 1e-7;
+    constexpr scalar aTol = 1e-15;
+
+    const auto result = DecartIntegration::adaptive_integrate<GL::Quadrature<3, 3>>(
+        lambda, {0., 0.}, {1., 1.},
+        [rTol, aTol](Types::complex_d old_res, Types::complex_d new_res) {
+            return std::abs(old_res - new_res) < rTol * std::abs(new_res) + aTol;
+        }, 7);
+    std::cout << result.second << std::endl;
+    ASSERT_NEAR(std::abs(single_res * single_res - result.first), 0, rTol);
+}
+
+
 TEST_F(ADAPTIVE_QUADRATURE, EXPONENT_ADAPTIVE_TEST_ONEDIM) {
     constexpr scalar k = 1;
     const auto lambda = [&k](const scalar x) { return std::exp(1i * k * x); };
