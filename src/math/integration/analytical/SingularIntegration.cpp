@@ -7,7 +7,7 @@
 
 #include <cmath>
 
-namespace EMW::Math::AnalyticalIntegration {
+namespace EMW::Math::Integration::Analytical {
 
 Types::scalar integrate_1_div_r(const Mesh::point_t &r, const Mesh::IndexedCell &cell) {
     // определяем основные геометрические характеритики
