@@ -177,7 +177,7 @@ namespace EMW::Math::Integration::Numerical::Decart
         // Строим новые дельты
         auto new_deltas = std::apply([each_side_size](auto&&... args)
         {
-            return std::make_tuple(args / each_side_size...);
+            return std::make_tuple(args / static_cast<Types::scalar>(each_side_size)...);
         }, deltas);
         // Делаем массив из новых агрументов
         for (size_t flat_index = 0; flat_index < (1 << (level * sizeof...(ArgsType))); ++flat_index)
@@ -195,12 +195,14 @@ namespace EMW::Math::Integration::Numerical::Decart
                                 detail::ExtructedIntegralTypes<Callable>::ResultType>
     std::pair<typename detail::ExtructedIntegralTypes<Callable>::ResultType, size_t> adaptive_integrate(
         const Callable& f, const typename detail::ExtructedIntegralTypes<Callable>::ArgsTuple& startArgs,
-        const typename detail::ExtructedIntegralTypes<Callable>::DeltasTuple& deltas, StopCriterion&& stopCriterion)
+        const typename detail::ExtructedIntegralTypes<Callable>::DeltasTuple& deltas, StopCriterion&& stopCriterion,
+        size_t max_level)
     {
         decltype(auto) result = integrate<Quadrature>(f, startArgs, deltas);
         size_t level = 1;
         decltype(auto) result_adaptive = integrate_with_decomposition<Quadrature>(f, startArgs, deltas, level);
-        while (std::forward<StopCriterion>(stopCriterion)(result, result_adaptive)) {
+        while (!std::invoke(std::forward<StopCriterion>(stopCriterion), result, result_adaptive) && (level < max_level))
+        {
             result = result_adaptive;
             result_adaptive = integrate_with_decomposition<Quadrature>(f, startArgs, deltas, ++level);
         }

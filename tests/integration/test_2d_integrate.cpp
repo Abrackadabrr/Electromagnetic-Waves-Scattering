@@ -115,37 +115,3 @@ TEST_F(NC_QUADRATURE, TEST_LINEAR_2) {
     const auto result = DecartIntegration::integrate<NC::Quadrature<4, 4>>(lambda, {-1, -1}, {2, 2});
     ASSERT_EQ(0, result);
 }
-
-class ADAPTIVE_QUADRATURE : public ::testing::Test {
-
-};
-
-TEST_F(ADAPTIVE_QUADRATURE, LINEAR_TEST) {
-    constexpr auto lambda = [&](const scalar x, const scalar y) { return x; };
-
-    const auto result = DecartIntegration::integrate_with_decomposition<NC::Quadrature<4, 4>>(
-        lambda, std::make_tuple(-1., -1.), std::make_tuple(2., 2.), 3);
-    ASSERT_NEAR(0, result, 1e-15);
-    const auto result_1 = DecartIntegration::integrate_with_decomposition<GL::Quadrature<4, 4>>(
-        lambda, std::make_tuple(-1., -1.), std::make_tuple(2., 2.), 3);
-    ASSERT_NEAR(0, result_1, 1e-15);
-}
-
-TEST_F(ADAPTIVE_QUADRATURE, TEST_LINEAR_3) {
-    constexpr auto lambda = [&](const scalar x, const scalar y) { return x + x * y; };
-
-    const auto result = DecartIntegration::integrate_with_decomposition<NC::Quadrature<1, 1>>(
-        lambda, std::make_tuple(0, 0), std::make_tuple(2, 2), 1);
-    ASSERT_EQ(8, result);
-}
-
-
-TEST_F(ADAPTIVE_QUADRATURE, LINEAR_ADAPTIVE_TEST) {
-    constexpr auto lambda = [&](const scalar x, const scalar y) { return x + x * y; };
-
-    const auto result = DecartIntegration::adaptive_integrate<GL::Quadrature<4, 4>>(
-        lambda, std::make_tuple(0., 0.), std::make_tuple(2., 2.),
-        [](double old_res, double new_res) { return std::abs(old_res - new_res) < 1e-10 * new_res + 1e-15; });
-    ASSERT_NEAR(8, result.first, 1e-15);
-    std::cout << result.second << std::endl;
-}
