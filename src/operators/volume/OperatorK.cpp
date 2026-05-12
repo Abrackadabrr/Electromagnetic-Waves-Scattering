@@ -46,46 +46,51 @@ Types::Matrix3c operator_K_over_cube_mesh::matrix_2_coef(Types::index k, Types::
                         // 1. Интеграл от ньютонова потенциала 2д ячейки
                         const auto analytical_integrand = [&face_k, &face_p](Types::scalar x, Types::scalar y) {
                             const auto point = face_k.parametrization(x, y);
-                            const auto integrand_value = Math::Integration::Analytical::integrate_1_div_r(point, face_p);
-                            return integrand_value * face_k.multiplier(
-                                       x, y);
+                            const auto integrand_value =
+                                Math::Integration::Analytical::integrate_1_div_r(point, face_p);
+                            return integrand_value * face_k.multiplier(x, y);
                         };
                         const auto singular_part =
-                            Math::Constants::inverse_4PI<Types::scalar>() * DecartIntegration::integrate<
-                                DecartIntegration::NewtonCotess::Quadrature<
-                                    2, 2>>(analytical_integrand, {0, 0}, {1, 1});
-                        result(i, j) += multiplier * singular_part;
+                            DecartIntegration::adaptive_integrate<DecartIntegration::NewtonCotess::Quadrature<2, 2>>(
+                                analytical_integrand, {0, 0}, {1, 1}, scalar_stop_criterion<Types::scalar>(rTol, aTol),
+                                max_integration_level);
+
+                        result(i, j) +=
+                            multiplier * Math::Constants::inverse_4PI<Types::scalar>() * singular_part.first;
 
                         // 2. Интеграл от ограниченного остатка
-                        const auto residual_integrand = [&face_k, &face_p, wn = wave_number](
-                            Types::scalar x1, Types::scalar y1, Types::scalar x2, Types::scalar y2) {
+                        const auto residual_integrand = [&face_k, &face_p,
+                                                         wn = wave_number](Types::scalar x1, Types::scalar y1,
+                                                                           Types::scalar x2, Types::scalar y2) {
                             const auto x = face_p.parametrization(x1, y1);
                             const auto y = face_k.parametrization(x2, y2);
-                            return Helmholtz::F_bounded_part(wn, x, y) * face_p.multiplier(x1, y1) * face_k.multiplier(
-                                       x2, y2);
+                            return Helmholtz::F_bounded_part(wn, x, y) * face_p.multiplier(x1, y1) *
+                                   face_k.multiplier(x2, y2);
                         };
-                        const auto regular_part = DecartIntegration::integrate<
-                            DecartIntegration::GaussLegendre::Quadrature<
-                                4, 4, 4, 4>>(
-                            residual_integrand, {0, 0, 0, 0}, {1, 1, 1, 1});
-                        result(i, j) += multiplier * regular_part;
+                        const auto regular_part = DecartIntegration::adaptive_integrate<
+                            DecartIntegration::GaussLegendre::Quadrature<4, 4, 4, 4>>(
+                            residual_integrand, {0, 0, 0, 0}, {1, 1, 1, 1},
+                            scalar_stop_criterion<Types::complex_d>(rTol, aTol), max_integration_level);
+                        result(i, j) += multiplier * regular_part.first;
 
                     } else {
                         // Иначе интегрируемся без выделения особенности сразу
-                        const auto integrand = [&face_k, &face_p, wn = wave_number](
-                            Types::scalar x1, Types::scalar y1, Types::scalar x2, Types::scalar y2) {
+                        const auto integrand = [&face_k, &face_p, wn = wave_number](Types::scalar x1, Types::scalar y1,
+                                                                                    Types::scalar x2,
+                                                                                    Types::scalar y2) {
                             const auto x = face_p.parametrization(x1, y1);
                             const auto y = face_k.parametrization(x2, y2);
                             return Helmholtz::F(wn, x, y) * face_p.multiplier(x1, y1) * face_k.multiplier(x2, y2);
                         };
 
-                        result(i, j) += multiplier * DecartIntegration::integrate<
-                            DecartIntegration::GaussLegendre::Quadrature<
-                                4, 4, 4, 4>>(
-                            integrand, {0, 0, 0, 0}, {1, 1, 1, 1});
+                        result(i, j) +=
+                            multiplier * DecartIntegration::adaptive_integrate<
+                                             DecartIntegration::GaussLegendre::Quadrature<4, 4, 4, 4>>(
+                                             integrand, {0, 0, 0, 0}, {1, 1, 1, 1},
+                                             scalar_stop_criterion<Types::complex_d>(rTol, aTol), max_integration_level)
+                                             .first;
                     }
                 }
-
         }
     }
     return result;
@@ -110,36 +115,41 @@ Types::complex_d operator_K_over_cube_mesh::matrix_3_coef(Types::index k, Types:
                                                                Types::scalar x2, Types::scalar y2, Types::scalar z2) {
             return Helmholtz::F_bounded_part(wn, {x1, y1, z1}, {x2, y2, z2});
         };
-        //  Ньютонов потенциал куба в правильном формате
+        const auto regular_part =
+            DecartIntegration::adaptive_integrate<DecartIntegration::GaussLegendre::Quadrature<2, 2, 2, 2, 2, 2>>(
+                integrand_bounded_part,
+                {k_corner.x(), k_corner.y(), k_corner.z(), p_corner.x(), p_corner.y(), p_corner.z()},
+                {mesh.dx(), mesh.dy(), mesh.dz(), mesh.dx(), mesh.dy(), mesh.dz()},
+                scalar_stop_criterion<Types::complex_d>(rTol, aTol), max_6d_integration_level);
+
+        //  Ньютонов потенциал параллелепипеда в правильном формате
         const auto potential_of_cube_k = [this, k](Types::scalar x, Types::scalar y, Types::scalar z) {
-            return newton_potential_of_cube(k, {x, y, z});
+            const auto &left_down_corner_of_cube_k = mesh.leftDownCorner(k);
+            const auto dx = mesh.dx();
+            const auto dy = mesh.dy();
+            const auto dz = mesh.dz();
+            return Math::Integration::Analytical::newtonian_potential_of_parallelepiped({x, y, z}, dx, dy, dz);
         };
 
-        const auto regular_part =
-            DecartIntegration::integrate<DecartIntegration::GaussLegendre::Quadrature<
-                2, 2, 2, 2, 2, 2>>(
-                integrand_bounded_part, {k_corner.x(), k_corner.y(), k_corner.z(),
-                                         p_corner.x(), p_corner.y(), p_corner.z()},
-                {mesh.dx(), mesh.dy(), mesh.dz(), mesh.dx(), mesh.dy(), mesh.dz()});
         const auto singular_part =
-            Math::Constants::inverse_4PI<Types::scalar>() *
-            DecartIntegration::integrate<DecartIntegration::GaussLegendre::Quadrature<
-                4, 4, 4>>(
-                potential_of_cube_k, {p_corner.x(), p_corner.y(), p_corner.z()},
-                {mesh.dx(), mesh.dy(), mesh.dz()});
-        return k2 * (regular_part + singular_part);
+            DecartIntegration::adaptive_integrate<DecartIntegration::GaussLegendre::Quadrature<4, 4, 4>>(
+                potential_of_cube_k, {p_corner.x(), p_corner.y(), p_corner.z()}, {mesh.dx(), mesh.dy(), mesh.dz()},
+                scalar_stop_criterion<Types::scalar>(rTol, aTol), max_integration_level);
+        return k2 * (regular_part.first + Math::Constants::inverse_4PI<Types::scalar>() * singular_part.first);
     }
 
     // Интегрирование без выделения особенности:
     // просто берем фундаментальное решение уравнения Гельмгольца
     // и интегрируем его по двум кубам.
-    const auto integrand = [wn = wave_number](Types::scalar x1, Types::scalar y1, Types::scalar z1,
-                                              Types::scalar x2, Types::scalar y2, Types::scalar z2) {
+    const auto integrand = [wn = wave_number](Types::scalar x1, Types::scalar y1, Types::scalar z1, Types::scalar x2,
+                                              Types::scalar y2, Types::scalar z2) {
         return Helmholtz::F(wn, {x1, y1, z1}, {x2, y2, z2});
     };
-    return k2 * DecartIntegration::integrate<DecartIntegration::GaussLegendre::Quadrature<2, 2, 2, 2, 2, 2>>(
-               integrand, {k_corner.x(), k_corner.y(), k_corner.z(), p_corner.x(), p_corner.y(), p_corner.z()},
-               {mesh.dx(), mesh.dy(), mesh.dz(), mesh.dx(), mesh.dy(), mesh.dz()});
+    return k2 * DecartIntegration::adaptive_integrate<DecartIntegration::GaussLegendre::Quadrature<2, 2, 2, 2, 2, 2>>(
+                    integrand, {k_corner.x(), k_corner.y(), k_corner.z(), p_corner.x(), p_corner.y(), p_corner.z()},
+                    {mesh.dx(), mesh.dy(), mesh.dz(), mesh.dx(), mesh.dy(), mesh.dz()},
+                    scalar_stop_criterion<Types::complex_d>(rTol, aTol), max_6d_integration_level)
+                    .first;
 }
 
 Types::Matrix3c operator_K_over_cube_mesh::far_zone_interaction(Types::index k, Types::index p) const {
@@ -154,45 +164,20 @@ Types::Matrix3c operator_K_over_cube_mesh::far_zone_interaction(Types::index k, 
                                                      Types::scalar x2, Types::scalar y2, Types::scalar z2) {
             return Helmholtz::far_zone_integral_kernel(wn, Types::point_t{x1, y1, z1} - Types::point_t{x2, y2, z2}, j);
         };
-        interaction_block.col(i) = DecartIntegration::integrate<DecartIntegration::GaussLegendre::Quadrature<
-            2, 2, 2, 2, 2, 2>>(
-            integrand, {k_corner.x(), k_corner.y(), k_corner.z(), p_corner.x(), p_corner.y(), p_corner.z()},
-            {mesh.dx(), mesh.dy(), mesh.dz(), mesh.dx(), mesh.dy(), mesh.dz()});
+        auto [result, level] =
+            DecartIntegration::adaptive_integrate<DecartIntegration::GaussLegendre::Quadrature<2, 2, 2, 2, 2, 2>>(
+                integrand, {k_corner.x(), k_corner.y(), k_corner.z(), p_corner.x(), p_corner.y(), p_corner.z()},
+                {mesh.dx(), mesh.dy(), mesh.dz(), mesh.dx(), mesh.dy(), mesh.dz()}, vector_stop_criterion(rTol, aTol),
+                max_6d_integration_level);
+        interaction_block.col(i) = result;
     }
     return Math::Constants::inverse_4PI<Types::scalar>() * interaction_block;
-}
-
-Types::scalar operator_K_over_cube_mesh::newton_potential_of_cube(Types::index k, Types::point_t r) const {
-    const auto &left_down_corner_of_cube_k = mesh.leftDownCorner(k);
-    const auto dx = mesh.dx();
-    const auto dy = mesh.dy();
-    const auto dz = mesh.dz();
-    // интегрирование старое (квадратура поверх 1/r по квадрату)
-    const auto cut_of_cube_integral = [corner = left_down_corner_of_cube_k, dx,
-            dy](Types::scalar x, Types::scalar y, Types::scalar z, Types::scalar z_dash) {
-        // Интегрирование по сечению куба на высоте z_dash
-        Containers::vector<Types::point_t> points1 = {
-            {corner.x(), corner.y(), corner.z() + z_dash},
-            {corner.x() + dx, corner.y(), corner.z() + z_dash},
-            {corner.x() + dx, corner.y() + dy, corner.z() + z_dash},
-            {corner.x(), corner.y() + dy, corner.z() + z_dash},
-        };
-        const Mesh::IndexedCell cell1({0, 1, 2, 3}, points1);
-        return Math::Integration::Analytical::integrate_1_div_r(Types::point_t{x, y, z}, cell1);
-    };
-
-    const auto integrand = [x = r.x(), y = r.y(), z = r.z(), cut_of_cube_integral](Types::scalar z_dash) {
-        return cut_of_cube_integral(x, y, z, z_dash);
-    };
-    return DecartIntegration::integrate<DecartIntegration::GaussLegendre::Quadrature<3>>(integrand, {0}, {dz / 2}) +
-           DecartIntegration::integrate<DecartIntegration::GaussLegendre::Quadrature<3>>(
-               integrand, {dz / 2}, {dz / 2});
 }
 
 Types::Matrix3c operator_K_over_cube_mesh::galerkin_block_for_cubes(size_t k, size_t p) const {
 #if 0
     // 1. Если кубы далеко, то считаем через far_zone
-    if (mesh.distance(k, p) > 10)
+    if (mesh.distance(k, p) > 7 * mesh.h())
         // Ну например 10. ...
         return far_zone_interaction(k, p);
 #endif
@@ -248,9 +233,8 @@ operator_K_over_cube_mesh::compute_galerkin_matrix(Types::scalar basis_function_
     const size_t first_layer_toeplitz = mesh.nx() - 1;
     const size_t second_layer_toeplitz = mesh.ny() - 1;
     const size_t third_layer_toeplitz = mesh.nz() - 1;
-    decltype(auto) result =
-        Math::LinAgl::Matrix::ZeroTripleToeplitzBlock<Types::complex_d>(first_layer_toeplitz, second_layer_toeplitz,
-                                                                        third_layer_toeplitz, 3);
+    decltype(auto) result = Math::LinAgl::Matrix::ZeroTripleToeplitzBlock<Types::complex_d>(
+        first_layer_toeplitz, second_layer_toeplitz, third_layer_toeplitz, 3);
     const Types::scalar basis_fn_module_sqr = basis_function_module * basis_function_module;
     // Циклы для расчета трижды теплицевой матрицы
     for (size_t i3 = 0; i3 < third_layer_toeplitz; ++i3)
@@ -259,9 +243,7 @@ operator_K_over_cube_mesh::compute_galerkin_matrix(Types::scalar basis_function_
                 for (size_t i1 = 0; i1 < first_layer_toeplitz; ++i1)
                     for (size_t j2 = 0; j2 < second_layer_toeplitz; ++j2)
                         for (size_t j1 = 0; j1 < first_layer_toeplitz; ++j1) {
-                            auto &&working_block = result.get_block(i3, j3).
-                                                          get_block(i2, j2).
-                                                          get_block(i1, j1);
+                            auto &&working_block = result.get_block(i3, j3).get_block(i2, j2).get_block(i1, j1);
                             // Ускорение заполнения матрицы за счет отсутствия
                             // пересчёта одинаковых блоков
                             // TODO: сделать нормальный расчет, то есть аналитически вывести все формулки
@@ -277,17 +259,16 @@ operator_K_over_cube_mesh::compute_galerkin_matrix(Types::scalar basis_function_
 }
 
 [[nodiscard]] Math::LinAgl::Matrix::TripleToeplitzBlock<Types::complex_d>
-operator_K_over_cube_mesh::compute_galerkin_matrix(
-    Idx3d start_i, Idx3d start_j, Idx3d sizes, Types::scalar basis_fn_module) const {
+operator_K_over_cube_mesh::compute_galerkin_matrix(Idx3d start_i, Idx3d start_j, Idx3d sizes,
+                                                   Types::scalar basis_fn_module) const {
 
     // Делаем нулевую трижды тёплицеву матрицу
     const size_t first_layer_toeplitz = sizes.Nx;
     const size_t second_layer_toeplitz = sizes.Ny;
     const size_t third_layer_toeplitz = sizes.Nz;
     constexpr size_t inner_size = 3;
-    decltype(auto) result =
-        Math::LinAgl::Matrix::ZeroTripleToeplitzBlock<Types::complex_d>(first_layer_toeplitz, second_layer_toeplitz,
-                                                                        third_layer_toeplitz, inner_size);
+    decltype(auto) result = Math::LinAgl::Matrix::ZeroTripleToeplitzBlock<Types::complex_d>(
+        first_layer_toeplitz, second_layer_toeplitz, third_layer_toeplitz, inner_size);
     const Types::scalar basis_fn_module_sqr = basis_fn_module * basis_fn_module;
 
     // Циклы для расчета трижды теплицевой матрицы
@@ -297,9 +278,7 @@ operator_K_over_cube_mesh::compute_galerkin_matrix(
                 for (size_t i1 = 0; i1 < first_layer_toeplitz; ++i1)
                     for (size_t j2 = 0; j2 < second_layer_toeplitz; ++j2)
                         for (size_t j1 = 0; j1 < first_layer_toeplitz; ++j1) {
-                            auto &&working_block = result.get_block(i3, j3).
-                                                          get_block(i2, j2).
-                                                          get_block(i1, j1);
+                            auto &&working_block = result.get_block(i3, j3).get_block(i2, j2).get_block(i1, j1);
                             // Ускорение заполнения матрицы за счет отсутствия
                             // пересчёта одинаковых блоков
                             // TODO: сделать нормальный расчет, то есть аналитически вывести все формулки
@@ -320,7 +299,7 @@ operator_K_over_cube_mesh::compute_galerkin_matrix_custom_blocksize(size_t Nx, s
     // Проверка, что делится нацело
     if ((mesh.nx() - 1) % Nx != 0 || (mesh.ny() - 1) % Ny != 0 || (mesh.nz() - 1) % Nz != 0) {
         throw std::invalid_argument("OperatorK::compute_galerkin_matrix_custom_blocksize: "
-            "Nx, Ny, Nz is not consistent with mesh size dimentions");
+                                    "Nx, Ny, Nz is not consistent with mesh size dimentions");
     }
     const Idx3d sizes{Nx, Ny, Nz};
     const size_t first_layer_toeplitz = mesh.nCubesX() / Nx;
@@ -328,9 +307,8 @@ operator_K_over_cube_mesh::compute_galerkin_matrix_custom_blocksize(size_t Nx, s
     const size_t third_layer_toeplitz = mesh.nCubesZ() / Nz;
     const size_t inner_size = 3 * Nx * Ny * Nz;
 
-    decltype(auto) result =
-        Math::LinAgl::Matrix::ZeroTripleToeplitzBlock<Types::complex_d>(first_layer_toeplitz, second_layer_toeplitz,
-                                                                        third_layer_toeplitz, inner_size);
+    decltype(auto) result = Math::LinAgl::Matrix::ZeroTripleToeplitzBlock<Types::complex_d>(
+        first_layer_toeplitz, second_layer_toeplitz, third_layer_toeplitz, inner_size);
 
 #pragma omp parallel for num_threads(14) shared(result) firstprivate(Nx, Ny, Nz, basis_fn_module)
     for (size_t j3 = 0; j3 < third_layer_toeplitz; ++j3) {
@@ -342,9 +320,7 @@ operator_K_over_cube_mesh::compute_galerkin_matrix_custom_blocksize(size_t Nx, s
             for (size_t i1 = 0; i1 < first_layer_toeplitz; ++i1)
                 for (size_t j2 = 0; j2 < second_layer_toeplitz; ++j2)
                     for (size_t j1 = 0; j1 < first_layer_toeplitz; ++j1) {
-                        auto &&working_block = working_block_on_tl.
-                                               get_block(i2, j2).
-                                               get_block(i1, j1);
+                        auto &&working_block = working_block_on_tl.get_block(i2, j2).get_block(i1, j1);
                         // Ускорение заполнения матрицы за счет отсутствия
                         // пересчёта одинаковых блоков
                         // TODO: сделать нормальный расчет, то есть аналитически вывести все формулки
@@ -354,8 +330,8 @@ operator_K_over_cube_mesh::compute_galerkin_matrix_custom_blocksize(size_t Nx, s
                             // (в плотном формате) и запись в соответствующий блок большой матрицы
                             const Idx3d start_i = {i1 * sizes.Nx, i2 * sizes.Ny, i3 * sizes.Nz};
                             const Idx3d start_j = {j1 * sizes.Nx, j2 * sizes.Ny, j3 * sizes.Nz};
-                            working_block = compute_galerkin_matrix(start_i, start_j, sizes, basis_fn_module)
-                                .to_dense();
+                            working_block =
+                                compute_galerkin_matrix(start_i, start_j, sizes, basis_fn_module).to_dense();
                             // Из самого забавного: тут получается 12 вложенных циклов for.
                             // Что-то мне не очень это нравится.
                         }
@@ -372,9 +348,7 @@ operator_K_over_cube_mesh::compute_galerkin_matrix_custom_blocksize(size_t Nx, s
             for (size_t i1 = 0; i1 < first_layer_toeplitz; ++i1)
                 for (size_t j2 = 0; j2 < second_layer_toeplitz; ++j2)
                     for (size_t j1 = 0; j1 < first_layer_toeplitz; ++j1) {
-                        auto &&working_block = working_block_on_tl.
-                                               get_block(i2, j2).
-                                               get_block(i1, j1);
+                        auto &&working_block = working_block_on_tl.get_block(i2, j2).get_block(i1, j1);
                         // Ускорение заполнения матрицы за счет отсутствия
                         // пересчёта одинаковых блоков
                         // TODO: сделать нормальный расчет, то есть аналитически вывести все формулки
@@ -384,8 +358,8 @@ operator_K_over_cube_mesh::compute_galerkin_matrix_custom_blocksize(size_t Nx, s
                             // (в плотном формате) и запись в соответствующий блок большой матрицы
                             const Idx3d start_i = {i1 * sizes.Nx, i2 * sizes.Ny, i3 * sizes.Nz};
                             const Idx3d start_j = {j1 * sizes.Nx, j2 * sizes.Ny, j3 * sizes.Nz};
-                            working_block = compute_galerkin_matrix(start_i, start_j, sizes, basis_fn_module)
-                                .to_dense();
+                            working_block =
+                                compute_galerkin_matrix(start_i, start_j, sizes, basis_fn_module).to_dense();
                             // Из самого забавного: тут получается 12 вложенных циклов for.
                             // Что-то мне не очень это нравится.
                         }
@@ -401,7 +375,7 @@ operator_K_over_cube_mesh::compute_galerkin_matrix_custom_blocksize_compressed(s
     // Проверка, что делится нацело
     if ((mesh.nx() - 1) % Nx != 0 || (mesh.ny() - 1) % Ny != 0 || (mesh.nz() - 1) % Nz != 0) {
         throw std::invalid_argument("OperatorK::compute_galerkin_matrix_custom_blocksize: "
-            "Nx, Ny, Nz is not consistent with mesh size dimentions");
+                                    "Nx, Ny, Nz is not consistent with mesh size dimentions");
     }
     const Idx3d sizes{Nx, Ny, Nz};
     const size_t first_layer_toeplitz = mesh.nCubesX() / Nx;
@@ -409,10 +383,8 @@ operator_K_over_cube_mesh::compute_galerkin_matrix_custom_blocksize_compressed(s
     const size_t third_layer_toeplitz = mesh.nCubesZ() / Nz;
     const size_t inner_size = 3 * Nx * Ny * Nz;
 
-    decltype(auto) result =
-        Math::LinAgl::Matrix::ZeroTripleToeplitzFactoredBlock<Types::complex_d>(
-            first_layer_toeplitz, second_layer_toeplitz,
-            third_layer_toeplitz, inner_size);
+    decltype(auto) result = Math::LinAgl::Matrix::ZeroTripleToeplitzFactoredBlock<Types::complex_d>(
+        first_layer_toeplitz, second_layer_toeplitz, third_layer_toeplitz, inner_size);
 
     Types::scalar norm_of_self_interation_block = 1;
 
@@ -426,9 +398,7 @@ operator_K_over_cube_mesh::compute_galerkin_matrix_custom_blocksize_compressed(s
             for (size_t i1 = 0; i1 < first_layer_toeplitz; ++i1)
                 for (size_t j2 = 0; j2 < second_layer_toeplitz; ++j2)
                     for (size_t j1 = 0; j1 < first_layer_toeplitz; ++j1) {
-                        auto &&working_block = working_block_on_tl.
-                                               get_block(i2, j2).
-                                               get_block(i1, j1);
+                        auto &&working_block = working_block_on_tl.get_block(i2, j2).get_block(i1, j1);
                         // Ускорение заполнения матрицы за счет отсутствия
                         // пересчёта одинаковых блоков
                         // TODO: сделать нормальный расчет, то есть аналитически вывести все формулки
@@ -438,21 +408,20 @@ operator_K_over_cube_mesh::compute_galerkin_matrix_custom_blocksize_compressed(s
                             // (в плотном формате) и запись в соответствующий блок большой матрицы
                             const Idx3d start_i = {i1 * sizes.Nx, i2 * sizes.Ny, i3 * sizes.Nz};
                             const Idx3d start_j = {j1 * sizes.Nx, j2 * sizes.Ny, j3 * sizes.Nz};
-                            auto dense_block = compute_galerkin_matrix(start_i, start_j, sizes, basis_fn_module)
-                                .to_dense();
+                            auto dense_block =
+                                compute_galerkin_matrix(start_i, start_j, sizes, basis_fn_module).to_dense();
                             if (start_i == start_j) {
                                 working_block = Math::LinAgl::Matrix::DynamicFactoredMatrix<decltype(dense_block)>{
                                     {std::move(dense_block)}};
                                 norm_of_self_interation_block = working_block.get<0>().norm();
                             } else {
                                 // Для начала подкрутим точность относительно диагонального
-                                const auto local_epsilon =
-                                    norm_of_self_interation_block / dense_block.norm() * epsilon;
+                                const auto local_epsilon = norm_of_self_interation_block / dense_block.norm() * epsilon;
                                 // Теперь делаем всё для креста
-                                const auto row_fun = [&dense_block](Types::index m)-> Types::VectorXc {
+                                const auto row_fun = [&dense_block](Types::index m) -> Types::VectorXc {
                                     return dense_block.row(m);
                                 };
-                                const auto col_fun = [&dense_block](Types::index m)-> Types::VectorXc {
+                                const auto col_fun = [&dense_block](Types::index m) -> Types::VectorXc {
                                     return dense_block.col(m);
                                 };
                                 working_block = Math::LinAgl::Decompositions::ComplexACA::svd_postcompression(
@@ -464,7 +433,6 @@ operator_K_over_cube_mesh::compute_galerkin_matrix_custom_blocksize_compressed(s
                                 // std::cout << "rank = " << working_block.get<0>().cols() << '\n';
                             }
                         }
-
                     }
     }
 
@@ -478,9 +446,7 @@ operator_K_over_cube_mesh::compute_galerkin_matrix_custom_blocksize_compressed(s
             for (size_t i1 = 0; i1 < first_layer_toeplitz; ++i1)
                 for (size_t j2 = 0; j2 < second_layer_toeplitz; ++j2)
                     for (size_t j1 = 0; j1 < first_layer_toeplitz; ++j1) {
-                        auto &&working_block = working_block_on_tl.
-                                               get_block(i2, j2).
-                                               get_block(i1, j1);
+                        auto &&working_block = working_block_on_tl.get_block(i2, j2).get_block(i1, j1);
                         // Ускорение заполнения матрицы за счет отсутствия
                         // пересчёта одинаковых блоков
                         // TODO: сделать нормальный расчет, то есть аналитически вывести все формулки
@@ -490,21 +456,20 @@ operator_K_over_cube_mesh::compute_galerkin_matrix_custom_blocksize_compressed(s
                             // (в плотном формате) и запись в соответствующий блок большой матрицы
                             const Idx3d start_i = {i1 * sizes.Nx, i2 * sizes.Ny, i3 * sizes.Nz};
                             const Idx3d start_j = {j1 * sizes.Nx, j2 * sizes.Ny, j3 * sizes.Nz};
-                            auto dense_block = compute_galerkin_matrix(start_i, start_j, sizes, basis_fn_module)
-                                .to_dense();
+                            auto dense_block =
+                                compute_galerkin_matrix(start_i, start_j, sizes, basis_fn_module).to_dense();
                             if (start_i == start_j) {
                                 working_block = Math::LinAgl::Matrix::DynamicFactoredMatrix<decltype(dense_block)>{
                                     {std::move(dense_block)}};
                                 norm_of_self_interation_block = working_block.get<0>().norm();
                             } else {
                                 // Для начала подкрутим точность относительно диагонального
-                                const auto local_epsilon =
-                                    norm_of_self_interation_block / dense_block.norm() * epsilon;
+                                const auto local_epsilon = norm_of_self_interation_block / dense_block.norm() * epsilon;
                                 // Теперь делаем всё для креста
-                                const auto row_fun = [&dense_block](Types::index m)-> Types::VectorXc {
+                                const auto row_fun = [&dense_block](Types::index m) -> Types::VectorXc {
                                     return dense_block.row(m);
                                 };
-                                const auto col_fun = [&dense_block](Types::index m)-> Types::VectorXc {
+                                const auto col_fun = [&dense_block](Types::index m) -> Types::VectorXc {
                                     return dense_block.col(m);
                                 };
                                 working_block = Math::LinAgl::Decompositions::ComplexACA::svd_postcompression(
@@ -517,22 +482,18 @@ operator_K_over_cube_mesh::compute_galerkin_matrix_custom_blocksize_compressed(s
                             }
                         }
                     }
-
     }
     return {result, mesh.getPermutation(Nx, Ny, Nz)};
 }
 
-
 operator_K_over_cube_mesh::matrix_and_permutation<Math::LinAgl::Matrix::TripleToeplitzFactoredBlock<Types::complex_d>>
-operator_K_over_cube_mesh::compute_galerkin_matrix_custom_blocksize_compressed(size_t Nx, size_t Ny, size_t Nz,
-                                                                               Types::scalar basis_fn_module,
-                                                                               Types::scalar epsilon,
-                                                                               Math::LinAgl::Matrix::TripleToeplitzBlock
-                                                                               <Types::complex_d> &dense_mat) const {
+operator_K_over_cube_mesh::compute_galerkin_matrix_custom_blocksize_compressed(
+    size_t Nx, size_t Ny, size_t Nz, Types::scalar basis_fn_module, Types::scalar epsilon,
+    Math::LinAgl::Matrix::TripleToeplitzBlock<Types::complex_d> &dense_mat) const {
     // Проверка, что делится нацело
     if ((mesh.nx() - 1) % Nx != 0 || (mesh.ny() - 1) % Ny != 0 || (mesh.nz() - 1) % Nz != 0) {
         throw std::invalid_argument("OperatorK::compute_galerkin_matrix_custom_blocksize: "
-            "Nx, Ny, Nz is not consistent with mesh size dimentions");
+                                    "Nx, Ny, Nz is not consistent with mesh size dimentions");
     }
     const Idx3d sizes{Nx, Ny, Nz};
     const size_t first_layer_toeplitz = mesh.nCubesX() / Nx;
@@ -540,14 +501,11 @@ operator_K_over_cube_mesh::compute_galerkin_matrix_custom_blocksize_compressed(s
     const size_t third_layer_toeplitz = mesh.nCubesZ() / Nz;
     const size_t inner_size = 3 * Nx * Ny * Nz;
 
-    decltype(auto) result =
-        Math::LinAgl::Matrix::ZeroTripleToeplitzFactoredBlock<Types::complex_d>(
-            first_layer_toeplitz, second_layer_toeplitz,
-            third_layer_toeplitz, inner_size);
+    decltype(auto) result = Math::LinAgl::Matrix::ZeroTripleToeplitzFactoredBlock<Types::complex_d>(
+        first_layer_toeplitz, second_layer_toeplitz, third_layer_toeplitz, inner_size);
 
     dense_mat = Math::LinAgl::Matrix::ZeroTripleToeplitzBlock<Types::complex_d>(
-        first_layer_toeplitz, second_layer_toeplitz,
-        third_layer_toeplitz, inner_size);
+        first_layer_toeplitz, second_layer_toeplitz, third_layer_toeplitz, inner_size);
 
     Types::scalar norm_of_self_interation_block = 1;
 
@@ -561,11 +519,8 @@ operator_K_over_cube_mesh::compute_galerkin_matrix_custom_blocksize_compressed(s
             for (size_t i1 = 0; i1 < first_layer_toeplitz; ++i1)
                 for (size_t j2 = 0; j2 < second_layer_toeplitz; ++j2)
                     for (size_t j1 = 0; j1 < first_layer_toeplitz; ++j1) {
-                        auto &&working_block = working_block_on_tl.get_block(i2, j2).
-                                                                   get_block(i1, j1);
-                        auto &&dense_mat_block = dense_mat.get_block(i3, j3).
-                                                           get_block(i2, j2).
-                                                           get_block(i1, j1);
+                        auto &&working_block = working_block_on_tl.get_block(i2, j2).get_block(i1, j1);
+                        auto &&dense_mat_block = dense_mat.get_block(i3, j3).get_block(i2, j2).get_block(i1, j1);
                         // Ускорение заполнения матрицы за счет отсутствия
                         // пересчёта одинаковых блоков
                         // TODO: сделать нормальный расчет, то есть аналитически вывести все формулки
@@ -575,20 +530,20 @@ operator_K_over_cube_mesh::compute_galerkin_matrix_custom_blocksize_compressed(s
                             // (в плотном формате) и запись в соответствующий блок большой матрицы
                             const Idx3d start_i = {i1 * sizes.Nx, i2 * sizes.Ny, i3 * sizes.Nz};
                             const Idx3d start_j = {j1 * sizes.Nx, j2 * sizes.Ny, j3 * sizes.Nz};
-                            dense_mat_block = compute_galerkin_matrix(start_i, start_j, sizes, basis_fn_module)
-                                .to_dense();
+                            dense_mat_block =
+                                compute_galerkin_matrix(start_i, start_j, sizes, basis_fn_module).to_dense();
                             if (start_i == start_j) {
-                                working_block = Math::LinAgl::Matrix::DynamicFactoredMatrix<Types::MatrixXc>{
-                                    {dense_mat_block}};
+                                working_block =
+                                    Math::LinAgl::Matrix::DynamicFactoredMatrix<Types::MatrixXc>{{dense_mat_block}};
                                 norm_of_self_interation_block = working_block.get<0>().norm();
                             } else {
                                 // Для начала подкрутим точность относительно диагонального
                                 const auto local_epsilon = epsilon;
                                 // Теперь делаем всё для креста
-                                const auto row_fun = [&dense_mat_block](Types::index m)-> Types::VectorXc {
+                                const auto row_fun = [&dense_mat_block](Types::index m) -> Types::VectorXc {
                                     return dense_mat_block.row(m);
                                 };
-                                const auto col_fun = [&dense_mat_block](Types::index m)-> Types::VectorXc {
+                                const auto col_fun = [&dense_mat_block](Types::index m) -> Types::VectorXc {
                                     return dense_mat_block.col(m);
                                 };
                                 working_block = Math::LinAgl::Decompositions::ComplexACA::svd_postcompression(

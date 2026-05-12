@@ -5,8 +5,7 @@
 #ifndef PROJECTORONMESH_HPP
 #define PROJECTORONMESH_HPP
 
-#include "math/integration/gauss_quadrature/GaussLegenderPoints.hpp"
-#include "math/integration/Quadrature.hpp"
+#include "math/integration/decart/Integration.hpp"
 
 #include "mesh/volume_mesh/CubeMesh.hpp"
 
@@ -49,7 +48,7 @@ namespace EMW::Operators::Volume
                 return function({x, y, z});
             };
             // интеграл по кубу на сетке в соотвествии с нумерацией
-            const Types::Vector3c value = DefiniteIntegrals::integrate<DefiniteIntegrals::GaussLegendre::Quadrature<
+            const Types::Vector3c value = DecartIntegration::integrate<DecartIntegration::GaussLegendre::Quadrature<
                 4, 4, 4>>(
                 integrand, {cube_i[0], cube_i[1], cube_i[2]},
                 {mesh_.dx(), mesh_.dy(), mesh_.dz()});

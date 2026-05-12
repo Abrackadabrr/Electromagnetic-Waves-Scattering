@@ -7,98 +7,112 @@
 
 #include <cmath>
 
-namespace EMW::Math::AnalyticalIntegration {
-
+namespace EMW::Math::Integration::Analytical {
 Types::scalar integrate_1_div_r(const Mesh::point_t &r, const Mesh::IndexedCell &cell) {
-    // определяем основные геометрические характеритики
-    const Types::Vector3d n = cell.normal;
-    const auto vertex = cell.getVertexAsArray();
-    const Types::scalar d = std::abs((r - cell.collPoint_).dot(n));
-    Types::scalar result = 0;
-    for (int i = 0; i != vertex.size(); i++) {
-        const auto &rp = vertex[(i + 1) % vertex.size()];
-        const auto &rm = vertex[i];
-        // расчитываем геометрию, зависящую от сегмента, если этот сегмент не вырожден
-        if ((rp - rm).norm() >= 1e-12) {
-            const Types::Vector3d l = (rp - rm).normalized();
-            // если особая точка лежит не на прямой, содержащей часть границы
-            if (std::abs(std::abs((r - rm).dot(l)) - (r - rm).norm()) >= 1e-12) {
-                const Types::Vector3d u = l.cross(n);
-                const Types::scalar l_plus = (rp - r).dot(l);
-                const Types::scalar l_minus = (rm - r).dot(l);
-                const Types::scalar p0 = (rp - r).dot(u);
-                const Types::scalar R_plus = (rp - r).norm();
-                const Types::scalar R_minus = (rm - r).norm();
-                const Types::scalar R0_sq = p0 * p0 + d * d;
-                // расчет слагаемого от iй части границы
-                result += p0 * std::log((R_plus + l_plus) / (R_minus + l_minus)) -
-                     d * (std::atan2(p0 * l_plus, R0_sq + d * R_plus) - std::atan2(p0 * l_minus, R0_sq + d * R_minus));
-            }
-        }
+    return integrate_1_div_r(r, cell.getVertexAsArray(), cell.normal);
+}
+
+inline Types::scalar self_newtonian_energy_over_cube(Types::scalar side) {
+    const Types::scalar sqrt2 = std::sqrt(static_cast<Types::scalar>(2));
+    const Types::scalar sqrt3 = std::sqrt(static_cast<Types::scalar>(3));
+    const auto pi = Math::Constants::PI<Types::scalar>();
+
+    const Types::scalar C =
+        std::log((sqrt2 + 1) * (sqrt3 + 2))
+        - pi / 3
+        - (2 * sqrt3 - sqrt2 - 1) / 5;
+
+    const Types::scalar L5 = side * side * side * side * side;
+
+    return 2 * L5 * C;
+}
+
+namespace detail {
+
+inline Types::scalar hypot3(Types::scalar x, Types::scalar y, Types::scalar z) {
+    return std::hypot(std::hypot(x, y), z);
+}
+
+inline Types::scalar safe_log(Types::scalar value) {
+    constexpr Types::scalar eps = std::numeric_limits<Types::scalar>::epsilon();
+
+    if (std::abs(value) < eps) {
+        return Types::scalar(0);
     }
+
+    return std::log(value);
+}
+
+inline Types::scalar atan_ratio(Types::scalar num, Types::scalar den) {
+    const Types::scalar s = std::signbit(den) ? Types::scalar(-1) : Types::scalar(+1);
+
+    return std::atan2(num * s, std::abs(den));
+}
+
+inline Types::scalar primitive_F(Types::scalar x, Types::scalar y, Types::scalar z) {
+    const Types::scalar R = hypot3(x, y, z);
+
+    if (R == Types::scalar(0)) {
+        return Types::scalar(0);
+    }
+
+    Types::scalar result = Types::scalar(0);
+
+    result += x * y * safe_log(z + R);
+    result += y * z * safe_log(x + R);
+    result += z * x * safe_log(y + R);
+
+    const Types::scalar xR = x * R;
+    const Types::scalar yR = y * R;
+    const Types::scalar zR = z * R;
+
+    result -= Types::scalar(0.5) * x * x * atan_ratio(y * z, xR);
+
+    result -= Types::scalar(0.5) * y * y * atan_ratio(z * x, yR);
+
+    result -= Types::scalar(0.5) * z * z * atan_ratio(x * y, zR);
+
     return result;
 }
 
-Types::scalar self_newtonian_energy_over_cube(Types::scalar length) {
-    const Types::scalar sqrt2 = std::sqrt(2.0);
-    const Types::scalar sqrt3 = std::sqrt(3.0);
-    const auto pi = Math::Constants::PI<Types::scalar>();
+} // namespace detail
 
-    const Types::scalar C = ((2 * sqrt3 - sqrt2 - 1) / 5) + pi / 3 + std::log((sqrt2 - 1) * (2 - sqrt3));
-
-    const Types::scalar L5 = length * length * length * length * length;
-    return -2 * L5 * C;
-}
-
-// Первообразная, после тройного интегрирования 1/|r| по кубу
-Types::scalar primitive_F(Types::scalar x, Types::scalar y, Types::scalar z) {
-    constexpr Types::scalar eps = std::numeric_limits<Types::scalar>::epsilon();
-    const Types::scalar R = std::sqrt(x*x + y*y + z*z);
-    if (std::abs(R) < eps)
-        return 0.0;
-
-    Types::scalar res = 0.0;
-
-    // yz*log(x+R) + zx*log(y+R) + xy*log(z+R)
-    res += (y * z) * std::log(x + R);
-    res += (z * x) * std::log(y + R);
-    res += (x * y) * std::log(z + R);
-
-    // -1/2 * x^2 * atan( (y z) / (x R) )
-    res -= 0.5 * x * x * std::atan2(std::copysign(y * z, x * R), std::abs(x * R));
-    res -= 0.5 * y * y * std::atan2(std::copysign(z * x, y * R), std::abs(y * R));
-    res -= 0.5 * z * z * std::atan2(std::copysign(x * y, z * R), std::abs(z * R));
-
-    return res;
-}
-
-// Ньютонов потенциал для параллелепипеда [-a, a] x [-b, b] x [-c, c]
-// Эта штука не робит
 Types::scalar newtonian_potential_of_parallelepiped(const Types::point_t &point, Types::scalar a, Types::scalar b,
                                                     Types::scalar c) {
-    // Координаты точки расчета относительно параллелепипеда
-    const auto X = point.x();
-    const auto Y = point.y();
-    const auto Z = point.z();
-    // Вершины параллелепипеда для интегрирования
+    const Types::scalar X = point.x();
+    const Types::scalar Y = point.y();
+    const Types::scalar Z = point.z();
+
     const Types::scalar xs[2] = {-a - X, a - X};
+
     const Types::scalar ys[2] = {-b - Y, b - Y};
+
     const Types::scalar zs[2] = {-c - Z, c - Z};
 
-    Types::scalar sum = 0.0;
+    Types::scalar sum = Types::scalar(0);
+    Types::scalar compensation = Types::scalar(0);
 
-    Types::scalar mul = 1;
-    for (double x : xs) {
-        mul *= -1;
-        for (double y : ys) {
-            mul *= -1;
-            for (double z : zs) {
-                mul *= -1;
-                sum += mul * primitive_F(x, y, z);
+    for (int i = 0; i < 2; ++i) {
+        for (int j = 0; j < 2; ++j) {
+            for (int k = 0; k < 2; ++k) {
+
+                const Types::scalar sign = ((i + j + k) & 1) ? Types::scalar(-1) : Types::scalar(+1);
+
+                const Types::scalar value = sign * detail::primitive_F(xs[i], ys[j], zs[k]);
+
+                //
+                // Kahan summation
+                //
+                const Types::scalar corrected = value - compensation;
+
+                const Types::scalar new_sum = sum + corrected;
+
+                compensation = (new_sum - sum) - corrected;
+
+                sum = new_sum;
             }
         }
     }
-    return sum;
+    return -sum;
 }
-
 }
