@@ -8,6 +8,7 @@
 #include <cmath>
 
 namespace EMW::Math::Integration::Analytical {
+
 Types::scalar integrate_1_div_r(const Mesh::point_t &r, const Mesh::IndexedCell &cell) {
     return integrate_1_div_r(r, cell.getVertexAsArray(), cell.normal);
 }
