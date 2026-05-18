@@ -6,7 +6,7 @@
 #include "slae_generation/MatrixGeneration.hpp"
 
 #include <operators/OperatorK.hpp>
-
+#if 0
 EMW::Types::MatrixXc EMW::Matrix::Preconditioning::getPreconditiotner(const Mesh::SurfaceMesh &mesh,
                                                                       const Types::scalar radius,
                                                                       const EMW::Types::complex_d k) {
@@ -46,3 +46,4 @@ EMW::Types::MatrixXc EMW::Matrix::Preconditioning::getInverseBasedPreconditioner
     }
     return result.inverse();
 }
+#endif

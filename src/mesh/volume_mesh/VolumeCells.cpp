@@ -4,15 +4,15 @@
 
 #include "mesh/volume_mesh/VolumeCells.hpp"
 
-#include <bitset>
-
 namespace EMW::Mesh::VolumeCells {
 IndexedCube::IndexedCube(const Containers::vector<point_t> &full_points, const nodes_t &full_indices)
-    : nodes_(full_indices), volume_((full_points[full_indices[0]] - full_points[full_indices[1]]).norm() *
-                                    (full_points[full_indices[0]] - full_points[full_indices[2]]).norm() *
-                                    (full_points[full_indices[0]] - full_points[full_indices[4]]).norm()) {
-    center_ = Types::Vector3d::Zero();
+    : nodes_(full_indices), vertexes_(8, Types::point_t::Zero()),
+      volume_((full_points[full_indices[0]] - full_points[full_indices[1]]).norm() *
+              (full_points[full_indices[0]] - full_points[full_indices[2]]).norm() *
+              (full_points[full_indices[0]] - full_points[full_indices[4]]).norm()),
+      center_(Types::Vector3d::Zero()) {
     for (int i = 0; i < full_indices.size(); i++) {
+        vertexes_[i] = full_points[full_indices[i]];
         center_ += full_points[full_indices[i]];
     }
     center_ /= full_indices.size();
@@ -22,13 +22,24 @@ Mesh::IndexedCell IndexedCube::getFace(Axis ax, Direction dir, const full_points
     switch (ax) {
     case Axis::X:
         return getXface(dir, fp);
-        break;
     case Axis::Y:
         return getYface(dir, fp);
-        break;
     case Axis::Z:
         return getZface(dir, fp);
-        break;
+    default:
+        throw std::invalid_argument("Invalid direction");
+    }
+}
+
+Mesh::IndexedCell IndexedCube::newGetFace(Axis ax, Direction dir, const full_points_t &fp) const {
+    const size_t dr = dir;
+    switch (ax) {
+    case Axis::X:
+        return IndexedCell{{dr, (4 - dr), 6 + dr, (2 + 3 * dr)}, this->vertexes_};
+    case Axis::Y:
+        return IndexedCell{{2 * dr, 1 + 5 * dr, 5 + 2 * dr, 4 - dr}, this->vertexes_};
+    case Axis::Z:
+        return IndexedCell{{4 * dr, 2 + 3 * dr, 3 + 4 * dr, 1 + 5 * dr}, this->vertexes_};
     default:
         throw std::invalid_argument("Invalid direction");
     }

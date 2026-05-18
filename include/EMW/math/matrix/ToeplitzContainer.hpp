@@ -66,7 +66,7 @@ template <typename data_type> class ToeplitzContainer {
     /** Доступ к элементу контейнера по линейному индексу */
     data_type &operator()(Types::index index) noexcept;
     /** Доступ на чтение к внутренней структуре */
-    const Containers::vector<data_type>& get_values() const noexcept { return values; }
+    const Containers::vector<data_type> &get_values() const noexcept { return values; }
 };
 
 template <typename data_type>
@@ -113,8 +113,9 @@ ToeplitzContainer<data_type>::ToeplitzContainer(Types::index rows, Types::index 
                                                 Containers::vector<data_type> &&values_)
     : rows_(rows), cols_(cols), values(std::move(values_)) {
     if (!(values.size() == rows_ + cols_ - 1))
-        throw std::invalid_argument("ToeplitzContainer constructor with &&vector failed with values.size() == "
-                                    + std::to_string(values.size()) + " and rows_ + cols_ - 1 ==" + std::to_string(rows_ + cols_ - 1));
+        throw std::invalid_argument("ToeplitzContainer constructor with &&vector failed with values.size() == " +
+                                    std::to_string(values.size()) +
+                                    " and rows_ + cols_ - 1 ==" + std::to_string(rows_ + cols_ - 1));
 }
 
 template <typename data_type>

@@ -64,7 +64,7 @@ calcQuadratureSum(const Callable &f, const typename ExtructedIntegralTypes<Calla
 }
 
 /**
- * Переводит линейный индекс в тензорный интекс с правильными размерностями.
+ * Переводит линейный индекс в тензорный индекс с правильными размерностями.
  * Сетка по размерностям передается в обратном порядке, начиная с предпоследнего
  */
 constexpr std::tuple<size_t> flat_to_volume_index(size_t flat_index) { return flat_index; }
@@ -227,7 +227,7 @@ adaptive_integrate(const Callable &f, const typename detail::ExtructedIntegralTy
             result = result_adaptive;
             result_adaptive = integrate_with_decomposition<Quadrature>(f, startArgs, deltas, ++level);
         }
-        return {result_adaptive, level};
+        return {result_adaptive, level - 1};
     }
 }
 

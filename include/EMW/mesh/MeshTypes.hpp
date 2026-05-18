@@ -34,6 +34,10 @@ struct IntegrationParameters {
 
 struct Cell {
     point_t a, b, c, d;
+
+    explicit operator Containers::array<Types::point_t, 4>() const {
+        return {a, b, c, d};
+    }
 };
 
 /**

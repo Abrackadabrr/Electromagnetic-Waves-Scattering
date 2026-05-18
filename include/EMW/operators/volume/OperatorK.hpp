@@ -22,11 +22,11 @@ namespace EMW::Operators::Volume {
 class operator_K_over_cube_mesh {
     const Mesh::VolumeMesh::CubeMesh &mesh;
     Types::complex_d wave_number;
-    Types::index nearnes_tresholds = 2;
-    Types::scalar rTol = 1e-5;
-    Types::scalar aTol = 1e-12;
-    size_t max_integration_level = 8;
-    size_t max_6d_integration_level = 4;
+    Types::index nearnes_tresholds = 3;
+    Types::scalar rTol = 1e-6;
+    Types::scalar aTol = 1e-20;
+    size_t max_integration_level = 4;
+    size_t max_6d_integration_level = 2;
 
     struct Idx3d {
         size_t Nx, Ny, Nz;
@@ -119,6 +119,7 @@ class operator_K_over_cube_mesh {
     [[nodiscard]] Math::LinAgl::Matrix::TripleToeplitzBlock<Types::complex_d>
     compute_galerkin_matrix(Types::scalar basis_fucntion_module) const;
 
+
     /**
      * Расчет оператор K методом Галеркина для одинаковой коллекции кубов, которые отличаются начлаьными индексами
      *
@@ -146,10 +147,10 @@ class operator_K_over_cube_mesh {
      *
      * @param Nx,Ny,Nz размер блока кубов по каждой их координат
      * @param basis_fn_module модуль кусочно-постоянной базисной функции, используемой при дискретизации
-         * @return Пару из трижды тёплицевой матрицы и матрицы перестановки, отвечающей
-         * за правильную нумерацию неизвестных на сетке
-         */
-        [[nodiscard]] matrix_and_permutation<Math::LinAgl::Matrix::TripleToeplitzBlock<Types::complex_d>>
+     * @return Пару из трижды тёплицевой матрицы и матрицы перестановки, отвечающей
+     * за правильную нумерацию неизвестных на сетке
+     */
+    [[nodiscard]] matrix_and_permutation<Math::LinAgl::Matrix::TripleToeplitzBlock<Types::complex_d>>
         compute_galerkin_matrix_custom_blocksize(size_t Nx, size_t Ny, size_t Nz, Types::scalar basis_fn_module) const;
 
         /**

@@ -44,16 +44,17 @@ Types::Matrix3c operator_K_over_cube_mesh::matrix_2_coef(Types::index k, Types::
                     if ((cube_k.center_ - cube_p.center_).norm() < nearnes_tresholds * h) {
                         // то интегрируемся с выделением особенности
                         // 1. Интеграл от ньютонова потенциала 2д ячейки
+
                         const auto analytical_integrand = [&face_k, &face_p](Types::scalar x, Types::scalar y) {
-                            const auto point = face_k.parametrization(x, y);
+                            const auto point = face_p.parametrization(x, y);
                             const auto integrand_value =
-                                Math::Integration::Analytical::integrate_1_div_r(point, face_p);
-                            return integrand_value * face_k.multiplier(x, y);
+                                Math::Integration::Analytical::integrate_1_div_r(point, face_k);
+                            return integrand_value * face_p.multiplier(x, y);
                         };
                         const auto singular_part =
-                            DecartIntegration::adaptive_integrate<DecartIntegration::NewtonCotess::Quadrature<2, 2>>(
+                            DecartIntegration::adaptive_integrate<DecartIntegration::GaussLegendre::Quadrature<5, 5>>(
                                 analytical_integrand, {0, 0}, {1, 1}, scalar_stop_criterion<Types::scalar>(rTol, aTol),
-                                max_integration_level);
+                                10);
 
                         result(i, j) +=
                             multiplier * Math::Constants::inverse_4PI<Types::scalar>() * singular_part.first;
@@ -70,7 +71,7 @@ Types::Matrix3c operator_K_over_cube_mesh::matrix_2_coef(Types::index k, Types::
                         const auto regular_part = DecartIntegration::adaptive_integrate<
                             DecartIntegration::GaussLegendre::Quadrature<4, 4, 4, 4>>(
                             residual_integrand, {0, 0, 0, 0}, {1, 1, 1, 1},
-                            scalar_stop_criterion<Types::complex_d>(rTol, aTol), max_integration_level);
+                            scalar_stop_criterion<Types::complex_d>(rTol, aTol), 10);
                         result(i, j) += multiplier * regular_part.first;
 
                     } else {
@@ -83,12 +84,11 @@ Types::Matrix3c operator_K_over_cube_mesh::matrix_2_coef(Types::index k, Types::
                             return Helmholtz::F(wn, x, y) * face_p.multiplier(x1, y1) * face_k.multiplier(x2, y2);
                         };
 
-                        result(i, j) +=
-                            multiplier * DecartIntegration::adaptive_integrate<
-                                             DecartIntegration::GaussLegendre::Quadrature<4, 4, 4, 4>>(
-                                             integrand, {0, 0, 0, 0}, {1, 1, 1, 1},
-                                             scalar_stop_criterion<Types::complex_d>(rTol, aTol), max_integration_level)
-                                             .first;
+                        result(i, j) += multiplier * DecartIntegration::adaptive_integrate<
+                                                         DecartIntegration::GaussLegendre::Quadrature<4, 4, 4, 4>>(
+                                                         integrand, {0, 0, 0, 0}, {1, 1, 1, 1},
+                                                         scalar_stop_criterion<Types::complex_d>(rTol, aTol), 10)
+                                                         .first;
                     }
                 }
         }
@@ -97,8 +97,6 @@ Types::Matrix3c operator_K_over_cube_mesh::matrix_2_coef(Types::index k, Types::
 }
 
 Types::complex_d operator_K_over_cube_mesh::matrix_3_coef(Types::index k, Types::index p) const {
-    const auto &cube_k = mesh.getCells()[k];
-    const auto &cube_p = mesh.getCells()[p];
     const auto &k_corner = mesh.leftDownCorner(k);
     const auto &p_corner = mesh.leftDownCorner(p);
     const auto h = mesh.h();
@@ -107,35 +105,55 @@ Types::complex_d operator_K_over_cube_mesh::matrix_3_coef(Types::index k, Types:
     // if (k == p)
     // чтобы это зафорсить, нужно обобщить формулу для самоэнергии
     // куба на параллелограмм и тогда все будить чики бамбони
+    Types::complex_d result{0., 0.};
 
-    if ((cube_k.center_ - cube_p.center_).norm() < nearnes_tresholds * h) {
+    if ((k_corner - p_corner).norm() < nearnes_tresholds * h) {
         // интегрирование с выделением особенности
         // Ограниченная часть от функции
         const auto integrand_bounded_part = [wn = wave_number](Types::scalar x1, Types::scalar y1, Types::scalar z1,
                                                                Types::scalar x2, Types::scalar y2, Types::scalar z2) {
             return Helmholtz::F_bounded_part(wn, {x1, y1, z1}, {x2, y2, z2});
         };
+        // кровью и потом полученное из экспериментов число 6 для квадратуры<333333>
+        constexpr size_t max_integration_level_for_regular_part = 10;
         const auto regular_part =
             DecartIntegration::adaptive_integrate<DecartIntegration::GaussLegendre::Quadrature<2, 2, 2, 2, 2, 2>>(
                 integrand_bounded_part,
                 {k_corner.x(), k_corner.y(), k_corner.z(), p_corner.x(), p_corner.y(), p_corner.z()},
                 {mesh.dx(), mesh.dy(), mesh.dz(), mesh.dx(), mesh.dy(), mesh.dz()},
-                scalar_stop_criterion<Types::complex_d>(rTol, aTol), max_6d_integration_level);
+                scalar_stop_criterion<Types::complex_d>(rTol, aTol), max_integration_level_for_regular_part);
+        std::cout << regular_part.second << std::endl;
+        result += regular_part.first;
 
-        //  Ньютонов потенциал параллелепипеда в правильном формате
-        const auto potential_of_cube_k = [this, k](Types::scalar x, Types::scalar y, Types::scalar z) {
-            const auto &left_down_corner_of_cube_k = mesh.leftDownCorner(k);
-            const auto dx = mesh.dx();
-            const auto dy = mesh.dy();
-            const auto dz = mesh.dz();
-            return Math::Integration::Analytical::newtonian_potential_of_parallelepiped({x, y, z}, dx, dy, dz);
-        };
+        if (k == p && std::abs(mesh.dx() - mesh.dy()) < 1e-20 &&
+                            std::abs(mesh.dy() - mesh.dz()) < 1e-20) {
+            // если я считаю самовлияние и я на кубе, то есть аналитическая формула
+            result += Math::Constants::inverse_4PI<Types::scalar>() *
+                      Math::Integration::Analytical::self_newtonian_energy_over_cube(mesh.dx());
+        } else {
+            //  Ньютонов потенциал параллелепипеда в правильном формате
+            const auto potential_of_cube_k = [this, k](Types::scalar x, Types::scalar y, Types::scalar z) {
+                const auto &left_down_corner_of_cube_k = mesh.leftDownCorner(k);
+                const auto dx = mesh.dx();
+                const auto dy = mesh.dy();
+                const auto dz = mesh.dz();
+                Types::point_t point_to_calculate{
+                    x - left_down_corner_of_cube_k.x() - dx / 2,
+                    y - left_down_corner_of_cube_k.y() - dy / 2,
+                    z - left_down_corner_of_cube_k.z() - dz / 2,
+                };
+                return Math::Integration::Analytical::newtonian_potential_of_parallelepiped(point_to_calculate, dx / 2,
+                                                                                            dy / 2, dz / 2);
+            };
 
-        const auto singular_part =
-            DecartIntegration::adaptive_integrate<DecartIntegration::GaussLegendre::Quadrature<4, 4, 4>>(
-                potential_of_cube_k, {p_corner.x(), p_corner.y(), p_corner.z()}, {mesh.dx(), mesh.dy(), mesh.dz()},
-                scalar_stop_criterion<Types::scalar>(rTol, aTol), max_integration_level);
-        return k2 * (regular_part.first + Math::Constants::inverse_4PI<Types::scalar>() * singular_part.first);
+            const auto singular_part =
+                DecartIntegration::adaptive_integrate<DecartIntegration::GaussLegendre::Quadrature<3, 3, 3>>(
+                    potential_of_cube_k, {p_corner.x(), p_corner.y(), p_corner.z()}, {mesh.dx(), mesh.dy(), mesh.dz()},
+                    scalar_stop_criterion<Types::scalar>(rTol, aTol), 10);
+
+            result += Math::Constants::inverse_4PI<Types::scalar>() * singular_part.first;
+        }
+        return k2 * result;
     }
 
     // Интегрирование без выделения особенности:
@@ -145,11 +163,14 @@ Types::complex_d operator_K_over_cube_mesh::matrix_3_coef(Types::index k, Types:
                                               Types::scalar y2, Types::scalar z2) {
         return Helmholtz::F(wn, {x1, y1, z1}, {x2, y2, z2});
     };
-    return k2 * DecartIntegration::adaptive_integrate<DecartIntegration::GaussLegendre::Quadrature<2, 2, 2, 2, 2, 2>>(
-                    integrand, {k_corner.x(), k_corner.y(), k_corner.z(), p_corner.x(), p_corner.y(), p_corner.z()},
-                    {mesh.dx(), mesh.dy(), mesh.dz(), mesh.dx(), mesh.dy(), mesh.dz()},
-                    scalar_stop_criterion<Types::complex_d>(rTol, aTol), max_6d_integration_level)
-                    .first;
+    // эксперимента показали, что средне-дальней зоне, можно интегрировать сразу с разбиением на 2
+    constexpr size_t integration_level_for_far_integration = 2;
+    return k2 * DecartIntegration::integrate_with_decomposition<
+                    DecartIntegration::GaussLegendre::Quadrature<3, 3, 3, 3, 3, 3>>(
+                    integrand,
+                    std::tuple{k_corner.x(), k_corner.y(), k_corner.z(), p_corner.x(), p_corner.y(), p_corner.z()},
+                    std::tuple{mesh.dx(), mesh.dy(), mesh.dz(), mesh.dx(), mesh.dy(), mesh.dz()},
+                    integration_level_for_far_integration);
 }
 
 Types::Matrix3c operator_K_over_cube_mesh::far_zone_interaction(Types::index k, Types::index p) const {
@@ -174,6 +195,8 @@ Types::Matrix3c operator_K_over_cube_mesh::far_zone_interaction(Types::index k, 
     return Math::Constants::inverse_4PI<Types::scalar>() * interaction_block;
 }
 
+// ------------------ Matrix Assembling ------------------ //
+
 Types::Matrix3c operator_K_over_cube_mesh::galerkin_block_for_cubes(size_t k, size_t p) const {
 #if 0
     // 1. Если кубы далеко, то считаем через far_zone
@@ -185,11 +208,13 @@ Types::Matrix3c operator_K_over_cube_mesh::galerkin_block_for_cubes(size_t k, si
     // 2. Иначе считаем через преобразование сингулярного оператора
     const auto volume_res = matrix_3_coef(k, p);
     Types::Matrix3c surface_res = -matrix_2_coef(k, p);
+    // std::cout << surface_res.norm() / std::abs(volume_res * sqrt(3.)) << ' ';
     // и подправляем общую матрицу
+#if 1
     surface_res(0, 0) += volume_res;
     surface_res(1, 1) += volume_res;
     surface_res(2, 2) += volume_res;
-
+#endif
     return surface_res;
 }
 
@@ -236,25 +261,31 @@ operator_K_over_cube_mesh::compute_galerkin_matrix(Types::scalar basis_function_
     decltype(auto) result = Math::LinAgl::Matrix::ZeroTripleToeplitzBlock<Types::complex_d>(
         first_layer_toeplitz, second_layer_toeplitz, third_layer_toeplitz, 3);
     const Types::scalar basis_fn_module_sqr = basis_function_module * basis_function_module;
-    // Циклы для расчета трижды теплицевой матрицы
-    for (size_t i3 = 0; i3 < third_layer_toeplitz; ++i3)
-        for (size_t j3 = 0; j3 < third_layer_toeplitz; ++j3) {
-            for (size_t i2 = 0; i2 < second_layer_toeplitz; ++i2)
-                for (size_t i1 = 0; i1 < first_layer_toeplitz; ++i1)
-                    for (size_t j2 = 0; j2 < second_layer_toeplitz; ++j2)
-                        for (size_t j1 = 0; j1 < first_layer_toeplitz; ++j1) {
-                            auto &&working_block = result.get_block(i3, j3).get_block(i2, j2).get_block(i1, j1);
-                            // Ускорение заполнения матрицы за счет отсутствия
-                            // пересчёта одинаковых блоков
-                            // TODO: сделать нормальный расчет, то есть аналитически вывести все формулки
-                            if (working_block.norm() == 0) {
-                                // Ищем кубы по трёхмерному индексу
-                                const auto idx1 = mesh.cube_idx(i1, i2, i3);
-                                const auto idx2 = mesh.cube_idx(j1, j2, j3);
-                                working_block = galerkin_block_for_cubes(idx1, idx2) * basis_fn_module_sqr;
-                            }
-                        }
+
+#pragma omp parallel for collapse(2) num_threads(14) schedule(static)
+    for (size_t i3 = 0; i3 < 2 * third_layer_toeplitz - 1; ++i3) {
+        for (size_t i2 = 0; i2 < 2 * second_layer_toeplitz - 1; ++i2) {
+            for (size_t i1 = 0; i1 < 2 * first_layer_toeplitz - 1; ++i1) {
+
+                size_t row1 = (i1 / first_layer_toeplitz) * (i1 - first_layer_toeplitz + 1);
+                size_t col1 = (1 - i1 / first_layer_toeplitz) * i1;
+
+                size_t row2 = (i2 / second_layer_toeplitz) * (i2 - second_layer_toeplitz + 1);
+                size_t col2 = (1 - i2 / second_layer_toeplitz) * i2;
+
+                size_t row3 = (i3 / third_layer_toeplitz) * (i3 - third_layer_toeplitz + 1);
+                size_t col3 = (1 - i3 / third_layer_toeplitz) * i3;
+
+                auto &&working_block = result.get_block(row3, col3).get_block(row2, col2).get_block(row1, col1);
+
+                // Ищем кубы по трёхмерному индексу
+                const auto idx1 = mesh.cube_idx(row1, row2, row3);
+                const auto idx2 = mesh.cube_idx(col1, col2, col3);
+                working_block = galerkin_block_for_cubes(idx1, idx2) * basis_fn_module_sqr;
+            }
         }
+    }
+
     return result;
 }
 

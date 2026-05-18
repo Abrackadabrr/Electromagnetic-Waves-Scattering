@@ -5,8 +5,6 @@
 #ifndef CUBEMESH_HPP
 #define CUBEMESH_HPP
 
-#include <iostream>
-
 #include "VolumeCells.hpp"
 
 namespace EMW::Mesh::VolumeMesh
@@ -32,13 +30,6 @@ namespace EMW::Mesh::VolumeMesh
 
         std::string name_ = "default_mesh_name";
 
-        CubeMesh(NodesContainer_t&& nodes, CellsContainer_t&& cells): nodes_(std::move(nodes)),
-                                                                      cells_(std::move(cells)),
-                                                                      nx_(0), ny_(0), nz_(0), dx_(0), dy_(0), dz_(0)
-        {
-            std::cout << "Warning: cube mesh submesh cannot be cube mesh, do not use in in matrix formation" <<
-                std::endl;
-        }
 
     public:
         CubeMesh() = default;

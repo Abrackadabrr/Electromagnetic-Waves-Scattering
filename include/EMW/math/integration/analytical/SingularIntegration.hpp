@@ -13,7 +13,7 @@ namespace EMW::Math::Integration::Analytical {
 /**
  * Интегрирование 1/|r - r'| по кубу r' а затем по кубу r
  */
-inline Types::scalar self_newtonian_energy_over_cube(Types::scalar length);
+Types::scalar self_newtonian_energy_over_cube(Types::scalar length);
 
 /**
  * Интегрирование 1/|r - r'| по прямоугольному параллелепипеду ([-a, a] x [-b, b] x [-c, c] в координатах r') в

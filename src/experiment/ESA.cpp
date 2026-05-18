@@ -4,9 +4,11 @@
 
 #include "experiment/ESA.hpp"
 #include "math/MathConstants.hpp"
+
 #include "math/Productions.hpp"
 #include "math/fields/SurfaceVectorField.hpp"
 #include "math/integration/decart/Integration.hpp"
+
 #include "mesh/MeshTypes.hpp"
 #include "mesh/SurfaceMesh.hpp"
 #include "operators/Functions.hpp"
@@ -35,9 +37,9 @@ Types::Vector3c sigmaOverCube(Types::complex_d k, const Types::Vector3d &tau, co
         return (eps - 1.) * Helmholtz::sigmaKernel(k, tau, {x, y, z}, j_e, j_m, eps);
     };
 
-    return DecartIntegration::adaptive_integrate<DecartIntegration::NewtonCotess::Quadrature<4, 4, 4>>(
+    return DecartIntegration::adaptive_integrate<DecartIntegration::NewtonCotess::Quadrature<2, 2, 2>>(
                phi, {left_down_corner.x(), left_down_corner.y(), left_down_corner.z()}, {dx, dy, dz},
-               [](Types::Vector3c r1, Types::Vector3c r2) { return (r1 - r2).norm() < (1e-3 * r1.norm() + 1e-15); }, 5)
+               [](Types::Vector3c r1, Types::Vector3c r2) { return (r1 - r2).norm() < (1e-3 * r1.norm() + 1e-15); }, 8)
         .first;
 }
 

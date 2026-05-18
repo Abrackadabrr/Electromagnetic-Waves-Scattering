@@ -13,19 +13,19 @@ Types::scalar integrate_1_div_r(const Mesh::point_t &r, const Mesh::IndexedCell 
     return integrate_1_div_r(r, cell.getVertexAsArray(), cell.normal);
 }
 
-inline Types::scalar self_newtonian_energy_over_cube(Types::scalar side) {
-    const Types::scalar sqrt2 = std::sqrt(static_cast<Types::scalar>(2));
-    const Types::scalar sqrt3 = std::sqrt(static_cast<Types::scalar>(3));
-    const auto pi = Math::Constants::PI<Types::scalar>();
+Types::scalar self_newtonian_energy_over_cube(Types::scalar side) {
+    // const Types::scalar sqrt2 = std::sqrt(static_cast<Types::scalar>(2));
+    // const Types::scalar sqrt3 = std::sqrt(static_cast<Types::scalar>(3));
+    // const auto pi = Math::Constants::PI<Types::scalar>();
+    //
+    // const Types::scalar C =
+    //     std::log((sqrt2 + 1) * (sqrt3 + 2))
+    //     - pi / 3
+    //     - (2 * sqrt3 - sqrt2 - 1) / 5;
+    constexpr Types::scalar C_mul_2 = 1.88231264438966;
+    const Types::scalar L5 = (side * side) * (side * side) * side;
 
-    const Types::scalar C =
-        std::log((sqrt2 + 1) * (sqrt3 + 2))
-        - pi / 3
-        - (2 * sqrt3 - sqrt2 - 1) / 5;
-
-    const Types::scalar L5 = side * side * side * side * side;
-
-    return 2 * L5 * C;
+    return L5 * C_mul_2;
 }
 
 namespace detail {

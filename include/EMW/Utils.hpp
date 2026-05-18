@@ -229,6 +229,48 @@ namespace EMW::Utils
             return diff_frobenius;
         return diff_frobenius / ref_frobenius;
     }
+
+   template <typename T>
+    Types::scalar relative_frobenius_error(
+        const Math::LinAgl::Matrix::TripleToeplitzBlock<T>& reference,
+        const Math::LinAgl::Matrix::TripleToeplitzBlock<T>& approximated)
+    {
+        Types::scalar ref_frobenius_sq = 0;
+        Types::scalar diff_frobenius_sq = 0;
+
+#pragma omp parallel for collapse(2) reduction(+:ref_frobenius_sq) reduction(+:diff_frobenius_sq)
+        for (Types::index i3 = 0; i3 < reference.rows_in_toeplitrz(); ++i3)
+            for (Types::index j3 = 0; j3 < reference.cols_in_toeplitrz(); ++j3)
+            {
+                const auto& ref_second_layer = reference.get_block(i3, j3);
+                const auto& appr_second_layer = approximated.get_block(i3, j3);
+
+                for (Types::index i2 = 0; i2 < ref_second_layer.rows_in_toeplitrz(); ++i2)
+                    for (Types::index j2 = 0; j2 < ref_second_layer.cols_in_toeplitrz(); ++j2)
+                    {
+                        const auto& ref_first_layer = ref_second_layer.get_block(i2, j2);
+                        const auto& appr_first_layer = appr_second_layer.get_block(i2, j2);
+
+                        for (Types::index i1 = 0; i1 < ref_first_layer.rows_in_toeplitrz(); ++i1)
+                            for (Types::index j1 = 0; j1 < ref_first_layer.cols_in_toeplitrz(); ++j1)
+                            {
+                                const auto& ref_block = ref_first_layer.get_block(i1, j1);
+                                const Types::MatrixX<T> appr_block = appr_first_layer.get_block(i1, j1);
+
+                                ref_frobenius_sq += ref_block.squaredNorm();
+                                diff_frobenius_sq += (ref_block - appr_block).squaredNorm();
+                            }
+                    }
+            }
+
+        const Types::scalar ref_frobenius = std::sqrt(ref_frobenius_sq);
+        const Types::scalar diff_frobenius = std::sqrt(diff_frobenius_sq);
+
+        if (ref_frobenius == 0)
+            return diff_frobenius;
+        return diff_frobenius / ref_frobenius;
+    }
+
 } // namespace EMW::Utils
 
 #endif // ELECTROMAGNETIC_WAVES_SCATTERING_SRC_UTILS_HPP

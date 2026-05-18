@@ -19,15 +19,20 @@ struct IndexedCube {
     enum Direction { Minus, Plus };
 
     using nodes_t = Containers::array<Types::index, 8>;
+    using vertexes_t = Containers::vector<Types::point_t>;
     using full_points_t = Containers::vector<point_t>;
 
     nodes_t nodes_;
+    vertexes_t vertexes_;
     Types::scalar volume_{};
     point_t center_;
+
 
     IndexedCube(const full_points_t &full_points, const nodes_t &full_indices);
 
     Mesh::IndexedCell getFace(Axis ax, Direction dir, const full_points_t& fp) const;
+
+    Mesh::IndexedCell newGetFace(Axis ax, Direction dir, const full_points_t& fp) const;
 
     Types::point_t getLeftDownCornerOfFace(Axis ax, Direction dir, const full_points_t& fp) const;
 

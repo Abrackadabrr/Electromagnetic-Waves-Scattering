@@ -25,12 +25,6 @@ namespace EMW::Mesh::VolumeMesh
         Types::index nodesCount;
         Types::index cellsCount;
 
-        CubeMeshWithData(NodesContainer_t&& nodes, CellsContainer_t&& cells): Base(std::move(nodes), std::move(cells)),
-                                                                              cellsCount(cells_.size()),
-                                                                              nodesCount(nodes_.size())
-        {
-        }
-
         template <typename Container>
         void loadScalarData(Container&& specific_scalar_data, const std::string& name)
         {

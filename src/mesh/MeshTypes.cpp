@@ -57,7 +57,7 @@ IndexedCell::IndexedCell(const Containers::array<Types::index, 4> &points,
 };
 
 Cell IndexedCell::getVertex() const {
-    Cell result;
+    Cell result{};
     result.a = cellStructure.A;
     result.b = result.a + cellStructure.ort1;
     result.d = result.a + cellStructure.ort2;

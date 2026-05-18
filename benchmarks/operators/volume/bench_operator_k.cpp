@@ -17,8 +17,8 @@ public:
     void SetUp(const benchmark::State &state) override {
         Eigen::setNbThreads(1);
 
-        constexpr Types::index nodes_per_axis = 41;
-        constexpr Types::scalar cube_length = 1;
+        constexpr Types::index nodes_per_axis = 81;
+        constexpr Types::scalar cube_length = 2;
         const Types::scalar mesh_one_axis_size = cube_length / (nodes_per_axis - 1);
         const Types::scalar basis_fn_norm = 1. / (mesh_one_axis_size * std::sqrt(mesh_one_axis_size));
 

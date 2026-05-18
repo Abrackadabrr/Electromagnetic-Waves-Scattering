@@ -23,23 +23,36 @@ namespace EMW::Math::Integration::Numerical::Decart {
                 (... * Quadratures::nodes[counter[Is]].weight)};
     }
 
+    template <typename... Quadratures>
+    constexpr Node<sizeof...(Quadratures)> simpleGetPoint(Containers::array<Types::index, sizeof...(Quadratures)> counter) {
+        Containers::array<Types::scalar, sizeof...(Quadratures)> result_point{};
+        Types::scalar result_w = 1.;
+        for (size_t idx = 0; idx < sizeof...(Quadratures); idx++) {
+            result_point[idx] = Containers::array{Quadratures::nodes[counter[idx]].point[0] ... }[idx];
+            result_w *= Containers::array{Quadratures::nodes[counter[idx]].weight ... }[idx];
+        }
+        return {result_point, result_w};
+    }
+
+
 /**
  * Декартово произведение одномерных разбиений и тензорное произведение весов
  * @tparam Quadratures одномерные разбиения
  * @return
  */
     template<typename... Quadratures>
-    constexpr Containers::array<Node<sizeof...(Quadratures)>, (... * Quadratures::size)> cartesian_product() {
+    consteval Containers::array<Node<sizeof...(Quadratures)>, (... * Quadratures::size)> cartesian_product() {
         static_assert((... * Quadratures::dim) == 1);
 
         constexpr Types::index size = (... * Quadratures::size);
-        Containers::array<Types::index, sizeof...(Quadratures)> dimentions = {Quadratures::size...};
+        constexpr Containers::array<Types::index, sizeof...(Quadratures)> dimentions = {Quadratures::size...};
 
         Containers::array <Node<dimentions.size()>, size> products{};
         auto counter = Containers::array < Types::index, dimentions.size() > {};  // массив нулей
 
         for (auto &product: products) {
-            product = getPoint<Quadratures...>(counter, std::make_index_sequence<dimentions.size()>());
+            // product = getPoint<Quadratures...>(counter, std::make_index_sequence<dimentions.size()>());
+            product = simpleGetPoint<Quadratures...>(counter);
             ++(counter.front());
             for (Types::index i = 0; i != dimentions.size() - 1; i++) {
                 if (counter[i] == dimentions[i]) {
