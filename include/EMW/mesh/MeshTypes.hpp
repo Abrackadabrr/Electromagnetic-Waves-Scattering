@@ -85,6 +85,11 @@ struct IndexedCell {
         return cellStructure.A + p * cellStructure.ort1 + q * cellStructure.ort2 + p * q * cellStructure.diff;
     }
 
+    // считает, что ячейка -- это параллелограмм
+    [[nodiscard]] inline point_t parallelogram_parametrization(Types::scalar p, Types::scalar q) const noexcept {
+        return cellStructure.A + p * cellStructure.ort1 + q * cellStructure.ort2;
+    }
+
     [[nodiscard]] Types::scalar multiplier(Types::scalar p, Types::scalar q) const noexcept {
         return (integrationParameters.a + p * integrationParameters.b + q * integrationParameters.c).norm();
     }

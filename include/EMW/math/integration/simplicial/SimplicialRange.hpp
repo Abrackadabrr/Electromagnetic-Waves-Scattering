@@ -5,10 +5,10 @@
 #ifndef ELECTROMAGNETIC_WAVES_SCATTERING_SIMPLICIALRANGE_HPP
 #define ELECTROMAGNETIC_WAVES_SCATTERING_SIMPLICIALRANGE_HPP
 
-namespace EMW::Math::Integration::Numerical::Simplicial::QuadratureUtils {
-
 #include <cstddef>
 #include <iterator>
+
+namespace EMW::Math::Integration::Numerical::Simplicial::QuadratureUtils {
 
 template <typename point_t> class TriangleRange {
   public:
@@ -18,17 +18,17 @@ template <typename point_t> class TriangleRange {
         operator Containers::array<point_t, 3>() const { return Containers::array<point_t, 3>{a, b, c}; }
     };
 
-    TriangleRange(const Triangle &root, size_t level) : root_(root), level_(level) {}
+    TriangleRange(const Triangle &root, size_t N) : root_(root), N_(N) {}
 
-    TriangleRange(const Containers::array<point_t, 3> &root, size_t level)
-        : TriangleRange(Triangle{root[0], root[1], root[2]}, level) {}
+    TriangleRange(const Containers::array<point_t, 3> &root, size_t N)
+        : TriangleRange(Triangle{root[0], root[1], root[2]}, N) {}
 
-    TriangleRange(const point_t &a, const point_t &b, const point_t &c, size_t level)
-        : TriangleRange(Triangle{a, b, c}, level) {}
+    TriangleRange(const point_t &a, const point_t &b, const point_t &c, size_t N)
+        : TriangleRange(Triangle{a, b, c}, N) {}
 
-    auto begin() const { return Iterator(root_, level_, false); }
+    auto begin() const { return Iterator(root_, N_, false); }
 
-    auto end() const { return Iterator(root_, level_, true); }
+    auto end() const { return Iterator(root_, N_, true); }
 
   private:
     class Iterator {
@@ -39,8 +39,8 @@ template <typename point_t> class TriangleRange {
         using pointer = void;
         using reference = Triangle;
 
-        Iterator(const Triangle &root, size_t level, bool end)
-            : root_(root), N_(size_t{1} << level), phase_(Phase::Upper), i_(0), j_(0), k_(N_), index_(0),
+        Iterator(const Triangle &root, size_t N, bool end)
+            : root_(root), N_(N), phase_(Phase::Upper), i_(0), j_(0), k_(N_), index_(0),
               total_count_(N_ * N_) {
             if (end) {
                 // end -- итератор на треугольник "за последним"
@@ -140,7 +140,7 @@ template <typename point_t> class TriangleRange {
     };
 
     Triangle root_;
-    size_t level_;
+    size_t N_;  // количество равномерных делений на одной стороне траугольника
 };
 
 // deduction hint

@@ -227,7 +227,7 @@ adaptive_integrate(const Callable &f, const typename detail::ExtructedIntegralTy
             result = result_adaptive;
             result_adaptive = integrate_with_decomposition<Quadrature>(f, startArgs, deltas, ++level);
         }
-        return {result_adaptive, level - 1};
+        return {result_adaptive, level};
     }
 }
 
