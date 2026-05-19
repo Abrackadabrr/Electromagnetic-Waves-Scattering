@@ -135,11 +135,17 @@ data_type &ToeplitzContainer<data_type>::operator[](Types::index row_index, Type
 
 template <typename data_type>
 const data_type &ToeplitzContainer<data_type>::operator()(Types::index row, Types::index col) const noexcept{
+#ifndef NDEBUG
+    if (static_cast<int>(row) + static_cast<int>(col) - 2 > static_cast<int>(this->values.size())) throw std::invalid_argument("ToeplitzContainer operator() row out of range");
+#endif
     return operator[](row, col);
 }
 
 template <typename data_type>
 data_type& ToeplitzContainer<data_type>::operator()(Types::index row, Types::index col) noexcept {
+#ifndef NDEBUG
+    if (static_cast<int>(row) + static_cast<int>(col) - 2 > static_cast<int>(this->values.size())) throw std::invalid_argument("ToeplitzContainer operator() row out of range");
+#endif
     return operator[](row, col);
 }
 

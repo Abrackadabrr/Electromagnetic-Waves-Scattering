@@ -137,13 +137,13 @@ quadrature_sum(const Callable &f, const typename detail::ExtructedIntegralTypes<
 
     // инициализация дефолтным значением (нулем по смыслу)
     typename detail::ExtructedIntegralTypes<Callable>::ResultType result{};
+#pragma omp simd
     for (size_t index = 0; index < Quadrature::nodes.size(); ++index) {
         decltype(auto) point =
             detail::createPoint(startArgs, deltas, Quadrature::nodes[index].point, std::make_index_sequence<dimSize>());
-        result += Quadrature::nodes[index].weight *
-                  detail::unroll(f, point, std::make_index_sequence<dimSize>());
+        result += Quadrature::nodes[index].weight * detail::unroll(f, point, std::make_index_sequence<dimSize>());
     }
-    return result;
+    return result / static_cast<Types::scalar>(1 << Quadrature::dim);
 }
 
 template <typename Quadrature, typename Callable>
@@ -156,15 +156,15 @@ integrate(const Callable &f, const typename detail::ExtructedIntegralTypes<Calla
 
 /**
  * Квадратура для области == декартово произведение отрезков
- * с заданием уровня подразбиения на 2^level подобластей по каждой из сторон
+ * с заданием уровня подразбиения
  */
 template <typename Quadrature, typename Callable, typename... ArgsType, typename... DeltasType>
 constexpr typename detail::ExtructedIntegralTypes<Callable>::ResultType
 quadrature_sum_with_decomposition(const Callable &f, const std::tuple<ArgsType...> &startArgs,
-                                  const std::tuple<DeltasType...> &deltas, size_t level) {
+                                  const std::tuple<DeltasType...> &deltas, size_t fineness) {
     typename detail::ExtructedIntegralTypes<Callable>::ResultType result{};
     // Разбиение по сторонам
-    size_t each_side_size = level;
+    size_t each_side_size = fineness;
     size_t total_indexes = std::pow(each_side_size, sizeof...(ArgsType));
     // Строим новые дельты
     auto new_deltas = std::apply(
@@ -183,27 +183,27 @@ quadrature_sum_with_decomposition(const Callable &f, const std::tuple<ArgsType..
 }
 
 template <typename Quadrature, typename Callable, typename... ArgsType, typename... DeltasType>
-typename detail::ExtructedIntegralTypes<Callable>::ResultType
-constexpr integrate_with_decomposition(const Callable &f, const std::tuple<ArgsType...> &startArgs,
-                             const std::tuple<DeltasType...> &deltas, size_t level) {
-    return quadrature_sum_with_decomposition<Quadrature>(f, startArgs, deltas, level) *
-        (detail::calcArea(deltas, std::make_index_sequence<Quadrature::dim>{}) / (1 << Quadrature::dim));
+typename detail::ExtructedIntegralTypes<Callable>::ResultType constexpr integrate_with_decomposition(
+    const Callable &f, const std::tuple<ArgsType...> &startArgs, const std::tuple<DeltasType...> &deltas,
+    size_t fineness) {
+    return quadrature_sum_with_decomposition<Quadrature>(f, startArgs, deltas, fineness) *
+           detail::calcArea(deltas, std::make_index_sequence<Quadrature::dim>{});
 }
 
 template <typename Quadrature, typename Callable, typename StopCriterion>
 requires std::invocable<StopCriterion, typename detail::ExtructedIntegralTypes<Callable>::ResultType,
                         typename detail::ExtructedIntegralTypes<Callable>::ResultType>
 constexpr std::pair<typename detail::ExtructedIntegralTypes<Callable>::ResultType, size_t>
-adaptive_quadrature_sum(const Callable &f, const typename detail::ExtructedIntegralTypes<Callable>::ArgsTuple &startArgs,
-                   const typename detail::ExtructedIntegralTypes<Callable>::DeltasTuple &deltas,
-                   StopCriterion &&stopCriterion, size_t max_level) {
+adaptive_quadrature_sum(const Callable &f,
+                        const typename detail::ExtructedIntegralTypes<Callable>::ArgsTuple &startArgs,
+                        const typename detail::ExtructedIntegralTypes<Callable>::DeltasTuple &deltas,
+                        StopCriterion &&stopCriterion, size_t max_level) {
     decltype(auto) result = quadrature_sum<Quadrature>(f, startArgs, deltas);
     if (max_level == 1)
         return {result, 1};
     size_t level = 2;
     decltype(auto) result_adaptive = quadrature_sum_with_decomposition<Quadrature>(f, startArgs, deltas, level);
-    while (!std::invoke(std::forward<StopCriterion>(stopCriterion), result, result_adaptive) && (level < max_level))
-    {
+    while (!std::invoke(std::forward<StopCriterion>(stopCriterion), result, result_adaptive) && (level < max_level)) {
         result = result_adaptive;
         result_adaptive = quadrature_sum_with_decomposition<Quadrature>(f, startArgs, deltas, ++level);
     }
@@ -220,12 +220,16 @@ adaptive_integrate(const Callable &f, const typename detail::ExtructedIntegralTy
     decltype(auto) result = integrate<Quadrature>(f, startArgs, deltas);
     if (max_level == 1)
         return {result, 1};
+    size_t fineness = 2;
     size_t level = 2;
-    decltype(auto) result_adaptive = integrate_with_decomposition<Quadrature>(f, startArgs, deltas, level);
+    decltype(auto) result_adaptive = integrate_with_decomposition<Quadrature>(f, startArgs, deltas, fineness);
     while (!std::invoke(std::forward<StopCriterion>(stopCriterion), result, result_adaptive) && (level < max_level))
         {
+            // стратегия обновления подразбиения
+            fineness = ++level;
+            // шаг адаптивного метода
             result = result_adaptive;
-            result_adaptive = integrate_with_decomposition<Quadrature>(f, startArgs, deltas, ++level);
+            result_adaptive = integrate_with_decomposition<Quadrature>(f, startArgs, deltas, fineness);
         }
         return {result_adaptive, level};
     }

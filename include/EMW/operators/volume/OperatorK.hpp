@@ -22,11 +22,12 @@ namespace EMW::Operators::Volume {
 class operator_K_over_cube_mesh {
     const Mesh::VolumeMesh::CubeMesh &mesh;
     Types::complex_d wave_number;
+    Types::complex_d wave_number_sqr;
     Types::index nearnes_tresholds = 3;
-    Types::scalar rTol = 1e-6;
+    Types::scalar rTol = 1e-6; // 1e-6
     Types::scalar aTol = 1e-20;
-    size_t max_integration_level = 4;
-    size_t max_6d_integration_level = 2;
+    size_t max_integration_level = 4;    // 4
+    size_t max_6d_integration_level = 2; // 2
 
     struct Idx3d {
         size_t Nx, Ny, Nz;
@@ -89,6 +90,14 @@ class operator_K_over_cube_mesh {
     Types::complex_d matrix_3_coef(Types::index k, Types::index p) const;
 
     /**
+     * Расчет объемного члена оператора с выделением особенности
+     *
+     * @param k_corner, p_corner вершины кубов с минимальными значениями координат
+     */
+    Types::complex_d volume_part_singularity_extraction(const Types::point_t &k_corner, const Types::point_t &k_center,
+                                                        const Types::point_t &p_corner) const;
+
+    /**
      * Расчет матрицы взаимодействия двух кубов при достаточно большом расстоянии между ними
      * Достаточно большое расстояние <=> grad_x div_x F(x-y) достаточно гладкая функция
      *
@@ -100,7 +109,7 @@ class operator_K_over_cube_mesh {
     Types::Matrix3c far_zone_interaction(Types::index k, Types::index p) const;
 
     explicit operator_K_over_cube_mesh(Types::complex_d k, const Mesh::VolumeMesh::CubeMesh &mesh)
-        : mesh(mesh), wave_number(k){};
+        : mesh(mesh), wave_number(k), wave_number_sqr(k * k){};
 
     /**
      * Аппроксимация объемного оператора методом Галёркина.
@@ -118,7 +127,6 @@ class operator_K_over_cube_mesh {
      */
     [[nodiscard]] Math::LinAgl::Matrix::TripleToeplitzBlock<Types::complex_d>
     compute_galerkin_matrix(Types::scalar basis_fucntion_module) const;
-
 
     /**
      * Расчет оператор K методом Галеркина для одинаковой коллекции кубов, которые отличаются начлаьными индексами

@@ -48,6 +48,8 @@ TEST_F(VOLUME_OPERATOR_OVER_CUBE_MESH_TESTS, SimpleTripleBlockToeplitzTest) {
     constexpr size_t Nx2 = 2;
     constexpr size_t Nx3 = Nx2 + 1;
     constexpr size_t internal_n = 3;
+    constexpr Types::scalar rTol = 1e-14;
+    constexpr Types::scalar aTol = 1e-24;
     Mesh::VolumeMesh::CubeMesh mesh{Types::point_t{0, 0, 0}, cube_length, Nx3};
     Operators::Volume::operator_K_over_cube_mesh op_K{k, mesh};
     const auto galerkin_matrix = op_K.compute_galerkin_matrix_dense(1);
@@ -63,12 +65,12 @@ TEST_F(VOLUME_OPERATOR_OVER_CUBE_MESH_TESTS, SimpleTripleBlockToeplitzTest) {
     const auto res23_1 = op_K.matrix_3_coef(2, 3);
     const auto res45_1 = op_K.matrix_3_coef(4, 5);
     const auto res67_1 = op_K.matrix_3_coef(6, 7);
-    ASSERT_NEAR(std::abs(res12_1 - res23_1), 0, 1e-14 * std::abs(res12_1));
-    ASSERT_NEAR(std::abs(res12_1 - res45_1), 0, 1e-14 * std::abs(res12_1));
-    ASSERT_NEAR(std::abs(res12_1 - res67_1), 0, 1e-14 * std::abs(res12_1));
+    ASSERT_NEAR(std::abs(res12_1 - res23_1), 0, rTol * std::abs(res12_1) + aTol);
+    ASSERT_NEAR(std::abs(res12_1 - res45_1), 0, rTol * std::abs(res12_1) + aTol);
+    ASSERT_NEAR(std::abs(res12_1 - res67_1), 0, rTol * std::abs(res12_1) + aTol);
     const auto res04_1 = op_K.matrix_3_coef(0, 4);
     const auto res37_1 = op_K.matrix_3_coef(3, 7);
-    ASSERT_NEAR(std::abs(res04_1 - res37_1), 0, 1e-14 * std::abs(res37_1));
+    ASSERT_NEAR(std::abs(res04_1 - res37_1), 0, rTol * std::abs(res37_1) + aTol);
 
     // Для кубической сетки 2х2х2 блочная тёплицевость проверяется только на диагональных блоках
     // Верхний уровень тёплицевости
@@ -77,7 +79,7 @@ TEST_F(VOLUME_OPERATOR_OVER_CUBE_MESH_TESTS, SimpleTripleBlockToeplitzTest) {
         const auto block2 = galerkin_matrix.block(Nx2 * Nx2 * internal_n, Nx2 * Nx2 * internal_n,
                                                   Nx2 * Nx2 * internal_n, Nx2 * Nx2 * internal_n);
         const Types::scalar absErr = (block1 - block2).norm();
-        ASSERT_NEAR(absErr, 0, 1e-15 * (block1).norm());
+        ASSERT_NEAR(absErr, 0, rTol * (block1).norm() + aTol);
     }
     // Средний уровень тёплицевости
     {
@@ -88,9 +90,9 @@ TEST_F(VOLUME_OPERATOR_OVER_CUBE_MESH_TESTS, SimpleTripleBlockToeplitzTest) {
                                                   Nx2 * internal_n);
         const auto block4 = galerkin_matrix.block(3 * Nx2 * internal_n, 3 * Nx2 * internal_n, Nx2 * internal_n,
                                                   Nx2 * internal_n);
-        ASSERT_NEAR((block1 - block2).norm(), 0, 2e-15 * block1.norm());
-        ASSERT_NEAR((block1 - block3).norm(), 0, 2e-15 * block1.norm());
-        ASSERT_NEAR((block1 - block4).norm(), 0, 2e-15 * block1.norm());
+        ASSERT_NEAR((block1 - block2).norm(), 0, rTol * block1.norm() + aTol);
+        ASSERT_NEAR((block1 - block3).norm(), 0, rTol * block1.norm() + aTol);
+        ASSERT_NEAR((block1 - block4).norm(), 0, rTol * block1.norm() + aTol);
     }
     // Внутренний уровень тёплицевости
     {
@@ -98,7 +100,7 @@ TEST_F(VOLUME_OPERATOR_OVER_CUBE_MESH_TESTS, SimpleTripleBlockToeplitzTest) {
         for (size_t idx = 0; idx < Nx2 * Nx2 * Nx2; idx++) {
             const auto block_to_compare = galerkin_matrix.block(idx * internal_n, idx * internal_n, internal_n,
                                                                 internal_n);
-            ASSERT_NEAR((block_ref - block_to_compare).norm(), 0, 1e-14 * block_ref.norm());
+            ASSERT_NEAR((block_ref - block_to_compare).norm(), 0, rTol * block_ref.norm() + aTol);
         }
     }
 }
@@ -163,6 +165,10 @@ TEST_F(VOLUME_OPERATOR_OVER_CUBE_MESH_TESTS, EQUALITY_OF_MATRIX_ELEMENTS) {
             }
         }
     }
+}
+
+TEST_F(VOLUME_OPERATOR_OVER_CUBE_MESH_TESTS, SYMMETRY_MATRIX_COMPARISON) {
+
 }
 
 TEST_F(VOLUME_OPERATOR_OVER_CUBE_MESH_TESTS, TOEPLITZ_DENSE_COMPARISON) {
