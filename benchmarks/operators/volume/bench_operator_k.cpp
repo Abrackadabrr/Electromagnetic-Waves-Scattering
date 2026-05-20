@@ -17,7 +17,7 @@ public:
     void SetUp(const benchmark::State &state) override {
         Eigen::setNbThreads(1);
 
-        constexpr Types::index nodes_per_axis = 41;
+        constexpr Types::index nodes_per_axis = 81;
         constexpr Types::scalar cube_length = 1;
         const Types::scalar mesh_one_axis_size = cube_length / (nodes_per_axis - 1);
         const Types::scalar basis_fn_norm = 1. / (mesh_one_axis_size * std::sqrt(mesh_one_axis_size));
@@ -29,14 +29,14 @@ public:
             (nodes_per_axis - 1) * mesh_one_axis_size,
             nodes_per_axis, nodes_per_axis, nodes_per_axis);
 
-        constexpr Types::complex_d k{2 * M_PI, 0};
+        constexpr Types::complex_d k{2 * M_PI / 0.3, 0};
 
         operator_k = new Operators::Volume::operator_K_over_cube_mesh(k, mesh_);
 
         my_idx = 0;
         near_idx = mesh_.cube_idx(1, 1, 1);
-        middle_idx = mesh_.cube_idx(mesh_.nCubesX() / 2, 0, 0);
-        far_idx = mesh_.cube_idx(mesh_.nCubesX() - 1, mesh_.nCubesY() - 1, mesh_.nCubesZ() - 1);
+        middle_idx = mesh_.cube_idx(4, 0, 0);
+        far_idx = mesh_.cube_idx(5, 5, 0);
     }
 
 protected:
@@ -87,7 +87,10 @@ BENCHMARK_DEFINE_F(OperatorKBench, MiddleInteraction)(benchmark::State &state) {
  */
 BENCHMARK_DEFINE_F(OperatorKBench, FatInteraction)(benchmark::State &state) {
     for (auto _ : state) {
-        auto result = operator_k->galerkin_block_for_cubes(my_idx, far_idx);
+        size_t new_far = far_idx;
+        auto result = operator_k->far_zone_interaction(my_idx, new_far, 3);
+        // auto res2 = operator_k->far_zone_interaction(my_idx, new_far, 2);
+        // std::cout << (res2 - result).norm() / result.norm() << std::endl;
         benchmark::DoNotOptimize(result.data());
         benchmark::ClobberMemory();
     }

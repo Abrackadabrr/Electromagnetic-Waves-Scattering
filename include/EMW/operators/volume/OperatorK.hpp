@@ -23,7 +23,7 @@ class operator_K_over_cube_mesh {
     const Mesh::VolumeMesh::CubeMesh &mesh;
     Types::complex_d wave_number;
     Types::complex_d wave_number_sqr;
-    Types::index nearnes_tresholds = 3;
+    Types::index nearnes_tresholds = 2;  // согласно тестам в integration_modes_study
     Types::scalar rTol = 1e-6; // 1e-6
     Types::scalar aTol = 1e-20;
     size_t max_integration_level = 4;    // 4
@@ -90,12 +90,21 @@ class operator_K_over_cube_mesh {
     Types::complex_d matrix_3_coef(Types::index k, Types::index p) const;
 
     /**
-     * Расчет объемного члена оператора с выделением особенности
+     * Расчет объемного члена оператора с выделением особенности (между двумя кубами: с индексами k и p)
      *
      * @param k_corner, p_corner вершины кубов с минимальными значениями координат
+     * @param k_center центр куба k
      */
     Types::complex_d volume_part_singularity_extraction(const Types::point_t &k_corner, const Types::point_t &k_center,
                                                         const Types::point_t &p_corner) const;
+
+    Types::complex_d volume_part_naive(const Types::point_t &k_corner, const Types::point_t &p_corner) const;
+
+    Types::Matrix3c surface_part_singularity_extraction(const Mesh::VolumeCells::IndexedCube &k_cube,
+                                                        const Mesh::VolumeCells::IndexedCube &p_cube) const;
+
+    Types::Matrix3c surface_part_naive(const Mesh::VolumeCells::IndexedCube &cube_k,
+                                       const Mesh::VolumeCells::IndexedCube &cube_p) const;
 
     /**
      * Расчет матрицы взаимодействия двух кубов при достаточно большом расстоянии между ними
@@ -106,7 +115,7 @@ class operator_K_over_cube_mesh {
      *
      * @return блок взаимодействия между кубами
      */
-    Types::Matrix3c far_zone_interaction(Types::index k, Types::index p) const;
+    Types::Matrix3c far_zone_interaction(Types::index k, Types::index p, size_t integration_level = 3) const;
 
     explicit operator_K_over_cube_mesh(Types::complex_d k, const Mesh::VolumeMesh::CubeMesh &mesh)
         : mesh(mesh), wave_number(k), wave_number_sqr(k * k){};

@@ -111,4 +111,22 @@ Types::scalar calculateRSP(const Types::Vector3d &tau, Types::complex_d k, const
     return Math::Constants::inverse_4PI<Types::scalar>() * result.squaredNorm();
 }
 
+Types::scalar calculateRSP_kahan(const Types::Vector3d &tau, Types::complex_d k, const std::string &field_name,
+                                 const Mesh::VolumeMesh::CubeMeshWithData &cube_mesh) {
+    auto &&j_data = cube_mesh.getVectorData(field_name);
+    auto &&eps_data = cube_mesh.getScalarData("eps");
+    Types::Vector3c result = Types::Vector3c::Zero();
+    Types::Vector3c residual = Types::Vector3c::Zero();
+    for (size_t i = 0; i < cube_mesh.getCells().size(); i++) {
+        Types::Vector3c term = sigmaOverCube(k, tau, cube_mesh.leftDownCorner(i), cube_mesh.dx(), cube_mesh.dy(),
+                                             cube_mesh.dz(), j_data[i], Types::Vector3c::Zero(), eps_data[i]) -
+                               residual;
+        Types::Vector3c new_sum = result + term;
+        Types::Vector3c the_value_before_residual = new_sum - result;
+        residual = the_value_before_residual - term;
+        result = new_sum;
+    }
+    return Math::Constants::inverse_4PI<Types::scalar>() * result.squaredNorm();
+}
+
 } // namespace EMW::ESA

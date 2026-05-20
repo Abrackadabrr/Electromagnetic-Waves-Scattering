@@ -15,6 +15,9 @@ template <typename scalar_t>
 using matrix_t = Math::Fourier::TripleToeplitz3x3Fourier<scalar_t>;
 
 template <typename scalar_t>
+using matrix_parallel_t = Math::Fourier::TripleToeplitz3x3Fourier<scalar_t>;
+
+template <typename scalar_t>
 Types::VectorX<scalar_t> direct_matvec(const tensor_t<scalar_t> &levels, const Types::VectorX<scalar_t> &x) {
     const Types::index nx = (levels.levels_x() + 1) / 2;
     const Types::index ny = (levels.levels_y() + 1) / 2;
@@ -94,6 +97,8 @@ TEST(TRIPLE_TOEPLITZ_3X3_FOURIER, MATCHES_DIRECT_REAL) {
     }
 
     matrix_t<Types::scalar> matrix(levels);
+    matrix_parallel_t<Types::scalar> m_par(levels);
+
     Types::VectorX<Types::scalar> x = Types::VectorX<Types::scalar>::Zero(matrix.cols());
 
     for (Types::index i = 0; i < static_cast<Types::index>(x.size()); ++i) {
@@ -101,9 +106,11 @@ TEST(TRIPLE_TOEPLITZ_3X3_FOURIER, MATCHES_DIRECT_REAL) {
     }
 
     const auto y_fft = matrix * x;
+    const auto y_fft_par = m_par * x;
     const auto y_direct = direct_matvec(levels, x);
 
-    ASSERT_NEAR((y_fft - y_direct).norm(), 0.0, 1e-10);
+    ASSERT_NEAR((y_fft - y_direct).norm() / y_direct.norm(), 0.0, 1e-10);
+    ASSERT_NEAR((y_fft_par - y_direct).norm() / y_direct.norm(), 0.0, 1e-10);
 }
 
 TEST(TRIPLE_TOEPLITZ_3X3_FOURIER, MATCHES_DIRECT_COMPLEX_NON_CUBIC_GRID) {

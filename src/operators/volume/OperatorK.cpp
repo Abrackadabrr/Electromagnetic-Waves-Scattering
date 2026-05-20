@@ -14,11 +14,12 @@
 namespace EMW::Operators::Volume {
 namespace Gl = DecartIntegration::GaussLegendre;
 
-Types::Matrix3c operator_K_over_cube_mesh::matrix_2_coef(Types::index k, Types::index p) const {
+Types::Matrix3c
+operator_K_over_cube_mesh::surface_part_singularity_extraction(const Mesh::VolumeCells::IndexedCube &cube_k,
+                                                               const Mesh::VolumeCells::IndexedCube &cube_p) const {
     Types::Matrix3c result = Types::Matrix3c::Zero();
-    const auto &cube_k = mesh.getCells()[k];
-    const auto &cube_p = mesh.getCells()[p];
-    const auto h = mesh.h();
+    const size_t singular_integration_level = 10; // 2d
+    const size_t bounded_integration_level = 4; // 4d
 
     for (Types::index i = 0; i < 3; i++) {
         Containers::array<Mesh::IndexedCell, 2> faces_k;
@@ -34,65 +35,90 @@ Types::Matrix3c operator_K_over_cube_mesh::matrix_2_coef(Types::index k, Types::
                                         Mesh::VolumeCells::IndexedCube::Direction::Plus, mesh.getNodes());
 
             // и тут нужно взять четыре одинаковых по вайбу интеграла
-            for (size_t face_k_idx = 0; face_k_idx < 2; face_k_idx++)
+            for (size_t face_k_idx = 0; face_k_idx < 2; face_k_idx++) {
                 for (size_t face_p_idx = 0; face_p_idx < 2; face_p_idx++) {
                     // Делаем.
                     Types::scalar multiplier = face_k_idx == face_p_idx ? 1 : -1;
                     auto face_k = faces_k[face_k_idx];
                     auto face_p = faces_p[face_p_idx];
 
-                    if ((cube_k.center_ - cube_p.center_).norm() < nearnes_tresholds * h) {
-                        // то интегрируемся с выделением особенности
-                        // 1. Интеграл от ньютонова потенциала 2д ячейки
+                    // 1. Интеграл от ньютонова потенциала 2д ячейки
 
-                        const auto analytical_integrand = [&face_k, &face_p](Types::scalar x, Types::scalar y) {
-                            const auto point = face_p.parametrization(x, y);
-                            const auto integrand_value =
-                                Math::Integration::Analytical::integrate_1_div_r(point, face_k) *
-                                face_p.multiplier(x, y);
-                            return integrand_value;
-                        };
-                        const auto singular_part =
-                            DecartIntegration::adaptive_integrate<DecartIntegration::GaussLegendre::Quadrature<5, 5>>(
-                                analytical_integrand, {0, 0}, {1, 1}, scalar_stop_criterion<Types::scalar>(rTol, aTol),
-                                10);
+                    const auto analytical_integrand = [&face_k, &face_p](Types::scalar x, Types::scalar y) {
+                        const auto point = face_p.parametrization(x, y);
+                        const auto integrand_value =
+                            Math::Integration::Analytical::integrate_1_div_r(point, face_k) * face_p.multiplier(x, y);
+                        return integrand_value;
+                    };
+                    const auto singular_part =
+                        DecartIntegration::adaptive_integrate<DecartIntegration::GaussLegendre::Quadrature<5, 5>>(
+                            analytical_integrand, {0, 0}, {1, 1}, scalar_stop_criterion<Types::scalar>(rTol, aTol),
+                            singular_integration_level);
 
-                        result(i, j) +=
-                            multiplier * Math::Constants::inverse_4PI<Types::scalar>() * singular_part.first;
+                    result(i, j) += multiplier * Math::Constants::inverse_4PI<Types::scalar>() * singular_part.first;
 
-                        // 2. Интеграл от ограниченного остатка
-                        const auto residual_integrand = [&face_k, &face_p,
-                                                         wn = wave_number](Types::scalar x1, Types::scalar y1,
-                                                                           Types::scalar x2, Types::scalar y2) {
-                            const auto x = face_p.parametrization(x1, y1);
-                            const auto y = face_k.parametrization(x2, y2);
-                            return Helmholtz::F_bounded_part(wn, x, y) * face_p.multiplier(x1, y1) *
-                                   face_k.multiplier(x2, y2);
-                        };
-                        const auto regular_part = DecartIntegration::adaptive_integrate<
-                            DecartIntegration::GaussLegendre::Quadrature<4, 4, 4, 4>>(
+                    // 2. Интеграл от ограниченного остатка
+                    const auto residual_integrand = [&face_k, &face_p,
+                                                     wn = wave_number](Types::scalar x1, Types::scalar y1,
+                                                                       Types::scalar x2, Types::scalar y2) {
+                        const auto x = face_p.parametrization(x1, y1);
+                        const auto y = face_k.parametrization(x2, y2);
+                        return Helmholtz::F_bounded_part(wn, x, y) * face_p.multiplier(x1, y1) *
+                               face_k.multiplier(x2, y2);
+                    };
+                    const auto regular_part =
+                        DecartIntegration::adaptive_integrate<DecartIntegration::GaussLegendre::Quadrature<4, 4, 4, 4>>(
                             residual_integrand, {0, 0, 0, 0}, {1, 1, 1, 1},
-                            scalar_stop_criterion<Types::complex_d>(rTol, aTol), max_integration_level);
-                        result(i, j) += multiplier * regular_part.first;
-
-                    } else {
-                        // Иначе интегрируемся без выделения особенности сразу
-                        const auto integrand = [&face_k, &face_p, wn = wave_number](Types::scalar x1, Types::scalar y1,
-                                                                                    Types::scalar x2,
-                                                                                    Types::scalar y2) {
-                            const auto x = face_p.parametrization(x1, y1);
-                            const auto y = face_k.parametrization(x2, y2);
-                            return Helmholtz::F(wn, x, y) * face_p.multiplier(x1, y1) * face_k.multiplier(x2, y2);
-                        };
-
-                        result(i, j) +=
-                            multiplier * DecartIntegration::adaptive_integrate<
-                                             DecartIntegration::GaussLegendre::Quadrature<4, 4, 4, 4>>(
-                                             integrand, {0, 0, 0, 0}, {1, 1, 1, 1},
-                                             scalar_stop_criterion<Types::complex_d>(rTol, aTol), max_integration_level)
-                                             .first;
-                    }
+                            scalar_stop_criterion<Types::complex_d>(rTol, aTol), bounded_integration_level);
+                    result(i, j) += multiplier * regular_part.first;
                 }
+            }
+        }
+    }
+    return result;
+}
+
+Types::Matrix3c operator_K_over_cube_mesh::surface_part_naive(const Mesh::VolumeCells::IndexedCube &cube_k,
+                                                              const Mesh::VolumeCells::IndexedCube &cube_p) const {
+    Types::Matrix3c result = Types::Matrix3c::Zero();
+    const size_t integration_level = 4; // 4d
+
+    for (Types::index i = 0; i < 3; i++) {
+        Containers::array<Mesh::IndexedCell, 2> faces_k;
+        faces_k[0] = cube_k.getFace(static_cast<Mesh::VolumeCells::IndexedCube::Axis>(i),
+                                    Mesh::VolumeCells::IndexedCube::Direction::Minus, mesh.getNodes());
+        faces_k[1] = cube_k.getFace(static_cast<Mesh::VolumeCells::IndexedCube::Axis>(i),
+                                    Mesh::VolumeCells::IndexedCube::Direction::Plus, mesh.getNodes());
+        for (Types::index j = 0; j < 3; j++) {
+            Containers::array<Mesh::IndexedCell, 2> faces_p;
+            faces_p[0] = cube_p.getFace(static_cast<Mesh::VolumeCells::IndexedCube::Axis>(j),
+                                        Mesh::VolumeCells::IndexedCube::Direction::Minus, mesh.getNodes());
+            faces_p[1] = cube_p.getFace(static_cast<Mesh::VolumeCells::IndexedCube::Axis>(j),
+                                        Mesh::VolumeCells::IndexedCube::Direction::Plus, mesh.getNodes());
+
+            // и тут нужно взять четыре одинаковых по вайбу интеграла
+            for (size_t face_k_idx = 0; face_k_idx < 2; face_k_idx++) {
+                for (size_t face_p_idx = 0; face_p_idx < 2; face_p_idx++) {
+                    Types::scalar multiplier = face_k_idx == face_p_idx ? 1 : -1;
+                    auto face_k = faces_k[face_k_idx];
+                    auto face_p = faces_p[face_p_idx];
+
+                    // Интегрируемся без выделения особенности сразу
+                    const auto integrand = [&face_k, &face_p, wn = wave_number](Types::scalar x1, Types::scalar y1,
+                                                                                Types::scalar x2, Types::scalar y2) {
+                        const auto x = face_p.parametrization(x1, y1);
+                        const auto y = face_k.parametrization(x2, y2);
+                        return Helmholtz::F(wn, x, y) * face_p.multiplier(x1, y1) * face_k.multiplier(x2, y2);
+                    };
+
+                    result(i, j) +=
+                        multiplier *
+                        DecartIntegration::adaptive_integrate<DecartIntegration::GaussLegendre::Quadrature<4, 4, 4, 4>>(
+                            integrand, {0, 0, 0, 0}, {1, 1, 1, 1}, scalar_stop_criterion<Types::complex_d>(rTol, aTol),
+                            integration_level)
+                            .first;
+                }
+            }
         }
     }
     return result;
@@ -102,7 +128,7 @@ Types::complex_d operator_K_over_cube_mesh::volume_part_singularity_extraction(c
                                                                                const Types::point_t &k_center,
                                                                                const Types::point_t &p_corner) const {
     Types::complex_d result{0., 0.};
-    Types::index regular_part_max_integration_level = 2;  // 6d
+    Types::index regular_part_max_integration_level = 3;  // 6d
     Types::index singular_part_max_integration_level = 4; // 3d
 
     // интегрирование с выделением особенности
@@ -137,14 +163,10 @@ Types::complex_d operator_K_over_cube_mesh::volume_part_singularity_extraction(c
     return wave_number_sqr * result;
 }
 
-Types::complex_d operator_K_over_cube_mesh::matrix_3_coef(Types::index k, Types::index p) const {
-    const auto &k_corner = mesh.leftDownCorner(k);
-    const auto &p_corner = mesh.leftDownCorner(p);
-    const auto &k_center = mesh.getCells()[k].center_;
-    const auto h = mesh.h();
-
-    if ((k_corner - p_corner).norm() < nearnes_tresholds * h)
-        return volume_part_singularity_extraction(k_corner, k_center, p_corner);
+Types::complex_d operator_K_over_cube_mesh::volume_part_naive(const Types::point_t &k_corner,
+                                                              const Types::point_t &p_corner) const {
+    // эксперименты показали, что средне-дальней зоне, можно интегрировать сразу с разбиением на 2
+    constexpr size_t integration_level_for_far_integration = 2;
 
     // Интегрирование без выделения особенности:
     // просто берем фундаментальное решение уравнения Гельмгольца
@@ -153,18 +175,15 @@ Types::complex_d operator_K_over_cube_mesh::matrix_3_coef(Types::index k, Types:
                                               Types::scalar y2, Types::scalar z2) {
         return Helmholtz::F(wn, {x1, y1, z1}, {x2, y2, z2});
     };
-    // эксперимента показали, что средне-дальней зоне, можно интегрировать сразу с разбиением на 2
-    constexpr size_t integration_level_for_far_integration = 2;
-    return wave_number_sqr *
-           DecartIntegration::integrate_with_decomposition< // ТУТ НЕ АДАПТИВНОЕ ИНТЕГРИРОВАНИЕ!
-               DecartIntegration::GaussLegendre::Quadrature<3, 3, 3, 3, 3, 3>>(
-               integrand,
-               std::tuple{k_corner.x(), k_corner.y(), k_corner.z(), p_corner.x(), p_corner.y(), p_corner.z()},
-               std::tuple{mesh.dx(), mesh.dy(), mesh.dz(), mesh.dx(), mesh.dy(), mesh.dz()},
-               integration_level_for_far_integration);
+    auto res = DecartIntegration::adaptive_integrate<DecartIntegration::GaussLegendre::Quadrature<3, 3, 3, 3, 3, 3>>(
+        integrand, std::tuple{k_corner.x(), k_corner.y(), k_corner.z(), p_corner.x(), p_corner.y(), p_corner.z()},
+        std::tuple{mesh.dx(), mesh.dy(), mesh.dz(), mesh.dx(), mesh.dy(), mesh.dz()},
+        scalar_stop_criterion<Types::complex_d>(rTol, aTol), integration_level_for_far_integration);
+    return wave_number_sqr * res.first;
 }
 
-Types::Matrix3c operator_K_over_cube_mesh::far_zone_interaction(Types::index k, Types::index p) const {
+Types::Matrix3c operator_K_over_cube_mesh::far_zone_interaction(Types::index k, Types::index p,
+                                                                size_t integration_level) const {
     // Просто интегрируем выражение для поля в дальней зоне
     const auto &k_corner = mesh.leftDownCorner(k);
     const auto &p_corner = mesh.leftDownCorner(p);
@@ -180,20 +199,43 @@ Types::Matrix3c operator_K_over_cube_mesh::far_zone_interaction(Types::index k, 
             DecartIntegration::adaptive_integrate<DecartIntegration::GaussLegendre::Quadrature<2, 2, 2, 2, 2, 2>>(
                 integrand, {k_corner.x(), k_corner.y(), k_corner.z(), p_corner.x(), p_corner.y(), p_corner.z()},
                 {mesh.dx(), mesh.dy(), mesh.dz(), mesh.dx(), mesh.dy(), mesh.dz()}, vector_stop_criterion(rTol, aTol),
-                max_6d_integration_level);
+                integration_level);
         interaction_block.col(i) = result;
     }
     return Math::Constants::inverse_4PI<Types::scalar>() * interaction_block;
 }
 
+Types::complex_d operator_K_over_cube_mesh::matrix_3_coef(Types::index k, Types::index p) const {
+    const auto &k_corner = mesh.leftDownCorner(k);
+    const auto &p_corner = mesh.leftDownCorner(p);
+    const auto &k_center = mesh.getCells()[k].center_;
+    const auto h = mesh.h();
+
+    if ((k_corner - p_corner).norm() < nearnes_tresholds * h)
+        return volume_part_singularity_extraction(k_corner, k_center, p_corner);
+
+    return volume_part_naive(k_corner, p_corner);
+}
+
+Types::Matrix3c operator_K_over_cube_mesh::matrix_2_coef(Types::index k, Types::index p) const {
+    const Types::scalar h = mesh.h();
+    const auto &cube_k = mesh.getCells()[k];
+    const auto &cube_p = mesh.getCells()[p];
+    if ((cube_k.center_ - cube_p.center_).norm() < nearnes_tresholds * h) {
+        return surface_part_singularity_extraction(cube_k, cube_p);
+    }
+    return surface_part_naive(cube_k, cube_p);
+}
+
 // ------------------ Matrix Assembling ------------------ //
 
 Types::Matrix3c operator_K_over_cube_mesh::galerkin_block_for_cubes(size_t k, size_t p) const {
-#if 0
+#if 1
     // 1. Если кубы далеко, то считаем через far_zone
+    // в adaptive_integration_study получил, что на таких расстояниях ошибка около 3e-6
     if (mesh.distance(k, p) > 7 * mesh.h())
         // Ну например 7 h ...
-        return far_zone_interaction(k, p);
+        return far_zone_interaction(k, p, 2);
 #endif
 
     // 2. Иначе считаем через преобразование сингулярного оператора

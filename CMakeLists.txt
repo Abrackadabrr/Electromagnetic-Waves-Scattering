@@ -8,8 +8,8 @@ set(EMW_LIBRARIES PARENT_SCOPE)
 
 list(APPEND EMW_LIBRARIES ${EMW_LIBRARY_NAME})
 
-add_subdirectory(src)
 add_subdirectory(third_party)
+add_subdirectory(src)
 
 # Do we need VTK visualization
 if (EMW_USE_VTK_VISUALIZATION)
