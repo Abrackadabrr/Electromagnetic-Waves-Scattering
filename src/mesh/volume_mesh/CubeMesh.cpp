@@ -63,7 +63,7 @@ CubeMesh::CubeMesh(Types::Vector3d minCorner, Types::scalar xs, Types::scalar ys
     }
 }
 
-Eigen::PermutationMatrix<Eigen::Dynamic> CubeMesh::getPermutation(size_t Nx, size_t Ny, size_t Nz) const {
+Eigen::PermutationMatrix<Eigen::Dynamic> CubeMesh::getPermutation(size_t Nx, size_t Ny, size_t Nz) const noexcept {
     // Создаем матрицу перестановки
     Eigen::PermutationMatrix<Eigen::Dynamic> p_mat(3 * cells_.size());
     decltype(auto) p_mat_cubes = getPermutationForCubes(Nx, Ny, Nz);
@@ -75,7 +75,7 @@ Eigen::PermutationMatrix<Eigen::Dynamic> CubeMesh::getPermutation(size_t Nx, siz
     return p_mat.transpose();
 }
 
-Eigen::PermutationMatrix<Eigen::Dynamic> CubeMesh::getPermutationForCubes(size_t Nx, size_t Ny, size_t Nz) const {
+Eigen::PermutationMatrix<Eigen::Dynamic> CubeMesh::getPermutationForCubes(size_t Nx, size_t Ny, size_t Nz) const  noexcept{
     // Создаем матрицу перестановки
     Eigen::PermutationMatrix<Eigen::Dynamic> p_mat(cells_.size());
 

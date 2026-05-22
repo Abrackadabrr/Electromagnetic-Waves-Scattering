@@ -23,8 +23,8 @@ class operator_K_over_cube_mesh {
     const Mesh::VolumeMesh::CubeMesh &mesh;
     Types::complex_d wave_number;
     Types::complex_d wave_number_sqr;
-    Types::index nearnes_tresholds = 2;  // согласно тестам в integration_modes_study
-    Types::scalar rTol = 1e-6; // 1e-6
+    Types::index nearnes_tresholds = 2; // согласно тестам в integration_modes_study
+    Types::scalar rTol = 1e-6;          // 1e-6
     Types::scalar aTol = 1e-20;
     size_t max_integration_level = 4;    // 4
     size_t max_6d_integration_level = 2; // 2
@@ -77,7 +77,7 @@ class operator_K_over_cube_mesh {
      * @note Интегрирование идет с выделением особенности для близких кубов.
      * Если расстояние между кубами большое (в некотором смысле), то там идёт интегрирование без выделения особенности.
      */
-    Types::Matrix3c matrix_2_coef(Types::index k, Types::index p) const;
+    Types::Matrix3c matrix_2_coef(Types::index k, Types::index p) const noexcept;
 
     /**
      * Расчет объемного интеграла по двум кубам.
@@ -87,7 +87,7 @@ class operator_K_over_cube_mesh {
      * @note Интегрирование идет с выделением особенности для близких кубов.
      * Если расстояние между кубами большое (в некотором смысле), то там идёт интегрирование без выделения особенности.
      */
-    Types::complex_d matrix_3_coef(Types::index k, Types::index p) const;
+    Types::complex_d matrix_3_coef(Types::index k, Types::index p) const noexcept;
 
     /**
      * Расчет объемного члена оператора с выделением особенности (между двумя кубами: с индексами k и p)
@@ -96,15 +96,15 @@ class operator_K_over_cube_mesh {
      * @param k_center центр куба k
      */
     Types::complex_d volume_part_singularity_extraction(const Types::point_t &k_corner, const Types::point_t &k_center,
-                                                        const Types::point_t &p_corner) const;
+                                                        const Types::point_t &p_corner) const noexcept;
 
-    Types::complex_d volume_part_naive(const Types::point_t &k_corner, const Types::point_t &p_corner) const;
+    Types::complex_d volume_part_naive(const Types::point_t &k_corner, const Types::point_t &p_corner) const noexcept;
 
     Types::Matrix3c surface_part_singularity_extraction(const Mesh::VolumeCells::IndexedCube &k_cube,
-                                                        const Mesh::VolumeCells::IndexedCube &p_cube) const;
+                                                        const Mesh::VolumeCells::IndexedCube &p_cube) const noexcept;
 
     Types::Matrix3c surface_part_naive(const Mesh::VolumeCells::IndexedCube &cube_k,
-                                       const Mesh::VolumeCells::IndexedCube &cube_p) const;
+                                       const Mesh::VolumeCells::IndexedCube &cube_p) const noexcept;
 
     /**
      * Расчет матрицы взаимодействия двух кубов при достаточно большом расстоянии между ними
@@ -115,27 +115,29 @@ class operator_K_over_cube_mesh {
      *
      * @return блок взаимодействия между кубами
      */
-    Types::Matrix3c far_zone_interaction(Types::index k, Types::index p, size_t integration_level = 3) const;
+    Types::Matrix3c far_zone_interaction(Types::index k, Types::index p, size_t integration_level = 3) const noexcept;
 
     explicit operator_K_over_cube_mesh(Types::complex_d k, const Mesh::VolumeMesh::CubeMesh &mesh)
         : mesh(mesh), wave_number(k), wave_number_sqr(k * k){};
+
+    // ---- Ассемблирование матрицы системы различными способами ---- //
 
     /**
      * Аппроксимация объемного оператора методом Галёркина.
      * Считается полная матрица вне зависимости от тёплицевой структуры
      */
-    [[nodiscard]] Types::MatrixXc compute_galerkin_matrix_dense(Types::scalar l1_basis_function_norm) const;
+    [[nodiscard]] Types::MatrixXc compute_galerkin_matrix_dense(Types::scalar l1_basis_function_norm) const noexcept;
 
-    [[nodiscard]] Types::Matrix3c galerkin_block_for_cubes(size_t k, size_t p) const;
+    [[nodiscard]] Types::Matrix3c galerkin_block_for_cubes(size_t k, size_t p) const noexcept;
 
-    void compute_galerkin_matrix_dense_inplace(Types::MatrixXc *p_mat) const;
+    void compute_galerkin_matrix_dense_inplace(Types::MatrixXc *p_mat) const noexcept;
 
     /**
      * Аппроксимация методом Галеркина оператора К.
      * Используется специальная трижды тёплицева структура.
      */
     [[nodiscard]] Math::LinAgl::Matrix::TripleToeplitzBlock<Types::complex_d>
-    compute_galerkin_matrix(Types::scalar basis_fucntion_module) const;
+    compute_galerkin_matrix(Types::scalar basis_fucntion_module) const noexcept;
 
     /**
      * Расчет оператор K методом Галеркина для одинаковой коллекции кубов, которые отличаются начлаьными индексами
@@ -152,7 +154,8 @@ class operator_K_over_cube_mesh {
      * start_i = {0, 0, 0}; start_j = {0, 0, 0}; sizes = {mesh.nx() - 1, mesh.ny() - 1, mesh.nz() - 1}
      */
     [[nodiscard]] Math::LinAgl::Matrix::TripleToeplitzBlock<Types::complex_d>
-    compute_galerkin_matrix(Idx3d start_i, Idx3d start_j, Idx3d sizes, Types::scalar l1_basis_function_norm = 1) const;
+    compute_galerkin_matrix(Idx3d start_i, Idx3d start_j, Idx3d sizes,
+                            Types::scalar l1_basis_function_norm = 1) const noexcept;
 
     /**
      * Аппроксимация оператора методом Галеркина. Используется трижды тёплицева структура с
@@ -168,14 +171,15 @@ class operator_K_over_cube_mesh {
      * за правильную нумерацию неизвестных на сетке
      */
     [[nodiscard]] matrix_and_permutation<Math::LinAgl::Matrix::TripleToeplitzBlock<Types::complex_d>>
-        compute_galerkin_matrix_custom_blocksize(size_t Nx, size_t Ny, size_t Nz, Types::scalar basis_fn_module) const;
+    compute_galerkin_matrix_custom_blocksize(size_t Nx, size_t Ny, size_t Nz,
+                                             Types::scalar basis_fn_module) const noexcept;
 
-        /**
-         * Аппроксимация оператора методом Галеркина. Используется трижды тёплицева структура с
-         * внутренними блоками размера (3 * Nx) * (3 * Ny) * (3 * Nz). То есть теперь тёплицева структура будет считаться
-         * не по отдельным кубам, а по их некоторому объединению в количестве (Nx, Ny, Nz).
-         *
-         * Такое представление матрицы влияет на нумерацию компонент в векторе неизвестных: матрица фактически бьется на
+    /**
+     * Аппроксимация оператора методом Галеркина. Используется трижды тёплицева структура с
+     * внутренними блоками размера (3 * Nx) * (3 * Ny) * (3 * Nz). То есть теперь тёплицева структура будет считаться
+     * не по отдельным кубам, а по их некоторому объединению в количестве (Nx, Ny, Nz).
+     *
+     * Такое представление матрицы влияет на нумерацию компонент в векторе неизвестных: матрица фактически бьется на
          * блоки и внутри блоков происходит отдельная нумерация.
          *
          * Дополнительно к каждому блоку применяется сжатие через ACA с параметром epsilon, что позволяет
@@ -189,13 +193,41 @@ class operator_K_over_cube_mesh {
         [[nodiscard]] matrix_and_permutation<Math::LinAgl::Matrix::TripleToeplitzFactoredBlock<Types::complex_d>>
         compute_galerkin_matrix_custom_blocksize_compressed(size_t Nx, size_t Ny, size_t Nz,
                                                             Types::scalar basis_fn_module,
-                                                            Types::scalar epsilon) const;
+                                                            Types::scalar epsilon) const noexcept;
 
         [[nodiscard]] matrix_and_permutation<Math::LinAgl::Matrix::TripleToeplitzFactoredBlock<Types::complex_d>>
         compute_galerkin_matrix_custom_blocksize_compressed(size_t Nx, size_t Ny, size_t Nz,
                                                     Types::scalar basis_fn_module,
-                                                    Types::scalar epsilon, Math::LinAgl::Matrix::TripleToeplitzBlock<Types::complex_d>& dense_mat) const;
-    };
+                                                    Types::scalar epsilon, Math::LinAgl::Matrix::TripleToeplitzBlock<Types::complex_d>& dense_mat) const noexcept;
+
+      // ---- Расчет интегрального оператора --- //
+
+      /**
+       * Расчет объемной части оператора
+       */
+      [[nodiscard]] Types::Vector3c volume_part(const Types::Vector3c& point, const Mesh::VolumeCells::IndexedCube& cube) const noexcept;
+
+      /**
+       * Расчет значения интегрального оператора в произвольной точки пространства по полю field_data
+       * заданной на ячейках сетки
+       */
+      [[nodiscard]] Types::Vector3c compute_arbitrary_point(const Types::point_t& point, const Containers::vector<Types::Vector3c>& field_values) const noexcept;
+
+     /**
+      *  Интегрирование поля вне окрестности области, занимаемой сеткой.
+      *  Можно вносить производные под интеграл и интегрировать эту функцию
+      */
+      [[nodiscard]] Types::Vector3c compute_far_point(const Types::point_t& point, const Containers::vector<Types::Vector3c>& field_values) const noexcept;
+
+    /**
+     *  Интегрирование поля в окрестности области, занимаемой сеткой.
+     *  Нельзя вносить производные под интеграл, поэтому есть специальный метод
+     *
+     *  @warning Формула считает значения поля, если точка не попала на
+     *  границу никакого из кубов, составляющих сетку
+     */
+      [[nodiscard]] Types::Vector3c compute_inner_point(const Types::point_t& point, const Containers::vector<Types::Vector3c>& field_values) const noexcept;
+};
 } // namespace EMW::Operators::Volume
 
 #endif // OPERATORK_HPP

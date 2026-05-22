@@ -14,12 +14,11 @@
 namespace EMW::Operators::Volume {
 namespace Gl = DecartIntegration::GaussLegendre;
 
-Types::Matrix3c
-operator_K_over_cube_mesh::surface_part_singularity_extraction(const Mesh::VolumeCells::IndexedCube &cube_k,
-                                                               const Mesh::VolumeCells::IndexedCube &cube_p) const {
+Types::Matrix3c operator_K_over_cube_mesh::surface_part_singularity_extraction(
+    const Mesh::VolumeCells::IndexedCube &cube_k, const Mesh::VolumeCells::IndexedCube &cube_p) const noexcept {
     Types::Matrix3c result = Types::Matrix3c::Zero();
     const size_t singular_integration_level = 10; // 2d
-    const size_t bounded_integration_level = 4; // 4d
+    const size_t bounded_integration_level = 4;   // 4d
 
     for (Types::index i = 0; i < 3; i++) {
         Containers::array<Mesh::IndexedCell, 2> faces_k;
@@ -78,8 +77,9 @@ operator_K_over_cube_mesh::surface_part_singularity_extraction(const Mesh::Volum
     return result;
 }
 
-Types::Matrix3c operator_K_over_cube_mesh::surface_part_naive(const Mesh::VolumeCells::IndexedCube &cube_k,
-                                                              const Mesh::VolumeCells::IndexedCube &cube_p) const {
+Types::Matrix3c
+operator_K_over_cube_mesh::surface_part_naive(const Mesh::VolumeCells::IndexedCube &cube_k,
+                                              const Mesh::VolumeCells::IndexedCube &cube_p) const noexcept {
     Types::Matrix3c result = Types::Matrix3c::Zero();
     const size_t integration_level = 4; // 4d
 
@@ -124,9 +124,8 @@ Types::Matrix3c operator_K_over_cube_mesh::surface_part_naive(const Mesh::Volume
     return result;
 }
 
-Types::complex_d operator_K_over_cube_mesh::volume_part_singularity_extraction(const Types::point_t &k_corner,
-                                                                               const Types::point_t &k_center,
-                                                                               const Types::point_t &p_corner) const {
+Types::complex_d operator_K_over_cube_mesh::volume_part_singularity_extraction(
+    const Types::point_t &k_corner, const Types::point_t &k_center, const Types::point_t &p_corner) const noexcept {
     Types::complex_d result{0., 0.};
     Types::index regular_part_max_integration_level = 3;  // 6d
     Types::index singular_part_max_integration_level = 4; // 3d
@@ -164,7 +163,7 @@ Types::complex_d operator_K_over_cube_mesh::volume_part_singularity_extraction(c
 }
 
 Types::complex_d operator_K_over_cube_mesh::volume_part_naive(const Types::point_t &k_corner,
-                                                              const Types::point_t &p_corner) const {
+                                                              const Types::point_t &p_corner) const noexcept {
     // эксперименты показали, что средне-дальней зоне, можно интегрировать сразу с разбиением на 2
     constexpr size_t integration_level_for_far_integration = 2;
 
@@ -183,7 +182,7 @@ Types::complex_d operator_K_over_cube_mesh::volume_part_naive(const Types::point
 }
 
 Types::Matrix3c operator_K_over_cube_mesh::far_zone_interaction(Types::index k, Types::index p,
-                                                                size_t integration_level) const {
+                                                                size_t integration_level) const noexcept {
     // Просто интегрируем выражение для поля в дальней зоне
     const auto &k_corner = mesh.leftDownCorner(k);
     const auto &p_corner = mesh.leftDownCorner(p);
@@ -205,7 +204,7 @@ Types::Matrix3c operator_K_over_cube_mesh::far_zone_interaction(Types::index k, 
     return Math::Constants::inverse_4PI<Types::scalar>() * interaction_block;
 }
 
-Types::complex_d operator_K_over_cube_mesh::matrix_3_coef(Types::index k, Types::index p) const {
+Types::complex_d operator_K_over_cube_mesh::matrix_3_coef(Types::index k, Types::index p) const noexcept {
     const auto &k_corner = mesh.leftDownCorner(k);
     const auto &p_corner = mesh.leftDownCorner(p);
     const auto &k_center = mesh.getCells()[k].center_;
@@ -217,7 +216,7 @@ Types::complex_d operator_K_over_cube_mesh::matrix_3_coef(Types::index k, Types:
     return volume_part_naive(k_corner, p_corner);
 }
 
-Types::Matrix3c operator_K_over_cube_mesh::matrix_2_coef(Types::index k, Types::index p) const {
+Types::Matrix3c operator_K_over_cube_mesh::matrix_2_coef(Types::index k, Types::index p) const noexcept {
     const Types::scalar h = mesh.h();
     const auto &cube_k = mesh.getCells()[k];
     const auto &cube_p = mesh.getCells()[p];
@@ -229,7 +228,7 @@ Types::Matrix3c operator_K_over_cube_mesh::matrix_2_coef(Types::index k, Types::
 
 // ------------------ Matrix Assembling ------------------ //
 
-Types::Matrix3c operator_K_over_cube_mesh::galerkin_block_for_cubes(size_t k, size_t p) const {
+Types::Matrix3c operator_K_over_cube_mesh::galerkin_block_for_cubes(size_t k, size_t p) const noexcept {
 #if 1
     // 1. Если кубы далеко, то считаем через far_zone
     // в adaptive_integration_study получил, что на таких расстояниях ошибка около 3e-6
@@ -249,7 +248,8 @@ Types::Matrix3c operator_K_over_cube_mesh::galerkin_block_for_cubes(size_t k, si
     return surface_res;
 }
 
-Types::MatrixXc operator_K_over_cube_mesh::compute_galerkin_matrix_dense(Types::scalar basis_function_module) const {
+Types::MatrixXc
+operator_K_over_cube_mesh::compute_galerkin_matrix_dense(Types::scalar basis_function_module) const noexcept {
     const Types::index n_cubes = mesh.getCells().size();
     Types::MatrixXc result = Types::MatrixXc::Zero(3 * n_cubes, 3 * n_cubes);
     for (auto p = 0u; p < n_cubes; ++p) {
@@ -267,7 +267,7 @@ Types::MatrixXc operator_K_over_cube_mesh::compute_galerkin_matrix_dense(Types::
     return result * (basis_function_module * basis_function_module);
 }
 
-void operator_K_over_cube_mesh::compute_galerkin_matrix_dense_inplace(Types::MatrixXc *p_mat) const {
+void operator_K_over_cube_mesh::compute_galerkin_matrix_dense_inplace(Types::MatrixXc *p_mat) const noexcept {
     const Types::index n_cubes = mesh.getCells().size();
     *p_mat = Types::MatrixXc::Zero(3 * n_cubes, 3 * n_cubes);
     for (auto k = 0u; k < n_cubes; ++k) {
@@ -285,7 +285,7 @@ void operator_K_over_cube_mesh::compute_galerkin_matrix_dense_inplace(Types::Mat
 }
 
 Math::LinAgl::Matrix::TripleToeplitzBlock<Types::complex_d>
-operator_K_over_cube_mesh::compute_galerkin_matrix(Types::scalar basis_function_module) const {
+operator_K_over_cube_mesh::compute_galerkin_matrix(Types::scalar basis_function_module) const noexcept {
     const size_t first_layer_toeplitz = mesh.nx() - 1;
     const size_t second_layer_toeplitz = mesh.ny() - 1;
     const size_t third_layer_toeplitz = mesh.nz() - 1;
@@ -323,7 +323,7 @@ operator_K_over_cube_mesh::compute_galerkin_matrix(Types::scalar basis_function_
 
 [[nodiscard]] Math::LinAgl::Matrix::TripleToeplitzBlock<Types::complex_d>
 operator_K_over_cube_mesh::compute_galerkin_matrix(Idx3d start_i, Idx3d start_j, Idx3d sizes,
-                                                   Types::scalar basis_fn_module) const {
+                                                   Types::scalar basis_fn_module) const noexcept {
 
     // Делаем нулевую трижды тёплицеву матрицу
     const size_t first_layer_toeplitz = sizes.Nx;
@@ -358,7 +358,7 @@ operator_K_over_cube_mesh::compute_galerkin_matrix(Idx3d start_i, Idx3d start_j,
 
 operator_K_over_cube_mesh::matrix_and_permutation<Math::LinAgl::Matrix::TripleToeplitzBlock<Types::complex_d>>
 operator_K_over_cube_mesh::compute_galerkin_matrix_custom_blocksize(size_t Nx, size_t Ny, size_t Nz,
-                                                                    Types::scalar basis_fn_module) const {
+                                                                    Types::scalar basis_fn_module) const noexcept {
     // Проверка, что делится нацело
     if ((mesh.nx() - 1) % Nx != 0 || (mesh.ny() - 1) % Ny != 0 || (mesh.nz() - 1) % Nz != 0) {
         throw std::invalid_argument("OperatorK::compute_galerkin_matrix_custom_blocksize: "
@@ -434,7 +434,7 @@ operator_K_over_cube_mesh::compute_galerkin_matrix_custom_blocksize(size_t Nx, s
 operator_K_over_cube_mesh::matrix_and_permutation<Math::LinAgl::Matrix::TripleToeplitzFactoredBlock<Types::complex_d>>
 operator_K_over_cube_mesh::compute_galerkin_matrix_custom_blocksize_compressed(size_t Nx, size_t Ny, size_t Nz,
                                                                                Types::scalar basis_fn_module,
-                                                                               Types::scalar epsilon) const {
+                                                                               Types::scalar epsilon) const noexcept {
     // Проверка, что делится нацело
     if ((mesh.nx() - 1) % Nx != 0 || (mesh.ny() - 1) % Ny != 0 || (mesh.nz() - 1) % Nz != 0) {
         throw std::invalid_argument("OperatorK::compute_galerkin_matrix_custom_blocksize: "
@@ -552,7 +552,7 @@ operator_K_over_cube_mesh::compute_galerkin_matrix_custom_blocksize_compressed(s
 operator_K_over_cube_mesh::matrix_and_permutation<Math::LinAgl::Matrix::TripleToeplitzFactoredBlock<Types::complex_d>>
 operator_K_over_cube_mesh::compute_galerkin_matrix_custom_blocksize_compressed(
     size_t Nx, size_t Ny, size_t Nz, Types::scalar basis_fn_module, Types::scalar epsilon,
-    Math::LinAgl::Matrix::TripleToeplitzBlock<Types::complex_d> &dense_mat) const {
+    Math::LinAgl::Matrix::TripleToeplitzBlock<Types::complex_d> &dense_mat) const noexcept {
     // Проверка, что делится нацело
     if ((mesh.nx() - 1) % Nx != 0 || (mesh.ny() - 1) % Ny != 0 || (mesh.nz() - 1) % Nz != 0) {
         throw std::invalid_argument("OperatorK::compute_galerkin_matrix_custom_blocksize: "
@@ -643,11 +643,11 @@ operator_K_over_cube_mesh::compute_galerkin_matrix_custom_blocksize_compressed(
                             // (в плотном формате) и запись в соответствующий блок большой матрицы
                             const Idx3d start_i = {i1 * sizes.Nx, i2 * sizes.Ny, i3 * sizes.Nz};
                             const Idx3d start_j = {j1 * sizes.Nx, j2 * sizes.Ny, j3 * sizes.Nz};
-                            dense_mat_block = compute_galerkin_matrix(start_i, start_j, sizes, basis_fn_module)
-                                .to_dense();
+                            dense_mat_block =
+                                compute_galerkin_matrix(start_i, start_j, sizes, basis_fn_module).to_dense();
                             if (start_i == start_j) {
-                                working_block = Math::LinAgl::Matrix::DynamicFactoredMatrix<Types::MatrixXc>{
-                                    {dense_mat_block}};
+                                working_block =
+                                    Math::LinAgl::Matrix::DynamicFactoredMatrix<Types::MatrixXc>{{dense_mat_block}};
                                 norm_of_self_interation_block = working_block.get<0>().norm();
                             } else {
                                 // Для начала подкрутим точность относительно диагонального
@@ -675,5 +675,48 @@ operator_K_over_cube_mesh::compute_galerkin_matrix_custom_blocksize_compressed(
     return {result, mesh.getPermutation(Nx, Ny, Nz)};
 }
 
+// --------------- Operator Value Computation -------------- //
+
+[[nodiscard]] Types::Vector3c operator_K_over_cube_mesh::volume_part(const Types::Vector3c& point, const Mesh::VolumeCells::IndexedCube& cube) const noexcept {
+
+}
+
+
+[[nodiscard]] Types::Vector3c operator_K_over_cube_mesh::compute_far_point(const Types::point_t& point, const Containers::vector<Types::Vector3c> &field_values) const noexcept {
+    Types::Vector3c result = Types::Vector3c::Zero();
+    size_t integration_level = 3;
+    Types::scalar relTol = 5e-2;
+    for (size_t i = 0; i != field_values.size(); i++) {
+        const auto& cube_korner = mesh.leftDownCorner(i);
+        const auto integrand = [point, wn = wave_number, j = field_values[i]](Types::scalar x, Types::scalar y, Types::scalar z) {
+            return Helmholtz::far_zone_integral_kernel(wn, point - Types::point_t{x, y, z}, j);
+        };
+        auto [value, level] =
+            DecartIntegration::adaptive_integrate<DecartIntegration::GaussLegendre::Quadrature<3, 3, 3>>(
+                integrand, {cube_korner.x(), cube_korner.y(), cube_korner.z()},
+                {mesh.dx(), mesh.dy(), mesh.dz()}, vector_stop_criterion(relTol, aTol),
+                integration_level);
+        result += value;
+    }
+    return result;
+}
+
+[[nodiscard]] Types::Vector3c operator_K_over_cube_mesh::compute_inner_point(const Types::point_t& point, const Containers::vector<Types::Vector3c> &field_values) const noexcept {
+    Types::Vector3c result = Types::Vector3c::Zero();
+    return result;
+}
+
+
+[[nodiscard]] Types::Vector3c operator_K_over_cube_mesh::compute_arbitrary_point(const Types::point_t& point, const Containers::vector<Types::Vector3c> &field_values) const noexcept {
+    // проверка на то, что точка находится внутри сетки или близко к ней
+    Types::scalar expanding_size = 4.;  // насколько расширить куб для расчета близости точки к сетке
+    Types::point_t min_corner_point_bb = mesh.leftDownCorner(0) + expanding_size * Types::point_t{mesh.dx(), mesh.dy(), mesh.dz()};
+    Types::point_t max_corner_point_bb = mesh.getCells().back().vertexes_.back() + expanding_size * Types::point_t{mesh.dx(), mesh.dy(), mesh.dz()};
+
+    if (point.cwiseMax(min_corner_point_bb) == point && point.cwiseMin(max_corner_point_bb) == point) {
+        return compute_inner_point(point, field_values);
+    }
+    return compute_far_point(point, field_values);
+}
 
 }
