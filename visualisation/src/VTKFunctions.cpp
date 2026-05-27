@@ -4,10 +4,13 @@
 
 #include "visualisation/include/VTKFunctions.hpp"
 #include <ranges>
+#include <vtkHexahedron.h>
 #include <vtkPoints.h>
 #include <vtkPolygon.h>
-#include <vtkHexahedron.h>
 #include <vtkUnstructuredGrid.h>
+#include <vtkXMLUnstructuredGridReader.h>
+#include <filesystem>
+
 
 namespace VTK {
 
@@ -58,7 +61,7 @@ vtkSmartPointer<vtkUnstructuredGrid> detail::formUnstructuredGrid(const EMW::Mes
         poly->GetPointIds()->SetId(0, cell.points_[0] + cells.size());
         poly->GetPointIds()->SetId(1, cell.points_[1] + cells.size());
         poly->GetPointIds()->SetId(2, cell.points_[2] + cells.size());
-//        poly->GetPointIds()->SetId(3, cell.points_[3] + cells.size());
+        //        poly->GetPointIds()->SetId(3, cell.points_[3] + cells.size());
         unstructuredGrid->InsertNextCell(poly->GetCellType(), poly->GetPointIds());
     }
 
@@ -182,14 +185,8 @@ void volume_mesh_snapshot(const EMW::Mesh::VolumeMesh::CubeMesh &mesh, const std
     for (const auto &cell : cells) {
         auto poly = vtkSmartPointer<vtkHexahedron>::New();
         vtkIdType ids[8] = {
-            cell.nodes_[0],
-            cell.nodes_[1],
-            cell.nodes_[3],
-            cell.nodes_[2],
-            cell.nodes_[4],
-            cell.nodes_[5],
-            cell.nodes_[7],
-            cell.nodes_[6],
+            cell.nodes_[0], cell.nodes_[1], cell.nodes_[3], cell.nodes_[2],
+            cell.nodes_[4], cell.nodes_[5], cell.nodes_[7], cell.nodes_[6],
         };
         unstructuredGrid->InsertNextCell(VTK_HEXAHEDRON, 8, ids);
     }
@@ -202,7 +199,8 @@ void volume_mesh_snapshot(const EMW::Mesh::VolumeMesh::CubeMesh &mesh, const std
     writer->Write();
 }
 
-void volume_mesh_withdata_snapshot(const EMW::Mesh::VolumeMesh::CubeMeshWithData &mesh, const std::string &path_to_file) {
+void volume_mesh_withdata_snapshot(const EMW::Mesh::VolumeMesh::CubeMeshWithData &mesh,
+                                   const std::string &path_to_file) {
     // VTK grid
     vtkSmartPointer<vtkUnstructuredGrid> unstructuredGrid = vtkSmartPointer<vtkUnstructuredGrid>::New();
     unstructuredGrid->Allocate(mesh.getNodes().size());
@@ -225,20 +223,14 @@ void volume_mesh_withdata_snapshot(const EMW::Mesh::VolumeMesh::CubeMeshWithData
     for (const auto &cell : cells) {
         auto poly = vtkSmartPointer<vtkHexahedron>::New();
         vtkIdType ids[8] = {
-            cell.nodes_[0],
-            cell.nodes_[1],
-            cell.nodes_[3],
-            cell.nodes_[2],
-            cell.nodes_[4],
-            cell.nodes_[5],
-            cell.nodes_[7],
-            cell.nodes_[6],
+            cell.nodes_[0], cell.nodes_[1], cell.nodes_[3], cell.nodes_[2],
+            cell.nodes_[4], cell.nodes_[5], cell.nodes_[7], cell.nodes_[6],
         };
         unstructuredGrid->InsertNextCell(VTK_HEXAHEDRON, 8, ids);
     }
 
     // Записываем данные из сетки в cellData
-    for (auto&& [name, scalar_data] : mesh.getScalarData()) {
+    for (auto &&[name, scalar_data] : mesh.getScalarData()) {
         auto real_field = vtkSmartPointer<vtkDoubleArray>::New();
         real_field->SetName((name + "_real").c_str());
         real_field->SetNumberOfComponents(1);
@@ -246,7 +238,7 @@ void volume_mesh_withdata_snapshot(const EMW::Mesh::VolumeMesh::CubeMeshWithData
         imag_field->SetNumberOfComponents(1);
         imag_field->SetName((name + "_imag").c_str());
 
-        for (auto&& value : scalar_data) {
+        for (auto &&value : scalar_data) {
             const double real = value.real();
             const double imag = value.imag();
             real_field->InsertNextValue(real);
@@ -264,7 +256,7 @@ void volume_mesh_withdata_snapshot(const EMW::Mesh::VolumeMesh::CubeMeshWithData
     }
     unstructuredGrid->GetCellData()->AddArray(cell_idx_field);
 
-    for (auto&& [name, vector_data] : mesh.getVectorData()) {
+    for (auto &&[name, vector_data] : mesh.getVectorData()) {
         auto real_field = vtkSmartPointer<vtkDoubleArray>::New();
         real_field->SetName((name + "_real").c_str());
         real_field->SetNumberOfComponents(3);
@@ -272,7 +264,7 @@ void volume_mesh_withdata_snapshot(const EMW::Mesh::VolumeMesh::CubeMeshWithData
         imag_field->SetNumberOfComponents(3);
         imag_field->SetName((name + "_imag").c_str());
 
-        for (auto&& value : vector_data) {
+        for (auto &&value : vector_data) {
             const double real[3] = {value.real()[0], value.real()[1], value.real()[2]};
             const double imag[3] = {value.imag()[0], value.imag()[1], value.imag()[2]};
             real_field->InsertNextTuple(real);
@@ -290,6 +282,261 @@ void volume_mesh_withdata_snapshot(const EMW::Mesh::VolumeMesh::CubeMeshWithData
     writer->Write();
 }
 
+
+
+namespace {
+
+constexpr std::string_view kRealSuffix = "_real";
+constexpr std::string_view kImagSuffix = "_imag";
+
+struct ComplexFieldArrays {
+    vtkDataArray *real = nullptr;
+    vtkDataArray *imag = nullptr;
+};
+
+struct StructuredGridParams {
+    EMW::Types::Vector3d minCorner;
+    EMW::Types::scalar xs;
+    EMW::Types::scalar ys;
+    EMW::Types::scalar zs;
+    std::size_t nx;
+    std::size_t ny;
+    std::size_t nz;
+};
+
+EMW::Types::scalar axisTolerance(const EMW::Types::scalar value) {
+    return std::max<EMW::Types::scalar>(1e-10, 1e-6 * std::max<EMW::Types::scalar>(1.0, std::abs(value)));
+}
+
+std::vector<EMW::Types::scalar> uniqueAxisValues(std::vector<EMW::Types::scalar> axisValues) {
+    std::sort(axisValues.begin(), axisValues.end());
+    std::vector<EMW::Types::scalar> uniqueValues;
+    uniqueValues.reserve(axisValues.size());
+
+    for (const auto value : axisValues) {
+        if (uniqueValues.empty()) {
+            uniqueValues.push_back(value);
+            continue;
+        }
+
+        if (std::abs(value - uniqueValues.back()) > axisTolerance(uniqueValues.back())) {
+            uniqueValues.push_back(value);
+        }
+    }
+
+    return uniqueValues;
+}
+
+void validateUniformAxis(const std::vector<EMW::Types::scalar> &axisValues, const std::string &axisName) {
+    if (axisValues.size() < 2) {
+        throw std::runtime_error("volume_mesh_withdata_from_vtu: axis " + axisName + " has less than 2 points");
+    }
+
+    const auto fullSize = axisValues.back() - axisValues.front();
+    const auto expectedStep = fullSize / static_cast<EMW::Types::scalar>(axisValues.size() - 1);
+    if (expectedStep <= 0) {
+        throw std::runtime_error("volume_mesh_withdata_from_vtu: axis " + axisName + " is degenerate");
+    }
+
+    const auto tol = axisTolerance(expectedStep);
+    for (std::size_t idx = 1; idx < axisValues.size(); ++idx) {
+        const auto step = axisValues[idx] - axisValues[idx - 1];
+        if (std::abs(step - expectedStep) > tol) {
+            throw std::runtime_error("volume_mesh_withdata_from_vtu: axis " + axisName + " is not uniform");
+        }
+    }
+}
+
+StructuredGridParams inferStructuredGridParams(vtkUnstructuredGrid *unstructuredGrid) {
+    const auto nPoints = unstructuredGrid->GetNumberOfPoints();
+    if (nPoints == 0) {
+        throw std::runtime_error("volume_mesh_withdata_from_vtu: VTU contains no points");
+    }
+
+    std::vector<EMW::Types::scalar> xAxis;
+    std::vector<EMW::Types::scalar> yAxis;
+    std::vector<EMW::Types::scalar> zAxis;
+    xAxis.reserve(static_cast<std::size_t>(nPoints));
+    yAxis.reserve(static_cast<std::size_t>(nPoints));
+    zAxis.reserve(static_cast<std::size_t>(nPoints));
+
+    for (vtkIdType pointIdx = 0; pointIdx < nPoints; ++pointIdx) {
+        double point[3]{};
+        unstructuredGrid->GetPoint(pointIdx, point);
+        xAxis.push_back(point[0]);
+        yAxis.push_back(point[1]);
+        zAxis.push_back(point[2]);
+    }
+
+    xAxis = uniqueAxisValues(std::move(xAxis));
+    yAxis = uniqueAxisValues(std::move(yAxis));
+    zAxis = uniqueAxisValues(std::move(zAxis));
+
+    validateUniformAxis(xAxis, "X");
+    validateUniformAxis(yAxis, "Y");
+    validateUniformAxis(zAxis, "Z");
+
+    const auto nx = xAxis.size();
+    const auto ny = yAxis.size();
+    const auto nz = zAxis.size();
+    const auto expectedPoints = static_cast<vtkIdType>(nx * ny * nz);
+    if (nPoints != expectedPoints) {
+        throw std::runtime_error("volume_mesh_withdata_from_vtu: point count does not match structured grid");
+    }
+
+    StructuredGridParams params{};
+    params.minCorner = EMW::Types::Vector3d{xAxis.front(), yAxis.front(), zAxis.front()};
+    params.xs = xAxis.back() - xAxis.front();
+    params.ys = yAxis.back() - yAxis.front();
+    params.zs = zAxis.back() - zAxis.front();
+    params.nx = nx;
+    params.ny = ny;
+    params.nz = nz;
+    return params;
+}
+
+} // namespace
+
+EMW::Mesh::VolumeMesh::CubeMeshWithData volume_mesh_withdata_from_vtu(const std::string &path_to_file) {
+    auto reader = vtkSmartPointer<vtkXMLUnstructuredGridReader>::New();
+    reader->SetFileName(path_to_file.c_str());
+    reader->Update();
+
+    auto unstructuredGrid = reader->GetOutput();
+    if (!unstructuredGrid) {
+        throw std::runtime_error("volume_mesh_withdata_from_vtu: cannot read VTU file: " + path_to_file);
+    }
+
+    const auto params = inferStructuredGridParams(unstructuredGrid);
+    const auto nCells = unstructuredGrid->GetNumberOfCells();
+
+    const auto expectedCells = static_cast<vtkIdType>((params.nx - 1) * (params.ny - 1) * (params.nz - 1));
+    if (nCells != expectedCells) {
+        throw std::runtime_error("volume_mesh_withdata_from_vtu: cell count does not match structured grid");
+    }
+
+    for (vtkIdType cellIdx = 0; cellIdx < nCells; ++cellIdx) {
+        if (unstructuredGrid->GetCellType(cellIdx) != VTK_HEXAHEDRON) {
+            throw std::runtime_error("volume_mesh_withdata_from_vtu: only VTK_HEXAHEDRON cells are supported");
+        }
+    }
+
+    auto mesh = EMW::Mesh::VolumeMesh::CubeMeshWithData(params.minCorner, params.xs, params.ys, params.zs, params.nx,
+                                                        params.ny, params.nz);
+    mesh.setName(std::filesystem::path(path_to_file).stem().string());
+
+    std::unordered_map<std::string, ComplexFieldArrays> fieldsByName;
+    auto cellData = unstructuredGrid->GetCellData();
+    if (!cellData) {
+        return mesh;
+    }
+
+    std::vector<std::size_t> dataCellToMeshCell(static_cast<std::size_t>(nCells));
+    for (vtkIdType idx = 0; idx < nCells; ++idx) {
+        dataCellToMeshCell[static_cast<std::size_t>(idx)] = static_cast<std::size_t>(idx);
+    }
+
+    if (auto *cellIdxArray = cellData->GetArray("cell_idx")) {
+        if (cellIdxArray->GetNumberOfComponents() != 1 || cellIdxArray->GetNumberOfTuples() != nCells) {
+            throw std::runtime_error("volume_mesh_withdata_from_vtu: invalid cell_idx array shape");
+        }
+
+        std::vector<bool> used(static_cast<std::size_t>(nCells), false);
+        for (vtkIdType dataIdx = 0; dataIdx < nCells; ++dataIdx) {
+            const auto meshCellIdx = static_cast<long long>(std::llround(cellIdxArray->GetComponent(dataIdx, 0)));
+            if (meshCellIdx < 0 || meshCellIdx >= nCells) {
+                throw std::runtime_error("volume_mesh_withdata_from_vtu: cell_idx value is out of range");
+            }
+            if (used[static_cast<std::size_t>(meshCellIdx)]) {
+                throw std::runtime_error("volume_mesh_withdata_from_vtu: duplicated value in cell_idx");
+            }
+            used[static_cast<std::size_t>(meshCellIdx)] = true;
+            dataCellToMeshCell[static_cast<std::size_t>(dataIdx)] = static_cast<std::size_t>(meshCellIdx);
+        }
+    }
+
+    for (int arrIdx = 0; arrIdx < cellData->GetNumberOfArrays(); ++arrIdx) {
+        auto *array = cellData->GetArray(arrIdx);
+        if (!array || !array->GetName()) {
+            continue;
+        }
+
+        const std::string arrayName = array->GetName();
+        if (arrayName == "cell_idx") {
+            continue;
+        }
+
+        const std::string_view nameView = arrayName;
+        if (nameView.ends_with(kRealSuffix)) {
+            const auto fieldName = arrayName.substr(0, arrayName.size() - kRealSuffix.size());
+            if (fieldName.empty()) {
+                throw std::runtime_error("volume_mesh_withdata_from_vtu: invalid real field name");
+            }
+            auto &field = fieldsByName[fieldName];
+            if (field.real != nullptr) {
+                throw std::runtime_error("volume_mesh_withdata_from_vtu: duplicated real part for field " + fieldName);
+            }
+            field.real = array;
+        } else if (nameView.ends_with(kImagSuffix)) {
+            const auto fieldName = arrayName.substr(0, arrayName.size() - kImagSuffix.size());
+            if (fieldName.empty()) {
+                throw std::runtime_error("volume_mesh_withdata_from_vtu: invalid imaginary field name");
+            }
+            auto &field = fieldsByName[fieldName];
+            if (field.imag != nullptr) {
+                throw std::runtime_error("volume_mesh_withdata_from_vtu: duplicated imaginary part for field " +
+                                         fieldName);
+            }
+            field.imag = array;
+        }
+    }
+
+    for (auto &&[name, arrays] : fieldsByName) {
+        if (!arrays.real || !arrays.imag) {
+            throw std::runtime_error("volume_mesh_withdata_from_vtu: complex field is incomplete: " + name);
+        }
+
+        if (arrays.real->GetNumberOfTuples() != nCells || arrays.imag->GetNumberOfTuples() != nCells) {
+            throw std::runtime_error("volume_mesh_withdata_from_vtu: tuple count mismatch for field " + name);
+        }
+
+        if (arrays.real->GetNumberOfComponents() != arrays.imag->GetNumberOfComponents()) {
+            throw std::runtime_error("volume_mesh_withdata_from_vtu: component mismatch for field " + name);
+        }
+
+        const auto nComponents = arrays.real->GetNumberOfComponents();
+        if (nComponents == 1) {
+            EMW::Containers::vector<EMW::Types::complex_d> scalarData(static_cast<std::size_t>(nCells));
+            for (vtkIdType dataCellIdx = 0; dataCellIdx < nCells; ++dataCellIdx) {
+                const auto meshCellIdx = dataCellToMeshCell[static_cast<std::size_t>(dataCellIdx)];
+                scalarData[meshCellIdx] = {arrays.real->GetComponent(dataCellIdx, 0),
+                                           arrays.imag->GetComponent(dataCellIdx, 0)};
+            }
+            mesh.setScalarData(name, std::move(scalarData));
+            continue;
+        }
+
+        if (nComponents == 3) {
+            EMW::Containers::vector<EMW::Types::Vector3c> vectorData(static_cast<std::size_t>(nCells));
+            for (vtkIdType dataCellIdx = 0; dataCellIdx < nCells; ++dataCellIdx) {
+                EMW::Types::Vector3c value;
+                for (int comp = 0; comp < 3; ++comp) {
+                    value[comp] = EMW::Types::complex_d(
+                        arrays.real->GetComponent(dataCellIdx, comp), arrays.imag->GetComponent(dataCellIdx, comp));
+                }
+                const auto meshCellIdx = dataCellToMeshCell[static_cast<std::size_t>(dataCellIdx)];
+                vectorData[meshCellIdx] = value;
+            }
+            mesh.setVectorData(name, std::move(vectorData));
+            continue;
+        }
+
+        throw std::runtime_error(
+            "volume_mesh_withdata_from_vtu: unsupported number of components in field " + name);
+    }
+
+    return mesh;
+}
 
 }
 

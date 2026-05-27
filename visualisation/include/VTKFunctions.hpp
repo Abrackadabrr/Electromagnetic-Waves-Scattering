@@ -233,6 +233,8 @@ void volume_mesh_snapshot(const EMW::Mesh::VolumeMesh::CubeMesh &mesh, const std
 
 void volume_mesh_withdata_snapshot(const EMW::Mesh::VolumeMesh::CubeMeshWithData &mesh, const std::string &path_to_file);
 
+[[nodiscard]] EMW::Mesh::VolumeMesh::CubeMeshWithData volume_mesh_withdata_from_vtu(const std::string &path_to_file);
+
 template <typename ScalarField>
 void united_snapshot(const std::vector<ScalarField> &scalarFields,
                      const std::vector<EMW::Math::SurfaceVectorField> &vectorFields, const EMW::Mesh::SurfaceMesh &mesh,

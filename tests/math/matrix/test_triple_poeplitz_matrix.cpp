@@ -108,9 +108,9 @@ Types::scalar permittivity_distribution(const Types::point_t &x) {
 
 TEST(TOEPLITZ_MATRIX_TESTS, VIE_DIFFERENT_ENUMRATION_TEST) {
     constexpr Types::scalar cube_length = 2.1 * SPHERE_RADUIS;
-    constexpr Types::index Nx = 13;
-    constexpr Types::index Ny = 13;
-    constexpr Types::index Nz = 13;
+    constexpr Types::index Nx = 21;
+    constexpr Types::index Ny = 21;
+    constexpr Types::index Nz = 21;
     constexpr Types::scalar mesh_one_axis_size = cube_length / (Nx - 1);
     constexpr Types::scalar basis_fn_norm = 1. / (mesh_one_axis_size * std::sqrt(mesh_one_axis_size));
     Mesh::VolumeMesh::CubeMeshWithData mesh{Types::point_t{-cube_length / 2, -cube_length / 2, -cube_length / 2},
@@ -129,6 +129,8 @@ TEST(TOEPLITZ_MATRIX_TESTS, VIE_DIFFERENT_ENUMRATION_TEST) {
     const Types::VectorXc x_permuted = perm * x;
     const Types::VectorXc mat_result = perm.transpose() * mat.matvec(x_permuted);
     const auto toeplitz_result = toeplitz.matvec(x);
+
+    std::cout << (mat_result - toeplitz_result).norm() / toeplitz_result.norm() << std::endl;
 
     ASSERT_NEAR((mat_result - toeplitz_result).norm(), 0.0, 1e-6 * toeplitz_result.norm());
 }
@@ -149,7 +151,6 @@ TEST(TOEPLITZ_MATRIX_TESTS, VIE_MATRIX_SYMMETRY_TEST) {
     auto [mat, perm] = operator_K.compute_galerkin_matrix_custom_blocksize(
         2, 2, 2, basis_fn_norm);
 
-    // Матрица должна быть симметричная (но она не то что бы прям совсем симметричная...)
     std::cout << (mat.get_block(0, 2).to_dense().transpose() - mat.get_block(2, 0).to_dense()).norm() /
         mat.get_block(0, 2).to_dense().norm() << std::endl;
 }

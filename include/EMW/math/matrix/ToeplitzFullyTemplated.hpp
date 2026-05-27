@@ -61,6 +61,12 @@ template <typename scalar_t, typename block_t> class ToeplitzStructure {
     ToeplitzStructure(Types::index block_rows, Types::index block_cols, Types::index rows_in_block,
                       Types::index cols_in_block);
 
+    /** Работа с индексами
+     */
+    [[nodiscard]] inline decltype(auto) get_linear_index(size_t row, size_t col) const noexcept {
+        return blocks.get_linear_index(row, col);
+    }
+
     /** Умножение матрицы на вектор */
     [[nodiscard]] vector_t matvec(const vector_t &vec) const noexcept;
     /**

@@ -26,8 +26,11 @@ class operator_K_over_cube_mesh {
     Types::index nearnes_tresholds = 2; // согласно тестам в integration_modes_study
     Types::scalar rTol = 1e-6;          // 1e-6
     Types::scalar aTol = 1e-20;
-    size_t max_integration_level = 4;    // 4
-    size_t max_6d_integration_level = 2; // 2
+    // Максимальные уровни для адаптивного интегрирования
+    size_t int_lev_4d = 4;
+    size_t int_lev_2d = 10;
+    size_t int_lev_6d = 2;
+    size_t int_lev_3d = 4;
 
     struct Idx3d {
         size_t Nx, Ny, Nz;
@@ -67,6 +70,19 @@ class operator_K_over_cube_mesh {
     }
 
   public:
+    /** Настройки адаптивного интегрирования */
+    void set_adaptive_integration_max_levels(const Containers::array<size_t, 4> &levels) noexcept {
+        int_lev_2d = levels[0];
+        int_lev_3d = levels[1];
+        int_lev_4d = levels[2];
+        int_lev_6d = levels[3];
+    }
+    void set_tolerances(const Types::scalar rTol_, const Types::scalar aTol_) {
+        rTol = rTol_;
+        aTol = aTol_;
+    }
+
+    // ------ Расчет аппроксимации оператора методом Галеркина (функции для отедльных матричных блоков) ----- //
     /**
      * @brief Матрица поверхностной части интегрального оператора
      *
@@ -77,7 +93,7 @@ class operator_K_over_cube_mesh {
      * @note Интегрирование идет с выделением особенности для близких кубов.
      * Если расстояние между кубами большое (в некотором смысле), то там идёт интегрирование без выделения особенности.
      */
-    Types::Matrix3c matrix_2_coef(Types::index k, Types::index p) const noexcept;
+    [[nodiscard]] Types::Matrix3c matrix_2_coef(Types::index k, Types::index p) const noexcept;
 
     /**
      * Расчет объемного интеграла по двум кубам.
@@ -87,24 +103,39 @@ class operator_K_over_cube_mesh {
      * @note Интегрирование идет с выделением особенности для близких кубов.
      * Если расстояние между кубами большое (в некотором смысле), то там идёт интегрирование без выделения особенности.
      */
-    Types::complex_d matrix_3_coef(Types::index k, Types::index p) const noexcept;
+    [[nodiscard]] Types::complex_d matrix_3_coef(Types::index k, Types::index p) const noexcept;
 
     /**
      * Расчет объемного члена оператора с выделением особенности (между двумя кубами: с индексами k и p)
      *
      * @param k_corner, p_corner вершины кубов с минимальными значениями координат
+     * @param reg_int_level_6d максимальный уровень адаптивного интегрирования для 6д интеграла (регулярная часть)
+     * @param sing_int_level_3d максимальный уровень адаптивного интегрирования для 3д интеграла (сингулярная часть)
      * @param k_center центр куба k
      */
-    Types::complex_d volume_part_singularity_extraction(const Types::point_t &k_corner, const Types::point_t &k_center,
-                                                        const Types::point_t &p_corner) const noexcept;
+    [[nodiscard]] Types::complex_d volume_part_singularity_extraction(const Types::point_t &k_corner,
+                                                                      const Types::point_t &k_center,
+                                                                      const Types::point_t &p_corner,
+                                                                      size_t reg_int_level_6d = 3,
+                                                                      size_t sing_int_level_3d = 4) const noexcept;
 
-    Types::complex_d volume_part_naive(const Types::point_t &k_corner, const Types::point_t &p_corner) const noexcept;
+    /**
+     * Расчет объемного члена оператора без выделения особенности (между двумя кубами: с индексами k и p)
+     *
+     * @param k_corner, p_corner вершины кубов с минимальными значениями координат
+     * @param int_level_6d максимальный уровень адаптивного интегрирования для 6д интеграла
+     * @param k_center центр куба k
+     */
+    [[nodiscard]] Types::complex_d volume_part_naive(const Types::point_t &k_corner, const Types::point_t &p_corner,
+                                                     size_t int_level_6d = 2) const noexcept;
 
-    Types::Matrix3c surface_part_singularity_extraction(const Mesh::VolumeCells::IndexedCube &k_cube,
-                                                        const Mesh::VolumeCells::IndexedCube &p_cube) const noexcept;
+    [[nodiscard]] Types::Matrix3c surface_part_singularity_extraction(
+        const Mesh::VolumeCells::IndexedCube &k_cube, const Mesh::VolumeCells::IndexedCube &p_cube,
+        size_t singular_integration_level_2d = 10, size_t bounded_integration_level_4d = 4) const noexcept;
 
-    Types::Matrix3c surface_part_naive(const Mesh::VolumeCells::IndexedCube &cube_k,
-                                       const Mesh::VolumeCells::IndexedCube &cube_p) const noexcept;
+    [[nodiscard]] Types::Matrix3c surface_part_naive(const Mesh::VolumeCells::IndexedCube &cube_k,
+                                                     const Mesh::VolumeCells::IndexedCube &cube_p,
+                                                     size_t integration_level_4d = 4) const noexcept;
 
     /**
      * Расчет матрицы взаимодействия двух кубов при достаточно большом расстоянии между ними
@@ -115,7 +146,8 @@ class operator_K_over_cube_mesh {
      *
      * @return блок взаимодействия между кубами
      */
-    Types::Matrix3c far_zone_interaction(Types::index k, Types::index p, size_t integration_level = 3) const noexcept;
+    [[nodiscard]] Types::Matrix3c far_zone_interaction(Types::index k, Types::index p,
+                                                       size_t integration_level = 3) const noexcept;
 
     explicit operator_K_over_cube_mesh(Types::complex_d k, const Mesh::VolumeMesh::CubeMesh &mesh)
         : mesh(mesh), wave_number(k), wave_number_sqr(k * k){};
@@ -180,9 +212,9 @@ class operator_K_over_cube_mesh {
      * не по отдельным кубам, а по их некоторому объединению в количестве (Nx, Ny, Nz).
      *
      * Такое представление матрицы влияет на нумерацию компонент в векторе неизвестных: матрица фактически бьется на
-         * блоки и внутри блоков происходит отдельная нумерация.
-         *
-         * Дополнительно к каждому блоку применяется сжатие через ACA с параметром epsilon, что позволяет
+     * блоки и внутри блоков происходит отдельная нумерация.
+     *
+     * Дополнительно к каждому блоку применяется сжатие через ACA с параметром epsilon, что позволяет
          * максимально сжать исходно плотную матрицу.
          *
          * @param Nx,Ny,Nz размер блока кубов по каждой их координат
