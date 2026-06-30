@@ -229,6 +229,7 @@ void ToeplitzStructure<scalar_t, block_t>::matvec_wise(scalar_t *vec, size_t vec
         const auto &current_block = blocks(0, d);
         const Types::index repeats = block_cols - d;
 
+
         if constexpr (std::is_same_v<block_t, Types::MatrixX<scalar_t>>) {
 #if USE_EIGEN
             // 1. Если блок -- это плотная матрица, то я делаю матмулл

@@ -53,6 +53,15 @@ Types::Vector3c sigmaKernel(Types::complex_d k, const Types::Vector3d &tau, cons
     return exponent * ik * (vec_e + vec_m);
 }
 
+Types::Vector3c sigmaKernel_naive(Types::complex_d k, const Types::Vector3d &tau, const Types::Vector3d &point,
+                            const Types::Vector3c &j_e, const Types::Vector3c &j_m, Types::complex_d epsilon) {
+    const auto ik = Math::Constants::i * k;
+    const Types::complex_d exponent = std::exp(-ik * tau.dot(point));
+    const Types::Vector3c vec_e = (j_e - tau * Math::quasiDot(j_e, tau)) * std::sqrt(1. / epsilon) * Math::Constants::mu_0_c;
+    const Types::Vector3c vec_m = Math::cross(tau, j_m);
+    return exponent * ik * (vec_e - vec_m);
+}
+
 Types::Vector3c far_zone_integral_kernel(Types::complex_d k, const Types::point_t &r, const Types::Vector3c &j) {
     const Types::scalar inv_r_sqr_norm = 1. / r.squaredNorm();
     const Types::scalar inv_r_norm = std::sqrt(inv_r_sqr_norm);
@@ -67,6 +76,8 @@ Types::Vector3c far_zone_integral_kernel(Types::complex_d k, const Types::point_
     return exponent * (j * first_part + (r * inv_r_sqr_norm) * j_dot_r * second_part );
     // умножение второй части на inv_r_sqr_norm,
     // т.к.  в формулах должен быть единичный вектор направления r :-)
+
+    // а ещё тут нет домножения на 1/4pi
 }
 
 } // namespace EMW::Helmholtz

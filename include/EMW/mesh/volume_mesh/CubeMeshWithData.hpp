@@ -84,14 +84,14 @@ class CubeMeshWithData : public CubeMesh {
 };
 
 template <typename Container> void CubeMeshWithData::setScalarData(const std::string &name, Container &&data) {
-    static_assert(std::is_same_v<typename Container::value_type, Types::complex_d>);
+    static_assert(std::is_same_v<typename std::remove_cvref_t<Container>::value_type, Types::complex_d>);
     if (scalar_data.contains(name))
         throw std::runtime_error("CubeMeshWithData::setVectorData: scalar has already been added. Rename");
     this->scalar_data[name] = std::forward<Container>(data);
 }
 
 template <typename Container> void CubeMeshWithData::setVectorData(const std::string &name, Container &&data) {
-    static_assert(std::is_same_v<typename Container::value_type, Types::Vector3c>);
+    static_assert(std::is_same_v<typename std::remove_cvref_t<Container>::value_type, Types::Vector3c>);
     if (vector_data.contains(name))
         throw std::runtime_error("CubeMeshWithData::setVectorData: vector has already been added. Rename");
     this->vector_data[name] = std::forward<Container>(data);

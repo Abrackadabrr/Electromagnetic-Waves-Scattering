@@ -23,6 +23,8 @@ else()
     message(FATAL_ERROR "src/CMakeLists.txt: You use EMW core lib, but CMake cannot find LAPACK library")
 endif ()
 
+# Find specific BLAS lib
+set(BLA_VENDOR "OpenBLAS")
 find_package(BLAS REQUIRED)
 if (BLAS_FOUND)
     message("Blas found")
@@ -30,7 +32,7 @@ else()
     message(FATAL_ERROR "src/CMakeLists.txt: You use EMW core lib, but CMake cannot find BLAS library")
 endif ()
 
-target_link_libraries(${EMW_LIBRARY_NAME} PUBLIC Eigen3::Eigen LAPACK::LAPACK -llapacke OpenMP::OpenMP_CXX ${BLAS_LIBRARIES})
+target_link_libraries(${EMW_LIBRARY_NAME} PUBLIC Eigen3::Eigen LAPACK::LAPACK -llapacke OpenMP::OpenMP_CXX BLAS::BLAS)
 target_compile_definitions(${EMW_LIBRARY_NAME} PUBLIC EIGEN_USE_BLAS)
 target_include_directories(${EMW_LIBRARY_NAME} PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/../include/"
         "${CMAKE_CURRENT_SOURCE_DIR}/../include/EMW/" "${CMAKE_CURRENT_SOURCE_DIR}/..")

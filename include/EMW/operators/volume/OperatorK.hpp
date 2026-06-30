@@ -25,7 +25,7 @@ class operator_K_over_cube_mesh {
     Types::complex_d wave_number_sqr;
     Types::index nearnes_tresholds = 2; // согласно тестам в integration_modes_study
     Types::scalar rTol = 1e-6;          // 1e-6
-    Types::scalar aTol = 1e-20;
+    Types::scalar aTol = 1e-40;
     // Максимальные уровни для адаптивного интегрирования
     size_t int_lev_4d = 4;
     size_t int_lev_2d = 10;

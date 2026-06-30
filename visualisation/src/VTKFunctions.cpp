@@ -3,11 +3,24 @@
 //
 
 #include "visualisation/include/VTKFunctions.hpp"
+#include <algorithm>
+#include <cmath>
+#include <memory>
+#include <numeric>
 #include <ranges>
+#include <stdexcept>
+#include <string_view>
+#include <unordered_map>
 #include <vtkHexahedron.h>
 #include <vtkPoints.h>
 #include <vtkPolygon.h>
+#include <vtkTriangle.h>
+#include <vtkCell.h>
+#include <vtkDataArray.h>
+#include <vtkDataSetAttributes.h>
+#include <vtkCellType.h>
 #include <vtkUnstructuredGrid.h>
+#include <vtkUnstructuredGridReader.h>
 #include <vtkXMLUnstructuredGridReader.h>
 #include <filesystem>
 
@@ -56,7 +69,8 @@ vtkSmartPointer<vtkUnstructuredGrid> detail::formUnstructuredGrid(const EMW::Mes
 
     // А теперь пишем, как наши точки объединены в четырехугольники (поверхностныее полигоны)
     for (const auto &cell : cells) {
-        auto poly = vtkSmartPointer<vtkPolygon>::New();
+        // TODO: вернуть vtkPolygon назад
+        auto poly = vtkSmartPointer<vtkTriangle>::New();
         poly->GetPointIds()->SetNumberOfIds(3);
         poly->GetPointIds()->SetId(0, cell.points_[0] + cells.size());
         poly->GetPointIds()->SetId(1, cell.points_[1] + cells.size());
@@ -395,6 +409,267 @@ StructuredGridParams inferStructuredGridParams(vtkUnstructuredGrid *unstructured
     return params;
 }
 
+std::runtime_error surfaceReadError(const std::string &message) {
+    return std::runtime_error("surface_mesh_with_vector_fields_from_vtu: " + message);
+}
+
+EMW::Types::Vector3d vtkPoint(vtkUnstructuredGrid *unstructuredGrid, const vtkIdType pointIdx) {
+    double point[3]{};
+    unstructuredGrid->GetPoint(pointIdx, point);
+    return {point[0], point[1], point[2]};
+}
+
+vtkSmartPointer<vtkUnstructuredGrid> readUnstructuredGrid(const std::string &path_to_file) {
+    auto unstructuredGrid = vtkSmartPointer<vtkUnstructuredGrid>::New();
+    const auto extension = std::filesystem::path(path_to_file).extension().string();
+
+    if (extension == ".vtk") {
+        auto reader = vtkSmartPointer<vtkUnstructuredGridReader>::New();
+        reader->SetFileName(path_to_file.c_str());
+        reader->ReadAllVectorsOn();
+        reader->Update();
+        if (!reader->GetOutput()) {
+            throw surfaceReadError("cannot read legacy VTK file: " + path_to_file);
+        }
+        unstructuredGrid->ShallowCopy(reader->GetOutput());
+        return unstructuredGrid;
+    }
+
+    auto reader = vtkSmartPointer<vtkXMLUnstructuredGridReader>::New();
+    reader->SetFileName(path_to_file.c_str());
+    reader->Update();
+    if (!reader->GetOutput()) {
+        throw surfaceReadError("cannot read VTU file: " + path_to_file);
+    }
+    unstructuredGrid->ShallowCopy(reader->GetOutput());
+    return unstructuredGrid;
+}
+
+std::vector<vtkIdType> inferLeadingCollocationPointIds(vtkUnstructuredGrid *unstructuredGrid) {
+    const auto nCells = unstructuredGrid->GetNumberOfCells();
+    const auto nPoints = unstructuredGrid->GetNumberOfPoints();
+    if (nCells == 0 || nPoints < nCells) {
+        return {};
+    }
+
+    for (vtkIdType cellIdx = 0; cellIdx < nCells; ++cellIdx) {
+        auto *cell = unstructuredGrid->GetCell(cellIdx);
+        if (!cell) {
+            throw surfaceReadError("cannot read cell " + std::to_string(cellIdx));
+        }
+
+        const auto nCellPoints = cell->GetNumberOfPoints();
+        for (vtkIdType localPointIdx = 0; localPointIdx < nCellPoints; ++localPointIdx) {
+            if (cell->GetPointId(localPointIdx) < nCells) {
+                return {};
+            }
+        }
+    }
+
+    std::vector<vtkIdType> collocationPointIds(static_cast<std::size_t>(nCells));
+    std::iota(collocationPointIds.begin(), collocationPointIds.end(), vtkIdType{0});
+    return collocationPointIds;
+}
+
+void validateVectorArray(vtkDataArray *array, const std::string &arrayName, const vtkIdType expectedTuples,
+                         const std::string &context) {
+    if (!array) {
+        throw surfaceReadError("missing " + context + " array " + arrayName);
+    }
+    if (array->GetNumberOfComponents() != 3) {
+        throw surfaceReadError(context + " array " + arrayName + " must have 3 components");
+    }
+    if (array->GetNumberOfTuples() != expectedTuples) {
+        throw surfaceReadError(context + " array " + arrayName + " has invalid tuple count");
+    }
+}
+
+void applySurfaceCellData(vtkUnstructuredGrid *unstructuredGrid, EMW::Mesh::SurfaceMesh &mesh,
+                          const std::vector<vtkIdType> &collocationPointIds) {
+    if (!collocationPointIds.empty()) {
+        for (vtkIdType cellIdx = 0; cellIdx < unstructuredGrid->GetNumberOfCells(); ++cellIdx) {
+            mesh.getCells()[static_cast<std::size_t>(cellIdx)].collPoint_ =
+                vtkPoint(unstructuredGrid, collocationPointIds[static_cast<std::size_t>(cellIdx)]);
+        }
+    }
+
+    auto *cellData = unstructuredGrid->GetCellData();
+    if (!cellData) {
+        return;
+    }
+
+    auto *tau1 = cellData->GetArray("tau1");
+    auto *tau2 = cellData->GetArray("tau2");
+    auto *normal = cellData->GetArray("n");
+    if (!tau1 && !tau2 && !normal) {
+        return;
+    }
+
+    const auto nCells = unstructuredGrid->GetNumberOfCells();
+    validateVectorArray(tau1, "tau1", nCells, "basis");
+    validateVectorArray(tau2, "tau2", nCells, "basis");
+    validateVectorArray(normal, "n", nCells, "basis");
+
+    for (vtkIdType cellIdx = 0; cellIdx < nCells; ++cellIdx) {
+        auto &cell = mesh.getCells()[static_cast<std::size_t>(cellIdx)];
+        cell.tau[0] = {tau1->GetComponent(cellIdx, 0), tau1->GetComponent(cellIdx, 1),
+                       tau1->GetComponent(cellIdx, 2)};
+        cell.tau[1] = {tau2->GetComponent(cellIdx, 0), tau2->GetComponent(cellIdx, 1),
+                       tau2->GetComponent(cellIdx, 2)};
+        cell.normal = {normal->GetComponent(cellIdx, 0), normal->GetComponent(cellIdx, 1),
+                       normal->GetComponent(cellIdx, 2)};
+    }
+}
+
+std::shared_ptr<EMW::Mesh::SurfaceMesh>
+readSurfaceMesh(vtkUnstructuredGrid *unstructuredGrid, const std::string &path_to_file,
+                std::vector<vtkIdType> &collocationPointIds) {
+    if (unstructuredGrid->GetNumberOfCells() == 0) {
+        throw surfaceReadError("mesh file contains no cells");
+    }
+
+    EMW::Containers::vector<EMW::Mesh::point_t> nodes;
+    EMW::Containers::vector<EMW::Mesh::IndexedCell::nodes_t> cells;
+    nodes.reserve(static_cast<std::size_t>(unstructuredGrid->GetNumberOfPoints()));
+    cells.reserve(static_cast<std::size_t>(unstructuredGrid->GetNumberOfCells()));
+
+    std::unordered_map<vtkIdType, EMW::Types::index> pointIdToNodeIdx;
+
+    const auto getNodeIdx = [&](const vtkIdType vtkPointId) -> EMW::Types::index {
+        const auto [it, inserted] =
+            pointIdToNodeIdx.emplace(vtkPointId, static_cast<EMW::Types::index>(nodes.size()));
+        if (inserted) {
+            nodes.push_back(vtkPoint(unstructuredGrid, vtkPointId));
+        }
+        return it->second;
+    };
+
+    for (vtkIdType cellIdx = 0; cellIdx < unstructuredGrid->GetNumberOfCells(); ++cellIdx) {
+        auto *cell = unstructuredGrid->GetCell(cellIdx);
+        if (!cell) {
+            throw surfaceReadError("cannot read cell " + std::to_string(cellIdx));
+        }
+
+        const auto nCellPoints = cell->GetNumberOfPoints();
+        if (nCellPoints != 3 && nCellPoints != 4) {
+            throw surfaceReadError("only triangle and quadrilateral surface cells are supported");
+        }
+
+        EMW::Mesh::IndexedCell::nodes_t cellNodes{};
+        for (vtkIdType localPointIdx = 0; localPointIdx < nCellPoints; ++localPointIdx) {
+            cellNodes[static_cast<std::size_t>(localPointIdx)] = getNodeIdx(cell->GetPointId(localPointIdx));
+        }
+        if (nCellPoints == 3) {
+            cellNodes[3] = cellNodes[2];
+        }
+
+        cells.push_back(cellNodes);
+    }
+
+    collocationPointIds = inferLeadingCollocationPointIds(unstructuredGrid);
+
+    auto mesh = std::make_shared<EMW::Mesh::SurfaceMesh>(std::move(nodes), std::move(cells));
+    mesh->setName(std::filesystem::path(path_to_file).stem().string());
+    applySurfaceCellData(unstructuredGrid, *mesh, collocationPointIds);
+    return mesh;
+}
+
+std::pair<vtkDataArray *, vtkDataArray *> findComplexVectorArrays(vtkDataSetAttributes *attributes,
+                                                                 const std::string &fieldName,
+                                                                 const std::string &dataLocation) {
+    if (!attributes) {
+        return {nullptr, nullptr};
+    }
+
+    const auto realName = fieldName + std::string(kRealSuffix);
+    const auto imagName = fieldName + std::string(kImagSuffix);
+    auto *real = attributes->GetArray(realName.c_str());
+    auto *imag = attributes->GetArray(imagName.c_str());
+    if (!real && !imag) {
+        return {nullptr, nullptr};
+    }
+    if (!real || !imag) {
+        throw surfaceReadError("field " + fieldName + " requires arrays " + realName + " and " + imagName +
+                               " in " + dataLocation + " data");
+    }
+    if (real->GetNumberOfComponents() != 3 || imag->GetNumberOfComponents() != 3) {
+        throw surfaceReadError("field " + fieldName + " must have 3 components in " + dataLocation + " data");
+    }
+    if (real->GetNumberOfTuples() != imag->GetNumberOfTuples()) {
+        throw surfaceReadError("real and imaginary tuple count mismatch for field " + fieldName);
+    }
+    return {real, imag};
+}
+
+EMW::Math::SurfaceVectorField readSurfaceVectorField(const EMW::Mesh::SurfaceMesh &mesh,
+                                                     vtkDataArray *realArray, vtkDataArray *imagArray,
+                                                     const std::vector<vtkIdType> &tupleIds,
+                                                     const std::string &fieldName) {
+    EMW::Containers::vector<EMW::Types::Vector3c> fieldData(tupleIds.size());
+
+    for (std::size_t cellIdx = 0; cellIdx < tupleIds.size(); ++cellIdx) {
+        const auto tupleIdx = tupleIds[cellIdx];
+        if (tupleIdx < 0 || tupleIdx >= realArray->GetNumberOfTuples()) {
+            throw surfaceReadError("tuple index is out of range for field " + fieldName);
+        }
+
+        EMW::Types::Vector3c value;
+        for (int component = 0; component < 3; ++component) {
+            value[component] = EMW::Types::complex_d(realArray->GetComponent(tupleIdx, component),
+                                                     imagArray->GetComponent(tupleIdx, component));
+        }
+        fieldData[cellIdx] = value;
+    }
+
+    EMW::Math::SurfaceVectorField field(mesh, fieldData);
+    field.setName(fieldName);
+    return field;
+}
+
+std::vector<EMW::Math::SurfaceVectorField>
+readSurfaceVectorFields(const EMW::Mesh::SurfaceMesh &mesh, vtkUnstructuredGrid *unstructuredGrid,
+                        const std::vector<std::string> &fieldNames,
+                        const std::vector<vtkIdType> &collocationPointIds) {
+    std::vector<EMW::Math::SurfaceVectorField> fields;
+    fields.reserve(fieldNames.size());
+
+    std::vector<vtkIdType> tupleIds(mesh.getCells().size());
+    std::iota(tupleIds.begin(), tupleIds.end(), vtkIdType{0});
+
+    for (const auto &fieldName : fieldNames) {
+        if (auto [real, imag] = findComplexVectorArrays(unstructuredGrid->GetCellData(), fieldName, "cell");
+            real && imag) {
+            if (real->GetNumberOfTuples() != static_cast<vtkIdType>(mesh.getCells().size())) {
+                throw surfaceReadError("cell field " + fieldName + " tuple count does not match mesh cells");
+            }
+            fields.push_back(readSurfaceVectorField(mesh, real, imag, tupleIds, fieldName));
+            continue;
+        }
+
+        if (auto [real, imag] = findComplexVectorArrays(unstructuredGrid->GetPointData(), fieldName, "point");
+            real && imag) {
+            const auto nTuples = real->GetNumberOfTuples();
+            if (nTuples == static_cast<vtkIdType>(mesh.getCells().size())) {
+                fields.push_back(readSurfaceVectorField(mesh, real, imag, tupleIds, fieldName));
+                continue;
+            }
+
+            if (!collocationPointIds.empty() && nTuples == unstructuredGrid->GetNumberOfPoints()) {
+                fields.push_back(readSurfaceVectorField(mesh, real, imag, collocationPointIds, fieldName));
+                continue;
+            }
+
+            throw surfaceReadError("point field " + fieldName + " cannot be mapped to mesh cells");
+        }
+
+        const auto realName = fieldName + std::string(kRealSuffix);
+        const auto imagName = fieldName + std::string(kImagSuffix);
+        throw surfaceReadError("field " + fieldName + " requires arrays " + realName + " and " + imagName);
+    }
+
+    return fields;
+}
+
 } // namespace
 
 EMW::Mesh::VolumeMesh::CubeMeshWithData volume_mesh_withdata_from_vtu(const std::string &path_to_file) {
@@ -538,6 +813,16 @@ EMW::Mesh::VolumeMesh::CubeMeshWithData volume_mesh_withdata_from_vtu(const std:
     return mesh;
 }
 
+SurfaceMeshVTUData surface_mesh_with_vector_fields_from_vtu(const std::string &path_to_file,
+                                                            const std::vector<std::string> &first_vector_field_names) {
+    auto unstructuredGrid = readUnstructuredGrid(path_to_file);
+
+    SurfaceMeshVTUData result{};
+    std::vector<vtkIdType> collocationPointIds;
+    result.mesh = readSurfaceMesh(unstructuredGrid, path_to_file, collocationPointIds);
+    result.first_vector_fields =
+        readSurfaceVectorFields(*result.mesh, unstructuredGrid, first_vector_field_names, collocationPointIds);
+    return result;
 }
 
-
+}

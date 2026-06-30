@@ -22,6 +22,10 @@
 #include <vtkXMLMultiBlockDataWriter.h>
 #include <vtkXMLUnstructuredGridWriter.h>
 
+#include <memory>
+#include <string>
+#include <vector>
+
 namespace VTK {
 namespace detail {
 
@@ -234,6 +238,17 @@ void volume_mesh_snapshot(const EMW::Mesh::VolumeMesh::CubeMesh &mesh, const std
 void volume_mesh_withdata_snapshot(const EMW::Mesh::VolumeMesh::CubeMeshWithData &mesh, const std::string &path_to_file);
 
 [[nodiscard]] EMW::Mesh::VolumeMesh::CubeMeshWithData volume_mesh_withdata_from_vtu(const std::string &path_to_file);
+
+struct SurfaceMeshVTUData {
+    std::shared_ptr<EMW::Mesh::SurfaceMesh> mesh;
+    std::vector<EMW::Math::SurfaceVectorField> first_vector_fields;
+
+    [[nodiscard]] const EMW::Mesh::SurfaceMesh &getMesh() const { return *mesh; }
+};
+
+[[nodiscard]] SurfaceMeshVTUData
+surface_mesh_with_vector_fields_from_vtu(const std::string &path_to_file,
+                                         const std::vector<std::string> &first_vector_field_names = {});
 
 template <typename ScalarField>
 void united_snapshot(const std::vector<ScalarField> &scalarFields,

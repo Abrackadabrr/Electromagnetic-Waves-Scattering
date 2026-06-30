@@ -27,20 +27,28 @@ Types::Vector3c sigmaOverCell(Types::complex_d k, const Types::Vector3d &tau, co
         const Types::scalar mul = cell.multiplier(p, q);
         return Helmholtz::sigmaKernel(k, tau, y, j_e, j_m) * mul;
     };
-    return DecartIntegration::integrate<DecartIntegration::GaussLegendre::Quadrature<2, 2>>(phi, {0, 0}, {1, 1});
+    const auto rcs_res = DecartIntegration::adaptive_integrate<DecartIntegration::GaussLegendre::Quadrature<2, 2>>(
+        phi, {0, 0}, {1., 1.},
+        [](Types::Vector3c r1, Types::Vector3c r2) { return (r1 - r2).norm() < 1e-6 * r2.norm(); }, 10);
+    std::cout << rcs_res.second << std::endl;
+    return rcs_res.first;
 }
 
 Types::Vector3c sigmaOverCube(Types::complex_d k, const Types::Vector3d &tau, const Types::Vector3d &left_down_corner,
                               Types::scalar dx, Types::scalar dy, Types::scalar dz, const Types::Vector3c &j_e,
-                              const Types::Vector3c &j_m, Types::complex_d eps) {
+                              Types::complex_d eps) {
+    // --- Integrand --- //
     const auto phi = [&](Types::scalar x, Types::scalar y, Types::scalar z) -> Types::Vector3c {
-        return (eps - 1.) * Helmholtz::sigmaKernel(k, tau, {x, y, z}, j_e, j_m, eps);
+        return Helmholtz::sigmaKernel_naive(k, tau, {x, y, z}, j_e, Types::Vector3c::Zero(), eps);
     };
-
-    return DecartIntegration::adaptive_integrate<DecartIntegration::NewtonCotess::Quadrature<2, 2, 2>>(
-               phi, {left_down_corner.x(), left_down_corner.y(), left_down_corner.z()}, {dx, dy, dz},
-               [](Types::Vector3c r1, Types::Vector3c r2) { return (r1 - r2).norm() < (1e-3 * r1.norm() + 1e-15); }, 8)
-        .first;
+    // --- Adaptive integration --- //
+    const auto scalar_criterion = [](Types::Vector3c r1, Types::Vector3c r2) {
+        return (r1 - r2).norm() < (1e-3 * r1.norm() + 1e-15);
+    };
+    const auto result = DecartIntegration::adaptive_integrate<DecartIntegration::NewtonCotess::Quadrature<2, 2, 2>>(
+        phi, {left_down_corner.x(), left_down_corner.y(), left_down_corner.z()}, {dx, dy, dz}, scalar_criterion, 8);
+    // ---- Result --- //
+    return (eps - 1.) * result.first;
 }
 
 Types::scalar calculateESA(const Types::Vector3d &tau, Types::complex_d k, const Math::SurfaceVectorField &j_e,
@@ -98,6 +106,24 @@ Types::scalar calculateESA(const Types::Vector3d &tau, Types::complex_d k, const
     return Math::Constants::inverse_4PI<Types::scalar>() * result.squaredNorm();
 }
 
+Types::scalar calculateESA_kahan(const Types::Vector3d &tau, Types::complex_d k, const Math::SurfaceVectorField &j_e) {
+    const auto &cells_e = j_e.getManifold().getCells();
+    const auto &field_e = j_e.getField();
+    Types::Vector3c result = Types::Vector3c::Zero();
+    Types::Vector3c compensation = Types::Vector3c::Zero();
+
+    for (int i = 0; i != field_e.size(); ++i) {
+        const Types::Vector3c term = sigmaOverCell(k, tau, cells_e[i], field_e[i], Types::Vector3c::Zero());
+
+        const Types::Vector3c y = term - compensation;
+        const Types::Vector3c t = result + y;
+
+        compensation = (t - result) - y;
+        result = t;
+    }
+    return Math::Constants::inverse_4PI<Types::scalar>() * result.squaredNorm();
+}
+
 Types::scalar calculateRSP(const Types::Vector3d &tau, Types::complex_d k, const std::string &field_name,
                            const Mesh::VolumeMesh::CubeMeshWithData &cube_mesh) {
     auto &&j_data = cube_mesh.getVectorData(field_name);
@@ -106,7 +132,7 @@ Types::scalar calculateRSP(const Types::Vector3d &tau, Types::complex_d k, const
 #pragma omp parallel for reduction(+ : result) num_threads(14)
     for (size_t i = 0; i < cube_mesh.getCells().size(); i++) {
         result += sigmaOverCube(k, tau, cube_mesh.leftDownCorner(i), cube_mesh.dx(), cube_mesh.dy(), cube_mesh.dz(),
-                                j_data[i], Types::Vector3c::Zero(), eps_data[i]);
+                                j_data[i], eps_data[i]);
     }
     return Math::Constants::inverse_4PI<Types::scalar>() * result.squaredNorm();
 }
@@ -120,7 +146,7 @@ Types::scalar calculateRSP_kahan(const Types::Vector3d &tau, Types::complex_d k,
     for (size_t i = 0; i < cube_mesh.getCells().size(); i++) {
         if (std::abs(eps_data[i]) - 1 > 1e-6) {
             Types::Vector3c term = sigmaOverCube(k, tau, cube_mesh.leftDownCorner(i), cube_mesh.dx(), cube_mesh.dy(),
-                                                 cube_mesh.dz(), j_data[i], Types::Vector3c::Zero(), eps_data[i]) -
+                                                 cube_mesh.dz(), j_data[i], eps_data[i]) -
                                    residual;
             Types::Vector3c new_sum = result + term;
             Types::Vector3c the_value_before_residual = new_sum - result;

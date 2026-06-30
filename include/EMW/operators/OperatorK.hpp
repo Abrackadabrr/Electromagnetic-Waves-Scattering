@@ -10,8 +10,8 @@
 #include "Functions.hpp"
 #include "math/MathConstants.hpp"
 #include "math/fields/SurfaceVectorField.hpp"
-#include "math/integration/decart/Quadrature.hpp"
 #include "math/integration/analytical/SingularIntegration.hpp"
+#include "math/integration/decart/Quadrature.hpp"
 #include "mesh/MeshTypes.hpp"
 #include "types/Types.hpp"
 
@@ -39,7 +39,10 @@ Types::complex_d K1OverSingularCellReducedAndDivided(const Mesh::point_t &point,
         const Types::scalar mul = cell.multiplier(p, q);
         return Helmholtz::F(k, point, y) * mul;
     };
-    return DecartIntegration::integrate<Quadrature>(phi, {0, 0}, {1., 1.});
+    const auto int_res = DecartIntegration::adaptive_integrate<Quadrature>(
+               phi, {0, 0}, {1., 1.},
+               [](Types::complex_d r1, Types::complex_d r2) { return std::abs(r1 - r2) < 1e-6 * std::abs(r2); }, 10);
+    return int_res.first;
 }
 
 /**
@@ -63,8 +66,12 @@ Types::complex_d K1OverSingularCellRnDWithSingularityExtraction(const Mesh::poin
         const Types::scalar mul = cell.multiplier(p, q);
         return Helmholtz::F_bounded_part(k, point, y) * mul;
     };
-    return DecartIntegration::integrate<Quadrature>(phi, {0, 0}, {1., 1.}) +
-           Math::Constants::inverse_4PI<Types::scalar>() * Math::Integration::Analytical::integrate_1_div_r(point, cell);
+    const auto integrtion_res = DecartIntegration::adaptive_integrate<Quadrature>(
+               phi, {0, 0}, {1., 1.},
+               [](Types::complex_d r1, Types::complex_d r2) { return std::abs(r1 - r2) < 1e-6 * std::abs(r2); }, 20);
+    return integrtion_res.first +
+           Math::Constants::inverse_4PI<Types::scalar>() *
+               Math::Integration::Analytical::integrate_1_div_r(point, cell);
 }
 
 /**
@@ -95,10 +102,18 @@ Types::Matrix3c K0TensorOverSingularCell(const Mesh::point_t &point, const cell_
         return Helmholtz::V(k, point, y);
     };
 
-    return DecartIntegration::integrate<Quadrature>(AB, {0}, {1}) * cell.integrationParameters.mul[0].transpose() +
-           DecartIntegration::integrate<Quadrature>(BC, {0}, {1}) * cell.integrationParameters.mul[1].transpose() +
-           DecartIntegration::integrate<Quadrature>(CD, {0}, {1}) * cell.integrationParameters.mul[2].transpose() +
-           DecartIntegration::integrate<Quadrature>(DA, {0}, {1}) * cell.integrationParameters.mul[3].transpose();
+    const auto vector_stop_crit = [](Types::Vector3c r1, Types::Vector3c r2) {
+        return (r1 - r2).norm() < 1e-6 * r2.norm();
+    };
+
+    return DecartIntegration::adaptive_integrate<Quadrature>(AB, {0}, {1}, vector_stop_crit, 10).first *
+               cell.integrationParameters.mul[0].transpose() +
+           DecartIntegration::adaptive_integrate<Quadrature>(BC, {0}, {1}, vector_stop_crit, 10).first *
+               cell.integrationParameters.mul[1].transpose() +
+           DecartIntegration::adaptive_integrate<Quadrature>(CD, {0}, {1}, vector_stop_crit, 10).first *
+               cell.integrationParameters.mul[2].transpose() +
+           DecartIntegration::adaptive_integrate<Quadrature>(DA, {0}, {1}, vector_stop_crit, 10).first *
+               cell.integrationParameters.mul[3].transpose();
 }
 } // namespace detail
 

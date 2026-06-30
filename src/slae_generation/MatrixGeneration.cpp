@@ -24,8 +24,7 @@ Types::scalar compare(const MatrixCoefs &a, const MatrixCoefs &b) {
 
 Types::complex_d getFirstPartIntegral(const Mesh::IndexedCell &cell_i, const Mesh::IndexedCell &cell_j,
                                       Types::complex_d k) {
-    if ((cell_i.collPoint_ - cell_j.collPoint_).norm() < 1e-10) {
-        // std::cout << "Self affecting" << std::endl;
+    if ((cell_i.collPoint_ - cell_j.collPoint_).norm() < 1) {
         return EMW::OperatorK::detail::K1OverSingularCellRnDWithSingularityExtraction<
             DecartIntegration::GaussLegendre::Quadrature<4, 4>>(cell_i.collPoint_, cell_j, k);
     }
@@ -40,7 +39,7 @@ Types::complex_d getFirstPartIntegral(Types::index i, Types::index j, Types::com
 
 Types::Matrix3c getZeroPartIntegral(const Mesh::IndexedCell &cell_i, const Mesh::IndexedCell &cell_j,
                                     Types::complex_d k) {
-    return EMW::OperatorK::detail::K0TensorOverSingularCell<DecartIntegration::GaussLegendre::Quadrature<4>>(
+    return EMW::OperatorK::detail::K0TensorOverSingularCell<DecartIntegration::GaussLegendre::Quadrature<8>>(
         cell_i.collPoint_, cell_j, k);
 }
 
@@ -236,8 +235,6 @@ Types::MatrixXc getMatrixR(Types::complex_d k, const Mesh::SurfaceMesh &integrat
     for (long i = 0; i < N; ++i) {
         for (long j = 0; j < M; ++j) {
             const auto coefs = DiscreteR::getMatrixCoefs(cells[i], cells_to_integrate[j], k);
-            // if (i == j) std::cout << coefs.a11 << " " << coefs.a12 << " " << coefs.a21 << ' ' << coefs.a22 <<
-            // std::endl;
             result(i, j) = coefs.a11;
             result(i + N, j) = coefs.a21;
             result(i, j + M) = coefs.a12;

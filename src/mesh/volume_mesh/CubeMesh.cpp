@@ -6,13 +6,9 @@
 
 namespace EMW::Mesh::VolumeMesh {
 CubeMesh::CubeMesh(Types::Vector3d minCorner, Types::scalar xs, Types::scalar ys, Types::scalar zs, std::size_t nx,
-                   std::size_t ny, std::size_t nz) {
+                   std::size_t ny, std::size_t nz) : cells_{}, nodes_{}, nx_ {nx}, ny_{ny}, nz_{nz} {
     //assert(xs > 0.0 && ys > 0.0 && zs > 0.0);
     //assert(nx >= 2 && ny >= 2 && nz >= 2);
-
-    nx_ = nx;
-    ny_ = ny;
-    nz_ = nz;
 
     // 1) Точки (уникальные)
     nodes_.resize(nx * ny * nz);

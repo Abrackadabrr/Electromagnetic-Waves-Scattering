@@ -30,6 +30,8 @@ Types::scalar calculateESA(const Types::Vector3d &tau, Types::complex_d k,
  */
 Types::scalar calculateESA(const Types::Vector3d &tau, Types::complex_d k, const Math::SurfaceVectorField &j_e);
 
+Types::scalar calculateESA_kahan(const Types::Vector3d &tau, Types::complex_d k, const Math::SurfaceVectorField &j_e);
+
 Types::scalar calculateRSP(const Types::Vector3d &tau, Types::complex_d k, const std::string &field_name,
                            const Mesh::VolumeMesh::CubeMeshWithData &cube_mesh);
 

@@ -246,23 +246,27 @@ inline rowcol get_toeplitz_rowcol(size_t lin_idx, size_t toeplitz_size) {
 }
 
 Types::Matrix3c operator_K_over_cube_mesh::galerkin_block_for_cubes(size_t k, size_t p) const noexcept {
-#if 1
+#if 0
     // 1. Если кубы далеко, то считаем через far_zone
     // в adaptive_integration_study получил, что на таких расстояниях ошибка около 3e-6
-    if (mesh.distance(k, p) > 7 * mesh.h())
+    if (mesh.distance(k, p) > 7 * mesh.h()) {
         // Ну например 7 h ...
-        return far_zone_interaction(k, p, 2);
+        auto result = far_zone_interaction(k, p, 3);
+        const Types::scalar eps = 1e-20;
+        result = (result.array().abs() < eps).select(Types::complex_d{0.0, 0.0}, result.array()).matrix();
+        return result;
+    }
 #endif
 
     // 2. Иначе считаем через преобразование сингулярного оператора
     const auto volume_res = matrix_3_coef(k, p);
     Types::Matrix3c surface_res = -matrix_2_coef(k, p);
-    // std::cout << surface_res.norm() / std::abs(volume_res * sqrt(3.)) << ' ';
+    Types::Matrix3c result = surface_res;
     // и подправляем общую матрицу
-    surface_res(0, 0) += volume_res;
-    surface_res(1, 1) += volume_res;
-    surface_res(2, 2) += volume_res;
-    return surface_res;
+    result(0, 0) += volume_res;
+    result(1, 1) += volume_res;
+    result(2, 2) += volume_res;
+    return result;
 }
 
 Types::MatrixXc
@@ -292,7 +296,7 @@ void operator_K_over_cube_mesh::compute_galerkin_matrix_dense_inplace(Types::Mat
         for (auto p = 0u; p < n_cubes; ++p) {
             // считаем поверхностную часть
             const auto volume_res = matrix_3_coef(k, p);
-            (*p_mat).block(3 * k, 3 * p, 3, 3) = matrix_2_coef(k, p);
+            (*p_mat).block(3 * k, 3 * p, 3, 3) = -matrix_2_coef(k, p);
             // и подправляем общую матрицу
             (*p_mat)(3 * k, 3 * p) += volume_res;
             (*p_mat)(3 * k + 1, 3 * p + 1) += volume_res;
@@ -329,7 +333,6 @@ operator_K_over_cube_mesh::compute_galerkin_matrix(Types::scalar basis_function_
             }
         }
     }
-
     return result;
 }
 

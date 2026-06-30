@@ -46,6 +46,7 @@ EMW::Math::SurfaceVectorField::TangentField(const EMW::Math::SurfaceVectorField:
     SurfaceVectorField result(manifold);
     result.setName(name);
     const long N = static_cast<long>(manifold.getCells().size());
+    result.field_data_.reserve(N);
     for (auto [i, cell] : manifold.getCells() | std::views::enumerate) {
         result.field_data_.emplace_back(fieldProjections(i) * cell.tau[0] + fieldProjections(i + N) * cell.tau[1]);
     }
@@ -92,6 +93,7 @@ void EMW::Math::SurfaceVectorField::multiply(
 EMW::Math::SurfaceVectorField
 EMW::Math::SurfaceVectorField::ZeroField(const EMW::Math::SurfaceVectorField::manifold_t &manifold) {
     SurfaceVectorField result(manifold);
+    result.field_data_.resize(manifold.getCells().size());
     std::fill(result.field_data_.begin(), result.field_data_.end(), Types::Vector3c::Zero());
     result.initialized = true;
     return result;

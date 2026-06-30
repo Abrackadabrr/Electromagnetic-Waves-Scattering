@@ -23,6 +23,12 @@ namespace EMW::Helmholtz
     sigmaKernel(Types::complex_d k, const Types::Vector3d& tau, const Types::Vector3d& point_on_surface,
                 const Types::Vector3c& j_e, const Types::Vector3c& j_m, Types::complex_d epsilon = {1., 0.});
 
+    // Подинтегральное выражение для диаграммы направленности
+    // без учета нормировки магнитного поля (и магнитного тока соотвественно)
+    Types::Vector3c
+    sigmaKernel_naive(Types::complex_d k, const Types::Vector3d& tau, const Types::Vector3d& point_on_surface,
+                const Types::Vector3c& j_e, const Types::Vector3c& j_m, Types::complex_d epsilon = {1., 0.});
+
     // функция для сглаживания сингулярности
     Types::scalar smoother(Types::scalar e, const Types::Vector3d& x, const Types::Vector3d& y);
 
