@@ -41,7 +41,6 @@ class CubeMeshWithData : public CubeMesh {
     CubeMeshWithData(const Types::Vector3d &minCorner, Types::scalar xs, Types::index ns)
         : CubeMeshWithData(minCorner, xs, xs, xs, ns, ns, ns){};
 
-
     // --- Setters ----- //
     template <typename Container> void setScalarData(const std::string &name, Container &&data);
     template <typename Container> void setVectorData(const std::string &name, Container &&data);
@@ -77,6 +76,15 @@ class CubeMeshWithData : public CubeMesh {
      * @return комплексный вектор размерности количества ячеек в сетке
      */
     [[nodiscard]] Types::VectorXc getScalarDataAsVector(const std::string &name) const;
+
+    /**
+     * Возвращает cell-data на сетке в виде вектора с нумерацией, согласно нумерации ячеек в сетке
+     * нумерации декартовых компонент (x, y, z)
+     *
+     * @param name - имя поля данных, которые хотим получить
+     * @return комплексный вектор размерности количества ячеек в сетке
+     */
+    [[nodiscard]] Types::VectorXc getVectorDataAsVector(const std::string &name) const;
 
     template <typename Selector>
     [[nodiscard]] CubeMeshWithData getSubmeshBasedOnScalarData(Selector &&select_cell, const std::string &data_name)

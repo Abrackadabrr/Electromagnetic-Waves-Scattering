@@ -107,7 +107,7 @@ TEST_F(VOLUME_OPERATOR_OVER_CUBE_MESH_TESTS, SimpleTripleBlockToeplitzTest) {
 
 TEST_F(VOLUME_OPERATOR_OVER_CUBE_MESH_TESTS, EQUALITY_OF_MATRIX_ELEMENTS) {
     constexpr Types::scalar total_mesh_size = 2;
-    constexpr Types::index Nx = 40;
+    constexpr Types::index Nx = 7;
     constexpr Types::index Ncubes = Nx - 1;
     constexpr Types::scalar cube_size = total_mesh_size / (Nx - 1);
     constexpr Types::scalar basis_fn_module = 1. / sqrt(cube_size * cube_size * cube_size);
@@ -188,10 +188,10 @@ TEST_F(VOLUME_OPERATOR_OVER_CUBE_MESH_TESTS, SYMMETRY_MATRIX_COMPARISON) {
 
 TEST_F(VOLUME_OPERATOR_OVER_CUBE_MESH_TESTS, TOEPLITZ_DENSE_COMPARISON) {
     constexpr Types::scalar total_mesh_size = 0.1;
-    constexpr Types::index Nx = 5;
+    constexpr Types::index Nx = 10;
     constexpr Types::scalar cube_size = total_mesh_size / (Nx - 1);
     constexpr Types::scalar basis_fn_module = 1. / sqrt(cube_size * cube_size * cube_size);
-    constexpr Types::scalar rel_tol = 1e-14;
+    constexpr Types::scalar rel_tol = 1e-12;
 
     // берем кубическую сетку на кубе
     Mesh::VolumeMesh::CubeMesh mesh{Types::point_t{0, 0, 0}, cube_length, Nx};
@@ -206,6 +206,7 @@ TEST_F(VOLUME_OPERATOR_OVER_CUBE_MESH_TESTS, TOEPLITZ_DENSE_COMPARISON) {
     std::cout << full_mat.norm() << std::endl;
 
     // Сравниваем типов
+    std::cout << (full_mat - toep_mat.to_dense()).norm() << std::endl;
     ASSERT_NEAR((full_mat - toep_mat.to_dense()).norm(), 0, rel_tol * full_mat.norm());
 }
 

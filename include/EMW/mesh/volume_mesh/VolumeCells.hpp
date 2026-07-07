@@ -16,7 +16,7 @@ namespace EMW::Mesh::VolumeCells {
 */
 struct IndexedCube {
     enum Axis { X = 0, Y = 1, Z = 2 };
-    enum Direction { Minus, Plus };
+    enum Direction { Minus=0, Plus=1 };
 
     using nodes_t = Containers::array<Types::index, 8>;
     using vertexes_t = Containers::vector<Types::point_t>;

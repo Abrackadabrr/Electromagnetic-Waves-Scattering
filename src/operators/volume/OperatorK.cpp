@@ -11,6 +11,8 @@
 
 #include "math/matrix/decompositions/Decompositions.hpp"
 
+#include <omp.h>
+
 namespace EMW::Operators::Volume {
 namespace Gl = DecartIntegration::GaussLegendre;
 
@@ -45,9 +47,9 @@ Types::Matrix3c operator_K_over_cube_mesh::surface_part_singularity_extraction(
                     // 1. Интеграл от ньютонова потенциала 2д ячейки
 
                     const auto analytical_integrand = [&face_k, &face_p](Types::scalar x, Types::scalar y) {
-                        const auto point = face_p.parametrization(x, y);
+                        const auto point = face_k.parametrization(x, y);
                         const auto integrand_value =
-                            Math::Integration::Analytical::integrate_1_div_r(point, face_k) * face_p.multiplier(x, y);
+                            Math::Integration::Analytical::integrate_1_div_r(point, face_p) * face_k.multiplier(x, y);
                         return integrand_value;
                     };
                     const auto singular_part =
@@ -279,6 +281,7 @@ operator_K_over_cube_mesh::compute_galerkin_matrix_dense(Types::scalar basis_fun
             const auto volume_res = matrix_3_coef(k, p);
             const auto surface_res = matrix_2_coef(k, p);
             result.block(3 * k, 3 * p, 3, 3) = -surface_res;
+            if (k == 0 && p == 0) std::cout << surface_res << std::endl;
             // и подправляем общую матрицу
             result(3 * k, 3 * p) += volume_res;
             result(3 * k + 1, 3 * p + 1) += volume_res;
@@ -315,7 +318,7 @@ operator_K_over_cube_mesh::compute_galerkin_matrix(Types::scalar basis_function_
     const Types::scalar basis_fn_module_sqr = basis_function_module * basis_function_module;
 
 #pragma omp parallel for num_threads(14) schedule(dynamic) default(none) shared(result, mesh)                          \
-    firstprivate(third_layer_toeplitz, second_layer_toeplitz, basis_fn_module_sqr, first_layer_toeplitz)
+    firstprivate(third_layer_toeplitz, second_layer_toeplitz, basis_fn_module_sqr, first_layer_toeplitz) //collapse(2)
     for (size_t i3 = 0; i3 < 2 * third_layer_toeplitz - 1; ++i3) {
         for (size_t i2 = 0; i2 < 2 * second_layer_toeplitz - 1; ++i2) {
             for (size_t i1 = 0; i1 < 2 * first_layer_toeplitz - 1; ++i1) {
@@ -332,6 +335,7 @@ operator_K_over_cube_mesh::compute_galerkin_matrix(Types::scalar basis_function_
                 working_block = galerkin_block_for_cubes(idx1, idx2) * basis_fn_module_sqr;
             }
         }
+        // printf("Поток %d делал итерацию %lu\n", omp_get_thread_num(), i3);
     }
     return result;
 }

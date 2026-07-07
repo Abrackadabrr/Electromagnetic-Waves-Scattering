@@ -16,4 +16,12 @@ Types::VectorXc CubeMeshWithData::getScalarDataAsVector(const std::string &name)
     return result;
 }
 
+Types::VectorXc CubeMeshWithData::getVectorDataAsVector(const std::string &name) const {
+    const auto& raw_data = getVectorData(name);
+    Types::VectorXc result(3 * cellsCount);
+    for (Types::index i = 0; i < cellsCount; ++i)
+        result.block(3 * i, 0, 3, 1) = raw_data[i];
+    return result;
+}
+
 }
