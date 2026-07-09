@@ -119,9 +119,10 @@ Eigen::PermutationMatrix<Eigen::Dynamic> CubeMesh::getPermutationForCubes(size_t
     return p_mat;
 }
 
-Containers::array<Mesh::IndexedCell, 6> CubeMesh::getFacesOfCube(Types::index k) {
+Containers::array<Mesh::IndexedCell, 6> CubeMesh::getFacesOfCube(Types::index k) const{
+    const Types::index ldc_idx = k + k / (nx_ - 1);
     Containers::array<Types::index, 8> vertex_indices{
-        k, k + 1, k + nx_, k + nx_ + 1, k + nx_ * ny_, k + nx_ * ny_ + 1, k + (ny_ + 1) * nx_, k + (ny_ + 1) * nx_ + 1};
+        ldc_idx, ldc_idx + 1, ldc_idx + nx_, ldc_idx + nx_ + 1, ldc_idx + nx_ * ny_, ldc_idx + nx_ * ny_ + 1, ldc_idx + (ny_ + 1) * nx_, ldc_idx + (ny_ + 1) * nx_ + 1};
     return {
         IndexedCell{{vertex_indices[0], vertex_indices[4], vertex_indices[6], vertex_indices[2]}, nodes_},
         IndexedCell{{vertex_indices[1], vertex_indices[3], vertex_indices[7], vertex_indices[5]}, nodes_},

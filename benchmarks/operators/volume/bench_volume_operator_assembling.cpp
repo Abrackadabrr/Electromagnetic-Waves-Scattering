@@ -63,6 +63,8 @@ class OperatorKAssemblingBench : public benchmark::Fixture {
  */
 BENCHMARK_DEFINE_F(OperatorKAssemblingBench, AssemblingAcceleration)(benchmark::State &state) {
     omp_set_num_threads(state.range(0));
+    auto warming_result = operator_k->compute_galerkin_matrix(basis_fn_module);
+    benchmark::DoNotOptimize(warming_result);
     for (auto _ : state) {
         auto result = operator_k->compute_galerkin_matrix(basis_fn_module);
         benchmark::DoNotOptimize(result);
@@ -84,7 +86,7 @@ BENCHMARK_DEFINE_F(OperatorKAssemblingBench, SimpleAssembling)(benchmark::State 
 
 BENCHMARK_REGISTER_F(OperatorKAssemblingBench, SimpleAssembling)->Iterations(5)->Unit(benchmark::kMillisecond)->UseRealTime();
 
-// BENCHMARK_REGISTER_F(OperatorKAssemblingBench, AssemblingAcceleration)->Arg(1)->Arg(2)->Arg(4)->Arg(8)->Arg(12)
-// ->Unit(benchmark::kMillisecond)->UseRealTime()->Iterations(3);
+BENCHMARK_REGISTER_F(OperatorKAssemblingBench, AssemblingAcceleration)->Arg(1)->Arg(2)->Arg(4)->Arg(8)->Arg(12)
+->Unit(benchmark::kMillisecond)->UseRealTime()->Iterations(3);
 
 BENCHMARK_MAIN();

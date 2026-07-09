@@ -9,12 +9,12 @@
 
 namespace EMW::Mesh::VolumeMesh {
 class CubeMesh {
-public:
-    using CellsType = VolumeCells::VertexParallelepiped;
+  public:
+    using CellsType = VolumeCells::IndexedCube;
     using CellsContainer_t = Containers::vector<CellsType>;
     using NodesContainer_t = Containers::vector<Types::point_t>;
 
-protected:
+  protected:
     struct mesh_info_t {
         Types::index nodes_size;
         Types::index cells_size;
@@ -30,7 +30,7 @@ protected:
 
     std::string name_ = "default_mesh_name";
 
-public:
+  public:
     CubeMesh() = default;
     /**
      * Cетка на прямоугольнике из прямоугольников
@@ -88,6 +88,7 @@ public:
     [[nodiscard]] inline size_t nCubesX() const noexcept { return nx_ - 1; };
     [[nodiscard]] inline size_t nCubesY() const noexcept { return ny_ - 1; };
     [[nodiscard]] inline size_t nCubesZ() const noexcept { return nz_ - 1; };
+    [[nodiscard]] inline size_t nCells() const noexcept { return (nx_ - 1) * (ny_ - 1) * (nz_ - 1); }
     [[nodiscard]] inline Types::scalar distance(size_t k, size_t p) const noexcept {
         return (left_down_corners_[k] - left_down_corners_[p]).norm();
     };
@@ -96,12 +97,13 @@ public:
     void setName(const std::string &name) noexcept { name_ = name; };
 
     // --- Specials --- //
-    [[nodiscard]] Eigen::PermutationMatrix<Eigen::Dynamic> getPermutation(size_t Nx, size_t Ny, size_t Nz) const noexcept;
+    [[nodiscard]] Eigen::PermutationMatrix<Eigen::Dynamic> getPermutation(size_t Nx, size_t Ny,
+                                                                          size_t Nz) const noexcept;
     [[nodiscard]] Eigen::PermutationMatrix<Eigen::Dynamic> getPermutationForCubes(
             size_t Nx, size_t Ny, size_t Nz) const noexcept;
 
     // --- Calculations --- //
-    [[nodiscard]] Containers::array<Mesh::IndexedCell, 6> getFacesOfCube(Types::index k);
+    [[nodiscard]] Containers::array<Mesh::IndexedCell, 6> getFacesOfCube(Types::index k) const;
 };
 } // namespace EMW::Mesh::VolumeMesh
 

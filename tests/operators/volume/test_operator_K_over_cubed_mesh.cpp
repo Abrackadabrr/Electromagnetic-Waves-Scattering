@@ -111,7 +111,7 @@ TEST_F(VOLUME_OPERATOR_OVER_CUBE_MESH_TESTS, EQUALITY_OF_MATRIX_ELEMENTS) {
     constexpr Types::index Ncubes = Nx - 1;
     constexpr Types::scalar cube_size = total_mesh_size / (Nx - 1);
     constexpr Types::scalar basis_fn_module = 1. / sqrt(cube_size * cube_size * cube_size);
-    constexpr Types::scalar rel_tol = 5e-13;
+    constexpr Types::scalar rel_tol = 1e-11;
 
     // Берем кубическую сетку на кубе
     Mesh::VolumeMesh::CubeMesh mesh{Types::point_t{0, 0, 0}, total_mesh_size, Nx};

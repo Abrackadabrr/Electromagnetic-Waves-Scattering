@@ -73,10 +73,6 @@ class operator_K_over_cube_mesh {
         return [rTol, aTol](scalar_type v1, scalar_type v2) { return std::abs(v1 - v2) < rTol * std::abs(v2) + aTol; };
     }
 
-    [[nodiscard]] faces_container_t_ getFacesOfCube() const {
-
-    }
-
   public:
     /** Настройки адаптивного интегрирования */
     void set_adaptive_integration_max_levels(const Containers::array<size_t, 4> &levels) noexcept {
@@ -138,11 +134,11 @@ class operator_K_over_cube_mesh {
                                                      size_t int_level_6d = 2) const noexcept;
 
     [[nodiscard]] Types::Matrix3c
-    surface_part_singularity_extraction(const cell_t &k_cube, const cell_t &p_cube,
+    surface_part_singularity_extraction(Types::index k, Types::index p,
                                         size_t singular_integration_level_2d = 10,
                                         size_t bounded_integration_level_4d = 4) const noexcept;
 
-    [[nodiscard]] Types::Matrix3c surface_part_naive(const cell_t &cube_k, const cell_t &cube_p,
+    [[nodiscard]] Types::Matrix3c surface_part_naive(Types::index k, Types::index p,
                                                      size_t integration_level_4d = 4) const noexcept;
 
     /**

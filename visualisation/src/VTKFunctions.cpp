@@ -184,7 +184,7 @@ void volume_mesh_snapshot(const EMW::Mesh::VolumeMesh::CubeMesh &mesh, const std
     vtkSmartPointer<vtkPoints> dumpPoints = vtkSmartPointer<vtkPoints>::New();
 
     const EMW::Containers::vector<EMW::Mesh::point_t> &nodes = mesh.getNodes();
-    const EMW::Containers::vector<EMW::Mesh::VolumeCells::IndexedCube> &cells = mesh.getCells();
+    const auto &cells = mesh.getCells();
 
     // Обходим все точки нашей расчётной сетки
     for (auto &node : nodes) {

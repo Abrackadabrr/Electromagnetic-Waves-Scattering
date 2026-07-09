@@ -17,32 +17,27 @@ namespace EMW::Operators::Volume {
 namespace Gl = DecartIntegration::GaussLegendre;
 
 Types::Matrix3c
-operator_K_over_cube_mesh::surface_part_singularity_extraction(const cell_t &cube_k, const cell_t &cube_p,
+operator_K_over_cube_mesh::surface_part_singularity_extraction(Types::index k, Types::index p,
                                                                size_t singular_integration_level_2d,
                                                                size_t bounded_integration_level_4d) const noexcept {
     Types::Matrix3c result = Types::Matrix3c::Zero();
     const size_t singular_integration_level = singular_integration_level_2d; // 2d
     const size_t bounded_integration_level = bounded_integration_level_4d;   // 4d
+    const auto faces_k = mesh.getFacesOfCube(k);
+    const auto faces_p = mesh.getFacesOfCube(p);
 
+    // два цикла по направлениям x, y, z
     for (Types::index i = 0; i < 3; i++) {
-        Containers::array<Mesh::IndexedCell, 2> faces_k;
-        faces_k[0] = cube_k.getFace(static_cast<cell_t::Axis>(i), cell_t::Direction::Minus, mesh.getNodes());
-        faces_k[1] = cube_k.getFace(static_cast<cell_t::Axis>(i), cell_t::Direction::Plus, mesh.getNodes());
         for (Types::index j = 0; j < 3; j++) {
-            Containers::array<Mesh::IndexedCell, 2> faces_p;
-            faces_p[0] = cube_p.getFace(static_cast<cell_t::Axis>(j), cell_t::Direction::Minus, mesh.getNodes());
-            faces_p[1] = cube_p.getFace(static_cast<cell_t::Axis>(j), cell_t::Direction::Plus, mesh.getNodes());
-
-            // и тут нужно взять четыре одинаковых по вайбу интеграла
+            // два цикла по направлениям -, +
             for (size_t face_k_idx = 0; face_k_idx < 2; face_k_idx++) {
                 for (size_t face_p_idx = 0; face_p_idx < 2; face_p_idx++) {
-                    // Делаем.
+
                     Types::scalar multiplier = face_k_idx == face_p_idx ? 1 : -1;
-                    auto face_k = faces_k[face_k_idx];
-                    auto face_p = faces_p[face_p_idx];
+                    auto face_k = faces_k[2 * i + face_k_idx];
+                    auto face_p = faces_p[2 * j + face_p_idx];
 
                     // 1. Интеграл от ньютонова потенциала 2д ячейки
-
                     const auto analytical_integrand = [&face_k, &face_p](Types::scalar x, Types::scalar y) {
                         const auto point = face_k.parametrization(x, y);
                         const auto integrand_value =
@@ -77,26 +72,24 @@ operator_K_over_cube_mesh::surface_part_singularity_extraction(const cell_t &cub
     return result;
 }
 
-Types::Matrix3c operator_K_over_cube_mesh::surface_part_naive(const cell_t &cube_k, const cell_t &cube_p,
+Types::Matrix3c operator_K_over_cube_mesh::surface_part_naive(Types::index k, Types::index p,
                                                               size_t integration_level_4d) const noexcept {
     Types::Matrix3c result = Types::Matrix3c::Zero();
     const size_t integration_level = integration_level_4d; // 4d
 
-    for (Types::index i = 0; i < 3; i++) {
-        Containers::array<Mesh::IndexedCell, 2> faces_k;
-        faces_k[0] = cube_k.getFace(static_cast<cell_t::Axis>(i), cell_t::Direction::Minus, mesh.getNodes());
-        faces_k[1] = cube_k.getFace(static_cast<cell_t::Axis>(i), cell_t::Direction::Plus, mesh.getNodes());
-        for (Types::index j = 0; j < 3; j++) {
-            Containers::array<Mesh::IndexedCell, 2> faces_p;
-            faces_p[0] = cube_p.getFace(static_cast<cell_t::Axis>(j), cell_t::Direction::Minus, mesh.getNodes());
-            faces_p[1] = cube_p.getFace(static_cast<cell_t::Axis>(j), cell_t::Direction::Plus, mesh.getNodes());
+    const auto faces_k = mesh.getFacesOfCube(k);
+    const auto faces_p = mesh.getFacesOfCube(p);
 
-            // и тут нужно взять четыре одинаковых по вайбу интеграла
+    // два цикла по направлениям x, y, z
+    for (Types::index i = 0; i < 3; i++) {
+        for (Types::index j = 0; j < 3; j++) {
+            // два цикла по направлениям -, +
             for (size_t face_k_idx = 0; face_k_idx < 2; face_k_idx++) {
                 for (size_t face_p_idx = 0; face_p_idx < 2; face_p_idx++) {
+
                     Types::scalar multiplier = face_k_idx == face_p_idx ? 1 : -1;
-                    auto face_k = faces_k[face_k_idx];
-                    auto face_p = faces_p[face_p_idx];
+                    auto face_k = faces_k[2 * i + face_k_idx];
+                    auto face_p = faces_p[2 * j + face_p_idx];
 
                     // Интегрируемся без выделения особенности сразу
                     const auto integrand = [&face_k, &face_p, wn = wave_number](Types::scalar x1, Types::scalar y1,
@@ -215,12 +208,10 @@ Types::complex_d operator_K_over_cube_mesh::matrix_3_coef(Types::index k, Types:
 
 Types::Matrix3c operator_K_over_cube_mesh::matrix_2_coef(Types::index k, Types::index p) const noexcept {
     const Types::scalar h = mesh.h();
-    const auto &cube_k = mesh.getCells()[k];
-    const auto &cube_p = mesh.getCells()[p];
     if ((mesh.leftDownCorner(k) - mesh.leftDownCorner(p)).norm() < nearnes_tresholds * h) {
-        return surface_part_singularity_extraction(cube_k, cube_p, int_lev_2d, int_lev_4d);
+        return surface_part_singularity_extraction(k, p, int_lev_2d, int_lev_4d);
     }
-    return surface_part_naive(cube_k, cube_p, int_lev_4d);
+    return surface_part_naive(k, p, int_lev_4d);
 }
 
 // ------------------ Matrix Assembling ------------------ //
@@ -265,7 +256,7 @@ Types::Matrix3c operator_K_over_cube_mesh::galerkin_block_for_cubes(size_t k, si
 
 Types::MatrixXc
 operator_K_over_cube_mesh::compute_galerkin_matrix_dense(Types::scalar basis_function_module) const noexcept {
-    const Types::index n_cubes = mesh.getCells().size();
+    const Types::index n_cubes = mesh.nCells();
     Types::MatrixXc result = Types::MatrixXc::Zero(3 * n_cubes, 3 * n_cubes);
     for (auto p = 0u; p < n_cubes; ++p) {
         for (auto k = 0u; k < n_cubes; ++k) {
@@ -285,10 +276,9 @@ operator_K_over_cube_mesh::compute_galerkin_matrix_dense(Types::scalar basis_fun
 }
 
 void operator_K_over_cube_mesh::compute_galerkin_matrix_dense_inplace(Types::MatrixXc *p_mat) const noexcept {
-    const Types::index n_cubes = mesh.getCells().size();
+    const Types::index n_cubes = mesh.nCells();
     *p_mat = Types::MatrixXc::Zero(3 * n_cubes, 3 * n_cubes);
     for (auto k = 0u; k < n_cubes; ++k) {
-        const auto &cube_k = mesh.getCells()[k];
         for (auto p = 0u; p < n_cubes; ++p) {
             // считаем поверхностную часть
             const auto volume_res = matrix_3_coef(k, p);
