@@ -9,25 +9,28 @@
 
 namespace EMW::Mesh::VolumeMesh {
 class CubeMesh {
-  protected:
+public:
+    using CellsType = VolumeCells::VertexParallelepiped;
+    using CellsContainer_t = Containers::vector<CellsType>;
+    using NodesContainer_t = Containers::vector<Types::point_t>;
+
+protected:
     struct mesh_info_t {
         Types::index nodes_size;
         Types::index cells_size;
         std::string name;
     };
 
-    using CellsType = VolumeCells::IndexedCube;
-    using CellsContainer_t = Containers::vector<CellsType>;
-    using NodesContainer_t = Containers::vector<Types::point_t>;
-
+    Types::scalar dx_, dy_, dz_;
+    Types::point_t rel_center_pos_;
     NodesContainer_t nodes_;
+    NodesContainer_t left_down_corners_;
     CellsContainer_t cells_;
     Types::index nx_, ny_, nz_;
-    Types::scalar dx_, dy_, dz_;
 
     std::string name_ = "default_mesh_name";
 
-  public:
+public:
     CubeMesh() = default;
     /**
      * Cетка на прямоугольнике из прямоугольников
@@ -69,22 +72,24 @@ class CubeMesh {
 
     // --- Getters --- //
     [[nodiscard]] inline const CellsContainer_t &getCells() const noexcept { return cells_; }
-    [[nodiscard]] inline const NodesContainer_t &getNodes() const noexcept{ return nodes_; }
-    [[nodiscard]] inline const std::string &getName() const noexcept{ return name_; }
-    [[nodiscard]] inline Types::scalar h() const noexcept{ return std::sqrt(dx_ * dx_ + dy_ * dy_ + dz_ * dz_); }
-
-    [[nodiscard]] inline const Types::point_t &leftDownCorner(Types::index k) const noexcept{ return cells_[k].vertexes_[0]; };
-    [[nodiscard]] inline Types::scalar dx() const noexcept{ return dx_; };
-    [[nodiscard]] inline Types::scalar dy() const noexcept{ return dy_; };
-    [[nodiscard]] inline Types::scalar dz() const noexcept{ return dz_; };
-    [[nodiscard]] inline size_t nx() const noexcept{ return nx_; };
-    [[nodiscard]] inline size_t ny() const noexcept{ return ny_; };
-    [[nodiscard]] inline size_t nz() const noexcept{ return nz_; };
-    [[nodiscard]] inline size_t nCubesX() const noexcept{ return nx_ - 1; };
-    [[nodiscard]] inline size_t nCubesY() const noexcept{ return ny_ - 1; };
-    [[nodiscard]] inline size_t nCubesZ() const noexcept{ return nz_ - 1; };
-    [[nodiscard]] inline Types::scalar distance(size_t k, size_t p) const noexcept{
-        return (cells_[k].center_ - cells_[p].center_).norm();
+    [[nodiscard]] inline const NodesContainer_t &getNodes() const noexcept { return nodes_; }
+    [[nodiscard]] inline const NodesContainer_t &getLDC() const noexcept { return left_down_corners_; }
+    [[nodiscard]] inline const std::string &getName() const noexcept { return name_; }
+    [[nodiscard]] inline Types::scalar h() const noexcept { return std::sqrt(dx_ * dx_ + dy_ * dy_ + dz_ * dz_); }
+    [[nodiscard]] inline const Types::point_t &leftDownCorner(Types::index k) const noexcept {
+        return left_down_corners_[k];
+    }
+    [[nodiscard]] inline Types::scalar dx() const noexcept { return dx_; };
+    [[nodiscard]] inline Types::scalar dy() const noexcept { return dy_; };
+    [[nodiscard]] inline Types::scalar dz() const noexcept { return dz_; };
+    [[nodiscard]] inline size_t nx() const noexcept { return nx_; };
+    [[nodiscard]] inline size_t ny() const noexcept { return ny_; };
+    [[nodiscard]] inline size_t nz() const noexcept { return nz_; };
+    [[nodiscard]] inline size_t nCubesX() const noexcept { return nx_ - 1; };
+    [[nodiscard]] inline size_t nCubesY() const noexcept { return ny_ - 1; };
+    [[nodiscard]] inline size_t nCubesZ() const noexcept { return nz_ - 1; };
+    [[nodiscard]] inline Types::scalar distance(size_t k, size_t p) const noexcept {
+        return (left_down_corners_[k] - left_down_corners_[p]).norm();
     };
 
     // --- Setters --- //
@@ -94,7 +99,10 @@ class CubeMesh {
     [[nodiscard]] Eigen::PermutationMatrix<Eigen::Dynamic> getPermutation(size_t Nx, size_t Ny, size_t Nz) const noexcept;
     [[nodiscard]] Eigen::PermutationMatrix<Eigen::Dynamic> getPermutationForCubes(
             size_t Nx, size_t Ny, size_t Nz) const noexcept;
-    };
+
+    // --- Calculations --- //
+    [[nodiscard]] Containers::array<Mesh::IndexedCell, 6> getFacesOfCube(Types::index k);
+};
 } // namespace EMW::Mesh::VolumeMesh
 
 #endif // CUBEMESH_HPP

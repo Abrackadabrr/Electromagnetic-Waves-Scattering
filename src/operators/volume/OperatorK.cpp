@@ -16,25 +16,22 @@
 namespace EMW::Operators::Volume {
 namespace Gl = DecartIntegration::GaussLegendre;
 
-Types::Matrix3c operator_K_over_cube_mesh::surface_part_singularity_extraction(
-    const Mesh::VolumeCells::IndexedCube &cube_k, const Mesh::VolumeCells::IndexedCube &cube_p,
-    size_t singular_integration_level_2d, size_t bounded_integration_level_4d) const noexcept {
+Types::Matrix3c
+operator_K_over_cube_mesh::surface_part_singularity_extraction(const cell_t &cube_k, const cell_t &cube_p,
+                                                               size_t singular_integration_level_2d,
+                                                               size_t bounded_integration_level_4d) const noexcept {
     Types::Matrix3c result = Types::Matrix3c::Zero();
     const size_t singular_integration_level = singular_integration_level_2d; // 2d
     const size_t bounded_integration_level = bounded_integration_level_4d;   // 4d
 
     for (Types::index i = 0; i < 3; i++) {
         Containers::array<Mesh::IndexedCell, 2> faces_k;
-        faces_k[0] = cube_k.getFace(static_cast<Mesh::VolumeCells::IndexedCube::Axis>(i),
-                                    Mesh::VolumeCells::IndexedCube::Direction::Minus, mesh.getNodes());
-        faces_k[1] = cube_k.getFace(static_cast<Mesh::VolumeCells::IndexedCube::Axis>(i),
-                                    Mesh::VolumeCells::IndexedCube::Direction::Plus, mesh.getNodes());
+        faces_k[0] = cube_k.getFace(static_cast<cell_t::Axis>(i), cell_t::Direction::Minus, mesh.getNodes());
+        faces_k[1] = cube_k.getFace(static_cast<cell_t::Axis>(i), cell_t::Direction::Plus, mesh.getNodes());
         for (Types::index j = 0; j < 3; j++) {
             Containers::array<Mesh::IndexedCell, 2> faces_p;
-            faces_p[0] = cube_p.getFace(static_cast<Mesh::VolumeCells::IndexedCube::Axis>(j),
-                                        Mesh::VolumeCells::IndexedCube::Direction::Minus, mesh.getNodes());
-            faces_p[1] = cube_p.getFace(static_cast<Mesh::VolumeCells::IndexedCube::Axis>(j),
-                                        Mesh::VolumeCells::IndexedCube::Direction::Plus, mesh.getNodes());
+            faces_p[0] = cube_p.getFace(static_cast<cell_t::Axis>(j), cell_t::Direction::Minus, mesh.getNodes());
+            faces_p[1] = cube_p.getFace(static_cast<cell_t::Axis>(j), cell_t::Direction::Plus, mesh.getNodes());
 
             // и тут нужно взять четыре одинаковых по вайбу интеграла
             for (size_t face_k_idx = 0; face_k_idx < 2; face_k_idx++) {
@@ -80,24 +77,19 @@ Types::Matrix3c operator_K_over_cube_mesh::surface_part_singularity_extraction(
     return result;
 }
 
-Types::Matrix3c operator_K_over_cube_mesh::surface_part_naive(const Mesh::VolumeCells::IndexedCube &cube_k,
-                                                              const Mesh::VolumeCells::IndexedCube &cube_p,
+Types::Matrix3c operator_K_over_cube_mesh::surface_part_naive(const cell_t &cube_k, const cell_t &cube_p,
                                                               size_t integration_level_4d) const noexcept {
     Types::Matrix3c result = Types::Matrix3c::Zero();
     const size_t integration_level = integration_level_4d; // 4d
 
     for (Types::index i = 0; i < 3; i++) {
         Containers::array<Mesh::IndexedCell, 2> faces_k;
-        faces_k[0] = cube_k.getFace(static_cast<Mesh::VolumeCells::IndexedCube::Axis>(i),
-                                    Mesh::VolumeCells::IndexedCube::Direction::Minus, mesh.getNodes());
-        faces_k[1] = cube_k.getFace(static_cast<Mesh::VolumeCells::IndexedCube::Axis>(i),
-                                    Mesh::VolumeCells::IndexedCube::Direction::Plus, mesh.getNodes());
+        faces_k[0] = cube_k.getFace(static_cast<cell_t::Axis>(i), cell_t::Direction::Minus, mesh.getNodes());
+        faces_k[1] = cube_k.getFace(static_cast<cell_t::Axis>(i), cell_t::Direction::Plus, mesh.getNodes());
         for (Types::index j = 0; j < 3; j++) {
             Containers::array<Mesh::IndexedCell, 2> faces_p;
-            faces_p[0] = cube_p.getFace(static_cast<Mesh::VolumeCells::IndexedCube::Axis>(j),
-                                        Mesh::VolumeCells::IndexedCube::Direction::Minus, mesh.getNodes());
-            faces_p[1] = cube_p.getFace(static_cast<Mesh::VolumeCells::IndexedCube::Axis>(j),
-                                        Mesh::VolumeCells::IndexedCube::Direction::Plus, mesh.getNodes());
+            faces_p[0] = cube_p.getFace(static_cast<cell_t::Axis>(j), cell_t::Direction::Minus, mesh.getNodes());
+            faces_p[1] = cube_p.getFace(static_cast<cell_t::Axis>(j), cell_t::Direction::Plus, mesh.getNodes());
 
             // и тут нужно взять четыре одинаковых по вайбу интеграла
             for (size_t face_k_idx = 0; face_k_idx < 2; face_k_idx++) {
@@ -212,7 +204,7 @@ Types::Matrix3c operator_K_over_cube_mesh::far_zone_interaction(Types::index k, 
 Types::complex_d operator_K_over_cube_mesh::matrix_3_coef(Types::index k, Types::index p) const noexcept {
     const auto &k_corner = mesh.leftDownCorner(k);
     const auto &p_corner = mesh.leftDownCorner(p);
-    const auto &k_center = mesh.getCells()[k].center_;
+    const Types::point_t &k_center = k_corner + Types::point_t{mesh.dx() / 2, mesh.dy() / 2, mesh.dz() / 2};
     const auto h = mesh.h();
 
     if ((k_corner - p_corner).norm() < nearnes_tresholds * h)
@@ -225,7 +217,7 @@ Types::Matrix3c operator_K_over_cube_mesh::matrix_2_coef(Types::index k, Types::
     const Types::scalar h = mesh.h();
     const auto &cube_k = mesh.getCells()[k];
     const auto &cube_p = mesh.getCells()[p];
-    if ((cube_k.center_ - cube_p.center_).norm() < nearnes_tresholds * h) {
+    if ((mesh.leftDownCorner(k) - mesh.leftDownCorner(p)).norm() < nearnes_tresholds * h) {
         return surface_part_singularity_extraction(cube_k, cube_p, int_lev_2d, int_lev_4d);
     }
     return surface_part_naive(cube_k, cube_p, int_lev_4d);
@@ -281,7 +273,8 @@ operator_K_over_cube_mesh::compute_galerkin_matrix_dense(Types::scalar basis_fun
             const auto volume_res = matrix_3_coef(k, p);
             const auto surface_res = matrix_2_coef(k, p);
             result.block(3 * k, 3 * p, 3, 3) = -surface_res;
-            if (k == 0 && p == 0) std::cout << surface_res << std::endl;
+            if (k == 0 && p == 0)
+                std::cout << surface_res << std::endl;
             // и подправляем общую матрицу
             result(3 * k, 3 * p) += volume_res;
             result(3 * k + 1, 3 * p + 1) += volume_res;
@@ -317,8 +310,8 @@ operator_K_over_cube_mesh::compute_galerkin_matrix(Types::scalar basis_function_
         first_layer_toeplitz, second_layer_toeplitz, third_layer_toeplitz, 3);
     const Types::scalar basis_fn_module_sqr = basis_function_module * basis_function_module;
 
-#pragma omp parallel for num_threads(14) schedule(dynamic) default(none) shared(result, mesh)                          \
-    firstprivate(third_layer_toeplitz, second_layer_toeplitz, basis_fn_module_sqr, first_layer_toeplitz) //collapse(2)
+#pragma omp parallel for schedule(dynamic) default(none) shared(result, mesh)                                          \
+    firstprivate(third_layer_toeplitz, second_layer_toeplitz, basis_fn_module_sqr, first_layer_toeplitz) collapse(3)
     for (size_t i3 = 0; i3 < 2 * third_layer_toeplitz - 1; ++i3) {
         for (size_t i2 = 0; i2 < 2 * second_layer_toeplitz - 1; ++i2) {
             for (size_t i1 = 0; i1 < 2 * first_layer_toeplitz - 1; ++i1) {
@@ -660,7 +653,7 @@ operator_K_over_cube_mesh::compute_galerkin_matrix_custom_blocksize_compressed(
 
 // --------------- Operator Value Computation -------------- //
 
-[[nodiscard]] Types::Vector3c operator_K_over_cube_mesh::volume_part(const Types::Vector3c& point, const Mesh::VolumeCells::IndexedCube& cube) const noexcept {
+[[nodiscard]] Types::Vector3c operator_K_over_cube_mesh::volume_part(const Types::Vector3c& point, const cell_t& cube) const noexcept {
 
 }
 
@@ -693,8 +686,8 @@ operator_K_over_cube_mesh::compute_galerkin_matrix_custom_blocksize_compressed(
 [[nodiscard]] Types::Vector3c operator_K_over_cube_mesh::compute_arbitrary_point(const Types::point_t& point, const Containers::vector<Types::Vector3c> &field_values) const noexcept {
     // проверка на то, что точка находится внутри сетки или близко к ней
     Types::scalar expanding_size = 4.;  // насколько расширить куб для расчета близости точки к сетке
-    Types::point_t min_corner_point_bb = mesh.leftDownCorner(0) + expanding_size * Types::point_t{mesh.dx(), mesh.dy(), mesh.dz()};
-    Types::point_t max_corner_point_bb = mesh.getCells().back().vertexes_.back() + expanding_size * Types::point_t{mesh.dx(), mesh.dy(), mesh.dz()};
+    Types::point_t min_corner_point_bb = mesh.leftDownCorner(0) - expanding_size * Types::point_t{mesh.dx(), mesh.dy(), mesh.dz()};
+    Types::point_t max_corner_point_bb = mesh.leftDownCorner(0) + (expanding_size + 1) * Types::point_t{mesh.dx(), mesh.dy(), mesh.dz()};
 
     if (point.cwiseMax(min_corner_point_bb) == point && point.cwiseMin(max_corner_point_bb) == point) {
         return compute_inner_point(point, field_values);

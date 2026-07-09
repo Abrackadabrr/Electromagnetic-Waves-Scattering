@@ -5,6 +5,7 @@
 #include "third_party/eigen/unsupported/Eigen/FFT"
 #include "types/Types.hpp"
 
+#include <algorithm>
 #include <array>
 #include <cassert>
 #include <stdexcept>
@@ -19,7 +20,6 @@ template <typename scalar_t>
 class TripleToeplitz3x3Tensor {
 private:
     static constexpr Types::index block_size_ = 3;
-
     Types::index levels_x_ = 0;
     Types::index levels_y_ = 0;
     Types::index levels_z_ = 0;
@@ -450,6 +450,9 @@ public:
 
 private:
     static constexpr Types::index block_size_ = 3;
+    static constexpr Types::index kernel_block_size_ = block_size_ * block_size_;
+
+    using kernel_spectrum_value_type = std::array<complex_type, kernel_block_size_>;
 
     tensor_type levels_;
 
@@ -465,7 +468,7 @@ private:
     Types::index fft_y_ = 0;
     Types::index fft_z_ = 0;
 
-    std::array<Containers::vector<complex_type>, block_size_ * block_size_> kernel_spectrum_;
+    Containers::vector<kernel_spectrum_value_type> kernel_spectrum_;
 
     // Cell numbering follows mesh convention:
     // x changes fastest, then y, then z:
@@ -588,94 +591,187 @@ private:
         return levels;
     }
 
-    void fft3_inplace(Containers::vector<complex_type>& data, bool inverse) const {
+    [[nodiscard]] static Types::index next_fast_fft_size(Types::index minimum_size) noexcept {
+        const auto is_fast_size = [](Types::index size) noexcept {
+            for (const Types::index factor : {Types::index{2}, Types::index{3}, Types::index{5}}) {
+                while (size % factor == 0) {
+                    size /= factor;
+                }
+            }
+            return size == 1;
+        };
+
+        Types::index size = minimum_size;
+        while (!is_fast_size(size)) {
+            ++size;
+        }
+        return size;
+    }
+
+    template <std::size_t component_count>
+    void fft3_interleaved_inplace(Containers::vector<std::array<complex_type, component_count>>& data,
+                                  bool inverse) const {
         const Types::index fx = fft_x_;
         const Types::index fy = fft_y_;
         const Types::index fz = fft_z_;
+        const Types::index max_axis_size = std::max({fx, fy, fz});
 
         const auto flatten = [fx, fy](Types::index x, Types::index y, Types::index z) noexcept -> Types::index {
             return x + fx * (y + fy * z);
         };
 
-        // Pass 1: independent 1D FFTs along x.
-        // Fixed (y, z), transform x = 0 .. fx - 1.
         #pragma omp parallel
         {
-            Eigen::FFT<Types::scalar> fft;
-            Containers::vector<complex_type> line_in(fx);
-            Containers::vector<complex_type> line_out(fx);
+            thread_local Eigen::FFT<Types::scalar> fft;
+            thread_local Containers::vector<complex_type> line_in;
+            thread_local Containers::vector<complex_type> line_out;
+            line_in.resize(max_axis_size);
+            line_out.resize(max_axis_size);
 
             #pragma omp for collapse(2) schedule(static)
             for (Types::index z = 0; z < fz; ++z) {
                 for (Types::index y = 0; y < fy; ++y) {
-                    for (Types::index x = 0; x < fx; ++x) {
-                        line_in[x] = data[flatten(x, y, z)];
-                    }
+                    for (Types::index component = 0;
+                         component < static_cast<Types::index>(component_count);
+                         ++component) {
+                        for (Types::index x = 0; x < fx; ++x) {
+                            line_in[x] = data[flatten(x, y, z)][component];
+                        }
 
-                    if (inverse) {
-                        fft.inv(line_out, line_in);
-                    } else {
-                        fft.fwd(line_out, line_in);
-                    }
+                        if (inverse) {
+                            fft.inv(line_out.data(), line_in.data(), fx);
+                        } else {
+                            fft.fwd(line_out.data(), line_in.data(), fx);
+                        }
 
-                    for (Types::index x = 0; x < fx; ++x) {
-                        data[flatten(x, y, z)] = line_out[x];
+                        for (Types::index x = 0; x < fx; ++x) {
+                            data[flatten(x, y, z)][component] = line_out[x];
+                        }
                     }
                 }
             }
-        }
-
-        // Pass 2: independent 1D FFTs along y.
-        // Fixed (x, z), transform y = 0 .. fy - 1.
-        #pragma omp parallel
-        {
-            Eigen::FFT<Types::scalar> fft;
-            Containers::vector<complex_type> line_in(fy);
-            Containers::vector<complex_type> line_out(fy);
 
             #pragma omp for collapse(2) schedule(static)
             for (Types::index z = 0; z < fz; ++z) {
                 for (Types::index x = 0; x < fx; ++x) {
-                    for (Types::index y = 0; y < fy; ++y) {
-                        line_in[y] = data[flatten(x, y, z)];
-                    }
+                    for (Types::index component = 0;
+                         component < static_cast<Types::index>(component_count);
+                         ++component) {
+                        for (Types::index y = 0; y < fy; ++y) {
+                            line_in[y] = data[flatten(x, y, z)][component];
+                        }
 
-                    if (inverse) {
-                        fft.inv(line_out, line_in);
-                    } else {
-                        fft.fwd(line_out, line_in);
-                    }
+                        if (inverse) {
+                            fft.inv(line_out.data(), line_in.data(), fy);
+                        } else {
+                            fft.fwd(line_out.data(), line_in.data(), fy);
+                        }
 
-                    for (Types::index y = 0; y < fy; ++y) {
-                        data[flatten(x, y, z)] = line_out[y];
+                        for (Types::index y = 0; y < fy; ++y) {
+                            data[flatten(x, y, z)][component] = line_out[y];
+                        }
                     }
                 }
             }
-        }
-
-        // Pass 3: independent 1D FFTs along z.
-        // Fixed (x, y), transform z = 0 .. fz - 1.
-        #pragma omp parallel
-        {
-            Eigen::FFT<Types::scalar> fft;
-            Containers::vector<complex_type> line_in(fz);
-            Containers::vector<complex_type> line_out(fz);
 
             #pragma omp for collapse(2) schedule(static)
             for (Types::index y = 0; y < fy; ++y) {
                 for (Types::index x = 0; x < fx; ++x) {
-                    for (Types::index z = 0; z < fz; ++z) {
-                        line_in[z] = data[flatten(x, y, z)];
-                    }
+                    for (Types::index component = 0;
+                         component < static_cast<Types::index>(component_count);
+                         ++component) {
+                        for (Types::index z = 0; z < fz; ++z) {
+                            line_in[z] = data[flatten(x, y, z)][component];
+                        }
 
-                    if (inverse) {
-                        fft.inv(line_out, line_in);
-                    } else {
-                        fft.fwd(line_out, line_in);
-                    }
+                        if (inverse) {
+                            fft.inv(line_out.data(), line_in.data(), fz);
+                        } else {
+                            fft.fwd(line_out.data(), line_in.data(), fz);
+                        }
 
-                    for (Types::index z = 0; z < fz; ++z) {
-                        data[flatten(x, y, z)] = line_out[z];
+                        for (Types::index z = 0; z < fz; ++z) {
+                            data[flatten(x, y, z)][component] = line_out[z];
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    template <std::size_t component_count>
+    void fft3_componentwise_inplace(std::array<Containers::vector<complex_type>, component_count>& data,
+                                    bool inverse) const {
+        const Types::index fx = fft_x_;
+        const Types::index fy = fft_y_;
+        const Types::index fz = fft_z_;
+        const Types::index max_axis_size = std::max({fx, fy, fz});
+
+        const auto flatten = [fx, fy](Types::index x, Types::index y, Types::index z) noexcept -> Types::index {
+            return x + fx * (y + fy * z);
+        };
+
+        #pragma omp parallel
+        {
+            thread_local Eigen::FFT<Types::scalar> fft;
+            thread_local Containers::vector<complex_type> line_in;
+            thread_local Containers::vector<complex_type> line_out;
+            line_in.resize(max_axis_size);
+            line_out.resize(max_axis_size);
+
+            #pragma omp for collapse(3) schedule(static)
+            for (Types::index component = 0; component < static_cast<Types::index>(component_count); ++component) {
+                for (Types::index z = 0; z < fz; ++z) {
+                    for (Types::index y = 0; y < fy; ++y) {
+                        for (Types::index x = 0; x < fx; ++x) {
+                            line_in[x] = data[component][flatten(x, y, z)];
+                        }
+                        if (inverse) {
+                            fft.inv(line_out.data(), line_in.data(), fx);
+                        } else {
+                            fft.fwd(line_out.data(), line_in.data(), fx);
+                        }
+                        for (Types::index x = 0; x < fx; ++x) {
+                            data[component][flatten(x, y, z)] = line_out[x];
+                        }
+                    }
+                }
+            }
+
+            #pragma omp for collapse(3) schedule(static)
+            for (Types::index component = 0; component < static_cast<Types::index>(component_count); ++component) {
+                for (Types::index z = 0; z < fz; ++z) {
+                    for (Types::index x = 0; x < fx; ++x) {
+                        for (Types::index y = 0; y < fy; ++y) {
+                            line_in[y] = data[component][flatten(x, y, z)];
+                        }
+                        if (inverse) {
+                            fft.inv(line_out.data(), line_in.data(), fy);
+                        } else {
+                            fft.fwd(line_out.data(), line_in.data(), fy);
+                        }
+                        for (Types::index y = 0; y < fy; ++y) {
+                            data[component][flatten(x, y, z)] = line_out[y];
+                        }
+                    }
+                }
+            }
+
+            #pragma omp for collapse(3) schedule(static)
+            for (Types::index component = 0; component < static_cast<Types::index>(component_count); ++component) {
+                for (Types::index y = 0; y < fy; ++y) {
+                    for (Types::index x = 0; x < fx; ++x) {
+                        for (Types::index z = 0; z < fz; ++z) {
+                            line_in[z] = data[component][flatten(x, y, z)];
+                        }
+                        if (inverse) {
+                            fft.inv(line_out.data(), line_in.data(), fz);
+                        } else {
+                            fft.fwd(line_out.data(), line_in.data(), fz);
+                        }
+                        for (Types::index z = 0; z < fz; ++z) {
+                            data[component][flatten(x, y, z)] = line_out[z];
+                        }
                     }
                 }
             }
@@ -700,28 +796,28 @@ private:
         shift_y_ = ny_ - 1;
         shift_z_ = nz_ - 1;
 
-        fft_x_ = levels_.levels_x() + nx_ - 1;
-        fft_y_ = levels_.levels_y() + ny_ - 1;
-        fft_z_ = levels_.levels_z() + nz_ - 1;
+        fft_x_ = next_fast_fft_size(levels_.levels_x());
+        fft_y_ = next_fast_fft_size(levels_.levels_y());
+        fft_z_ = next_fast_fft_size(levels_.levels_z());
 
         const Types::index total_fft_size = fft_size();
+        kernel_spectrum_.assign(total_fft_size, kernel_spectrum_value_type{});
 
-        for (Types::index out_comp = 0; out_comp < block_size_; ++out_comp) {
-            for (Types::index in_comp = 0; in_comp < block_size_; ++in_comp) {
-                Containers::vector<complex_type> spatial(total_fft_size, complex_type{0.0, 0.0});
-
-                for (Types::index lz = 0; lz < levels_.levels_z(); ++lz) {
-                    for (Types::index ly = 0; ly < levels_.levels_y(); ++ly) {
-                        for (Types::index lx = 0; lx < levels_.levels_x(); ++lx) {
-                            spatial[flatten_fft(lx, ly, lz)] = to_complex(levels_(lx, ly, lz, out_comp, in_comp));
+        for (Types::index lz = 0; lz < levels_.levels_z(); ++lz) {
+            for (Types::index ly = 0; ly < levels_.levels_y(); ++ly) {
+                for (Types::index lx = 0; lx < levels_.levels_x(); ++lx) {
+                    auto& spatial_block = kernel_spectrum_[flatten_fft(lx, ly, lz)];
+                    for (Types::index out_comp = 0; out_comp < block_size_; ++out_comp) {
+                        for (Types::index in_comp = 0; in_comp < block_size_; ++in_comp) {
+                            spatial_block[out_comp * block_size_ + in_comp] =
+                                to_complex(levels_(lx, ly, lz, out_comp, in_comp));
                         }
                     }
                 }
-
-                fft3_inplace(spatial, false);
-                kernel_spectrum_[out_comp * block_size_ + in_comp] = std::move(spatial);
             }
         }
+
+        fft3_interleaved_inplace(kernel_spectrum_, false);
     }
 
 public:
@@ -761,11 +857,7 @@ public:
             component.assign(total_fft_size, complex_type{0.0, 0.0});
         }
 
-        // Pack input vector into component-wise FFT buffers.
-        //
-        // Each iteration writes unique addresses:
-        //   vec_spectrum[in_comp][flatten_fft(x, y, z)]
-        #pragma omp parallel for collapse(3) schedule(static)
+        #pragma omp parallel for collapse(2) schedule(static)
         for (Types::index z = 0; z < nz_; ++z) {
             for (Types::index y = 0; y < ny_; ++y) {
                 for (Types::index x = 0; x < nx_; ++x) {
@@ -779,44 +871,26 @@ public:
             }
         }
 
-        // Do not parallelize this loop over only 3 components.
-        // fft3_inplace() is already internally parallelized over many independent 1D FFT lines.
-        for (Types::index in_comp = 0; in_comp < block_size_; ++in_comp) {
-            fft3_inplace(vec_spectrum[in_comp], false);
-        }
+        fft3_componentwise_inplace(vec_spectrum, false);
 
-        std::array<Containers::vector<complex_type>, block_size_> result_spectrum;
-        for (auto& component : result_spectrum) {
-            component.assign(total_fft_size, complex_type{0.0, 0.0});
-        }
+        #pragma omp parallel for schedule(static)
+        for (Types::index freq_index = 0; freq_index < total_fft_size; ++freq_index) {
+            std::array<complex_type, block_size_> source_values;
+            for (Types::index in_comp = 0; in_comp < block_size_; ++in_comp) {
+                source_values[in_comp] = vec_spectrum[in_comp][freq_index];
+            }
+            const auto& kernel = kernel_spectrum_[freq_index];
 
-        // Frequency-domain multiplication by 3x3 block spectrum.
-        //
-        // For each frequency index:
-        //   result_spectrum[out_comp][freq] =
-        //       sum_in kernel_spectrum[out_comp, in][freq] * vec_spectrum[in][freq]
-        //
-        // Parallelization is over (out_comp, freq_index), so every thread writes a unique result entry.
-        #pragma omp parallel for collapse(2) schedule(static)
-        for (Types::index out_comp = 0; out_comp < block_size_; ++out_comp) {
-            for (Types::index freq_index = 0; freq_index < total_fft_size; ++freq_index) {
+            for (Types::index out_comp = 0; out_comp < block_size_; ++out_comp) {
                 complex_type value{0.0, 0.0};
-
                 for (Types::index in_comp = 0; in_comp < block_size_; ++in_comp) {
-                    const auto& kernel = kernel_spectrum_[out_comp * block_size_ + in_comp];
-                    const auto& source = vec_spectrum[in_comp];
-
-                    value += kernel[freq_index] * source[freq_index];
+                    value += kernel[out_comp * block_size_ + in_comp] * source_values[in_comp];
                 }
-
-                result_spectrum[out_comp][freq_index] = value;
+                vec_spectrum[out_comp][freq_index] = value;
             }
         }
 
-        // Again, fft3_inplace() itself is parallelized.
-        for (Types::index out_comp = 0; out_comp < block_size_; ++out_comp) {
-            fft3_inplace(result_spectrum[out_comp], true);
-        }
+        fft3_componentwise_inplace(vec_spectrum, true);
 
         vector_type result = vector_type::Zero(rows());
 
@@ -824,7 +898,7 @@ public:
         //
         // Each iteration writes unique entries:
         //   result[flatten_cell_component(x, y, z, out_comp)]
-        #pragma omp parallel for collapse(3) schedule(static)
+        #pragma omp parallel for collapse(2) schedule(static)
         for (Types::index z = 0; z < nz_; ++z) {
             for (Types::index y = 0; y < ny_; ++y) {
                 for (Types::index x = 0; x < nx_; ++x) {
@@ -832,7 +906,7 @@ public:
 
                     for (Types::index out_comp = 0; out_comp < block_size_; ++out_comp) {
                         result(flatten_cell_component(x, y, z, out_comp)) =
-                            from_complex(result_spectrum[out_comp][fft_index]);
+                            from_complex(vec_spectrum[out_comp][fft_index]);
                     }
                 }
             }

@@ -6,9 +6,10 @@
 
 namespace EMW::Mesh::VolumeMesh {
 CubeMesh::CubeMesh(Types::Vector3d minCorner, Types::scalar xs, Types::scalar ys, Types::scalar zs, std::size_t nx,
-                   std::size_t ny, std::size_t nz) : cells_{}, nodes_{}, nx_ {nx}, ny_{ny}, nz_{nz} {
-    //assert(xs > 0.0 && ys > 0.0 && zs > 0.0);
-    //assert(nx >= 2 && ny >= 2 && nz >= 2);
+                   std::size_t ny, std::size_t nz)
+    : nx_{nx}, ny_{ny}, nz_{nz} {
+    // assert(xs > 0.0 && ys > 0.0 && zs > 0.0);
+    // assert(nx >= 2 && ny >= 2 && nz >= 2);
 
     // 1) Точки (уникальные)
     nodes_.resize(nx * ny * nz);
@@ -19,6 +20,7 @@ CubeMesh::CubeMesh(Types::Vector3d minCorner, Types::scalar xs, Types::scalar ys
     dx_ = dx;
     dy_ = dy;
     dz_ = dz;
+    rel_center_pos_ = point_t{dx_ / 2, dy_ / 2, dz_ / 2};
 
     for (std::size_t k = 0; k < nz; ++k) {
         const double z = minCorner.z() + dz * static_cast<double>(k);
@@ -36,7 +38,8 @@ CubeMesh::CubeMesh(Types::Vector3d minCorner, Types::scalar xs, Types::scalar ys
     // нижний слой z=k:      v000 v100 v010 v110
     // верхний слой z=k+1:   v001 v101 v011 v111
     cells_.reserve((nx - 1) * (ny - 1) * (nz - 1));
-
+    // нижние углы, которые этим точкам отвечают
+    left_down_corners_.reserve((nx - 1) * (ny - 1) * (nz - 1));
     for (std::size_t k = 0; k + 1 < nz; ++k) {
         for (std::size_t j = 0; j + 1 < ny; ++j) {
             for (std::size_t i = 0; i + 1 < nx; ++i) {
@@ -52,8 +55,9 @@ CubeMesh::CubeMesh(Types::Vector3d minCorner, Types::scalar xs, Types::scalar ys
 
                 // Порядок вершин в ячейке:
                 // [0..3] нижняя грань, затем [4..7] верхняя грань
-                cells_.push_back(VolumeCells::IndexedCube(nodes_, {v000, v100, v010, v110,
-                                                                   v001, v101, v011, v111}));
+                cells_.emplace_back(nodes_,
+                                    Containers::array<Types::index, 8>{v000, v100, v010, v110, v001, v101, v011, v111});
+                left_down_corners_.push_back(nodes_[v000]);
             }
         }
     }
@@ -71,7 +75,8 @@ Eigen::PermutationMatrix<Eigen::Dynamic> CubeMesh::getPermutation(size_t Nx, siz
     return p_mat.transpose();
 }
 
-Eigen::PermutationMatrix<Eigen::Dynamic> CubeMesh::getPermutationForCubes(size_t Nx, size_t Ny, size_t Nz) const  noexcept{
+Eigen::PermutationMatrix<Eigen::Dynamic> CubeMesh::getPermutationForCubes(size_t Nx, size_t Ny,
+                                                                          size_t Nz) const noexcept {
     // Создаем матрицу перестановки
     Eigen::PermutationMatrix<Eigen::Dynamic> p_mat(cells_.size());
 
@@ -101,7 +106,7 @@ Eigen::PermutationMatrix<Eigen::Dynamic> CubeMesh::getPermutationForCubes(size_t
                             // Сколько индексов уже прошло до этого момента
                             // = 3 * кол-во больших кубов + количество маленьких кубов
                             const size_t index_to_begin =
-                                values_per_cube * (xdx + new_x_size * (ydx + new_y_size * zdx)) +  // кол-во бол. кубов
+                                values_per_cube * (xdx + new_x_size * (ydx + new_y_size * zdx)) + // кол-во бол. кубов
                                 (i + Nx * (j + Ny * k)); // количество маленьких кубов в текущем кубе
                             // В векторе соотвествующие компоненты лежат в позициях full_mesh_idx.
                             p_mat.indices()[index_to_begin] = full_mesh_idx;
@@ -114,5 +119,17 @@ Eigen::PermutationMatrix<Eigen::Dynamic> CubeMesh::getPermutationForCubes(size_t
     return p_mat;
 }
 
+Containers::array<Mesh::IndexedCell, 6> CubeMesh::getFacesOfCube(Types::index k) {
+    Containers::array<Types::index, 8> vertex_indices{
+        k, k + 1, k + nx_, k + nx_ + 1, k + nx_ * ny_, k + nx_ * ny_ + 1, k + (ny_ + 1) * nx_, k + (ny_ + 1) * nx_ + 1};
+    return {
+        IndexedCell{{vertex_indices[0], vertex_indices[4], vertex_indices[6], vertex_indices[2]}, nodes_},
+        IndexedCell{{vertex_indices[1], vertex_indices[3], vertex_indices[7], vertex_indices[5]}, nodes_},
+        IndexedCell{{vertex_indices[2], vertex_indices[1], vertex_indices[5], vertex_indices[4]}, nodes_},
+        IndexedCell{{vertex_indices[2], vertex_indices[6], vertex_indices[7], vertex_indices[3]}, nodes_},
+        IndexedCell{{vertex_indices[0], vertex_indices[2], vertex_indices[3], vertex_indices[1]}, nodes_},
+        IndexedCell{{vertex_indices[4], vertex_indices[5], vertex_indices[7], vertex_indices[6]}, nodes_},
+    };
+}
 
 }; // namespace EMW::Mesh::VolumeMesh

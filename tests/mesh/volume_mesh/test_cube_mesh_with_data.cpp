@@ -116,3 +116,14 @@ TEST(CUBE_MESH_WITH_DATA, CHECK_CORRECT_ORDER) {
         ASSERT_NEAR(epsvec[i].real(), epsilon(mesh.getCells()[i].center_).real(), 1e-310);
     }
 }
+
+TEST(CUBE_MESH_WITH_DATA, UTILS_TEST) {
+    Types::point_t corner{0, 0, 0};
+    const Types::scalar xs = 1;
+    Mesh::VolumeMesh::CubeMeshWithData mesh{corner, xs, 10};
+
+    // leftDownCorner
+    for (Types::index i = 0; i < mesh.getCells().size(); i++) {
+        ASSERT_NEAR((mesh.leftDownCorner(i) - mesh.getLDC()[i]).norm(), 0, 1e-310);
+    }
+}

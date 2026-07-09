@@ -107,7 +107,7 @@ template <typename Container> void CubeMeshWithData::setVectorData(const std::st
 
 template <typename Callable>
 void CubeMeshWithData::invokeScalarData(const std::string &name, Callable &&cell_function)
-requires std::is_invocable_v<Callable, VolumeCells::IndexedCube>
+requires std::is_invocable_v<Callable, typename Base::CellsType>
 {
     // generate a Containers::vector<Types::complex_d> from cell function
     Containers::vector<Types::complex_d> data;
@@ -125,7 +125,8 @@ requires std::is_invocable_v<Callable, Types::point_t>
     Containers::vector<Types::complex_d> data;
     data.reserve(cellsCount);
     for (std::size_t i = 0; i < cellsCount; ++i)
-        data.emplace_back(std::forward<Callable>(point_function)(cells_[i].center_));
+        data.emplace_back(
+            std::forward<Callable>(point_function)(left_down_corners_[i] + Types::point_t{dx_ / 2, dz_ / 2, dy_ / 2}));
     setScalarData(name, std::move(data));
 }
 
@@ -139,7 +140,7 @@ requires std::is_invocable_v<Callable, Types::point_t>
     };
 
     const auto integral_over_cube = [&function_to_integrate, this](const CellsType &cell) {
-        const auto ldc = this->nodes_[cell.nodes_[0]];
+        const auto ldc = cell.vertexes_[0];
         return Math::Integration::Numerical::Decart::integrate<Quadrature>(
                    function_to_integrate, {ldc.x(), ldc.y(), ldc.z()}, {this->dx(), this->dy(), this->dz()}) /
                (this->dx() * this->dy() * this->dz());
@@ -150,7 +151,7 @@ requires std::is_invocable_v<Callable, Types::point_t>
 
 template <typename Callable>
 void CubeMeshWithData::invokeVectorData(const std::string &name, Callable &&point_function)
-requires std::is_invocable_v<Callable, VolumeCells::IndexedCube>
+requires std::is_invocable_v<Callable, typename Base::CellsType>
 {
     throw std::runtime_error("CubeMeshWithData::invokeVectorData: callable over cell is not implemented yet");
 }
@@ -163,7 +164,7 @@ requires std::is_invocable_v<Callable, Eigen::Matrix<double, 3, 1>>
     Containers::vector<Types::complex_d> data;
     data.reserve(cellsCount);
     for (std::size_t i = 0; i < cellsCount; ++i)
-        data.emplace_back(std::forward<Callable>(point_function)(cells_[i].center_));
+        data.emplace_back(std::forward<Callable>(point_function)(left_down_corners_[i] + rel_center_pos_));
     setVectorData(name, std::move(data));
 }
 

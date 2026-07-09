@@ -20,7 +20,11 @@ namespace EMW::Operators::Volume {
  *
  */
 class operator_K_over_cube_mesh {
-    const Mesh::VolumeMesh::CubeMesh &mesh;
+    using mesh_t = Mesh::VolumeMesh::CubeMesh;
+    using cell_t = typename mesh_t::CellsType;
+    using faces_container_t_ = int;
+
+    const mesh_t &mesh;
     Types::complex_d wave_number;
     Types::complex_d wave_number_sqr;
     Types::index nearnes_tresholds = 2; // согласно тестам в integration_modes_study
@@ -67,6 +71,10 @@ class operator_K_over_cube_mesh {
     template <typename scalar_type>
     [[nodiscard]] static constexpr decltype(auto) scalar_stop_criterion(Types::scalar rTol, Types::scalar aTol) {
         return [rTol, aTol](scalar_type v1, scalar_type v2) { return std::abs(v1 - v2) < rTol * std::abs(v2) + aTol; };
+    }
+
+    [[nodiscard]] faces_container_t_ getFacesOfCube() const {
+
     }
 
   public:
@@ -129,12 +137,12 @@ class operator_K_over_cube_mesh {
     [[nodiscard]] Types::complex_d volume_part_naive(const Types::point_t &k_corner, const Types::point_t &p_corner,
                                                      size_t int_level_6d = 2) const noexcept;
 
-    [[nodiscard]] Types::Matrix3c surface_part_singularity_extraction(
-        const Mesh::VolumeCells::IndexedCube &k_cube, const Mesh::VolumeCells::IndexedCube &p_cube,
-        size_t singular_integration_level_2d = 10, size_t bounded_integration_level_4d = 4) const noexcept;
+    [[nodiscard]] Types::Matrix3c
+    surface_part_singularity_extraction(const cell_t &k_cube, const cell_t &p_cube,
+                                        size_t singular_integration_level_2d = 10,
+                                        size_t bounded_integration_level_4d = 4) const noexcept;
 
-    [[nodiscard]] Types::Matrix3c surface_part_naive(const Mesh::VolumeCells::IndexedCube &cube_k,
-                                                     const Mesh::VolumeCells::IndexedCube &cube_p,
+    [[nodiscard]] Types::Matrix3c surface_part_naive(const cell_t &cube_k, const cell_t &cube_p,
                                                      size_t integration_level_4d = 4) const noexcept;
 
     /**
@@ -237,7 +245,7 @@ class operator_K_over_cube_mesh {
       /**
        * Расчет объемной части оператора
        */
-      [[nodiscard]] Types::Vector3c volume_part(const Types::Vector3c& point, const Mesh::VolumeCells::IndexedCube& cube) const noexcept;
+      [[nodiscard]] Types::Vector3c volume_part(const Types::Vector3c& point, const cell_t& cube) const noexcept;
 
       /**
        * Расчет значения интегрального оператора в произвольной точки пространства по полю field_data

@@ -45,11 +45,6 @@ Mesh::IndexedCell IndexedCube::newGetFace(Axis ax, Direction dir, const full_poi
     }
 }
 
-Types::point_t IndexedCube::getLeftDownCornerOfFace(Axis ax, Direction dir, const full_points_t &fp) const {
-    const auto res = getFace(ax, dir, fp);
-    return fp[res.points_[0]];
-}
-
 Mesh::IndexedCell IndexedCube::getXface(Direction dir, const full_points_t &fp) const {
     Containers::array<Types::index, 4> xface{
         nodes_[dir],
@@ -79,5 +74,29 @@ Mesh::IndexedCell IndexedCube::getZface(Direction dir, const full_points_t &fp) 
     };
     return IndexedCell{xface, fp};
 };
+
+// --------- Vertex Parallepiped ----------- //
+
+VertexParallelepiped::VertexParallelepiped(const Containers::vector<point_t> &full_points, const nodes_t &full_indices)
+    : vertexes_(8, Types::point_t::Zero()) {
+    for (int i = 0; i < full_indices.size(); i++) {
+        vertexes_[i] = full_points[full_indices[i]];
+    }
+};
+
+
+Mesh::IndexedCell VertexParallelepiped::getFace(Axis ax, Direction dir, const full_points_t &fp) const {
+    const size_t dr = dir;
+    switch (ax) {
+    case Axis::X:
+        return IndexedCell{{dr, (4 - dr), 6 + dr, (2 + 3 * dr)}, this->vertexes_};
+    case Axis::Y:
+        return IndexedCell{{2 * dr, 1 + 5 * dr, 5 + 2 * dr, 4 - dr}, this->vertexes_};
+    case Axis::Z:
+        return IndexedCell{{4 * dr, 2 + 3 * dr, 3 + 4 * dr, 1 + 5 * dr}, this->vertexes_};
+    default:
+        throw std::invalid_argument("Invalid direction");
+    }
+}
 
 } // namespace EMW::Mesh::VolumeCells
