@@ -11,6 +11,7 @@
 
 #include "math/matrix/decompositions/Decompositions.hpp"
 
+#include <chrono>
 #include <omp.h>
 
 namespace EMW::Operators::Volume {
@@ -23,8 +24,9 @@ operator_K_over_cube_mesh::surface_part_singularity_extraction(Types::index k, T
     Types::Matrix3c result = Types::Matrix3c::Zero();
     const size_t singular_integration_level = singular_integration_level_2d; // 2d
     const size_t bounded_integration_level = bounded_integration_level_4d;   // 4d
-    const auto faces_k = mesh.getFacesOfCube(k);
-    const auto faces_p = mesh.getFacesOfCube(p);
+    const auto faces_k = mesh.newGetFacesOfCube(k);
+    const auto faces_p = mesh.newGetFacesOfCube(p);
+    const Types::Vector3d measures{mesh.dy() * mesh.dz(), mesh.dx() * mesh.dz(), mesh.dy() * mesh.dx()};
 
     // два цикла по направлениям x, y, z
     for (Types::index i = 0; i < 3; i++) {
@@ -34,22 +36,25 @@ operator_K_over_cube_mesh::surface_part_singularity_extraction(Types::index k, T
                 for (size_t face_p_idx = 0; face_p_idx < 2; face_p_idx++) {
 
                     Types::scalar multiplier = face_k_idx == face_p_idx ? 1 : -1;
+
                     auto face_k = faces_k[2 * i + face_k_idx];
                     auto face_p = faces_p[2 * j + face_p_idx];
 
                     // 1. Интеграл от ньютонова потенциала 2д ячейки
                     const auto analytical_integrand = [&face_k, &face_p](Types::scalar x, Types::scalar y) {
                         const auto point = face_k.parametrization(x, y);
-                        const auto integrand_value =
-                            Math::Integration::Analytical::integrate_1_div_r(point, face_p) * face_k.multiplier(x, y);
+                        const auto integrand_value = Math::Integration::Analytical::integrate_1_div_r(point, face_p);
                         return integrand_value;
                     };
                     const auto singular_part =
                         DecartIntegration::adaptive_integrate<DecartIntegration::GaussLegendre::Quadrature<5, 5>>(
                             analytical_integrand, {0, 0}, {1, 1}, scalar_stop_criterion<Types::scalar>(rTol, aTol),
                             singular_integration_level);
+                    if (std::isnan(singular_part.first))
+                        std::cout << singular_part.first << std::endl;
 
-                    result(i, j) += multiplier * Math::Constants::inverse_4PI<Types::scalar>() * singular_part.first;
+                    result(i, j) +=
+                        multiplier * measures[i] * Math::Constants::inverse_4PI<Types::scalar>() * singular_part.first;
 
                     // 2. Интеграл от ограниченного остатка
                     const auto residual_integrand = [&face_k, &face_p,
@@ -57,14 +62,15 @@ operator_K_over_cube_mesh::surface_part_singularity_extraction(Types::index k, T
                                                                        Types::scalar x2, Types::scalar y2) {
                         const auto x = face_p.parametrization(x1, y1);
                         const auto y = face_k.parametrization(x2, y2);
-                        return Helmholtz::F_bounded_part(wn, x, y) * face_p.multiplier(x1, y1) *
-                               face_k.multiplier(x2, y2);
+                        return Helmholtz::F_bounded_part(wn, x, y);
                     };
                     const auto regular_part =
                         DecartIntegration::adaptive_integrate<DecartIntegration::GaussLegendre::Quadrature<4, 4, 4, 4>>(
                             residual_integrand, {0, 0, 0, 0}, {1, 1, 1, 1},
                             scalar_stop_criterion<Types::complex_d>(rTol, aTol), bounded_integration_level);
-                    result(i, j) += multiplier * regular_part.first;
+                    if (std::isnan(std::abs(regular_part.first)))
+                        std::cout << regular_part.first << std::endl;
+                    result(i, j) += multiplier * measures[i] * measures[j] * regular_part.first;
                 }
             }
         }
@@ -77,8 +83,9 @@ Types::Matrix3c operator_K_over_cube_mesh::surface_part_naive(Types::index k, Ty
     Types::Matrix3c result = Types::Matrix3c::Zero();
     const size_t integration_level = integration_level_4d; // 4d
 
-    const auto faces_k = mesh.getFacesOfCube(k);
-    const auto faces_p = mesh.getFacesOfCube(p);
+    const auto faces_k = mesh.newGetFacesOfCube(k);
+    const auto faces_p = mesh.newGetFacesOfCube(p);
+    const Types::Vector3d measures{mesh.dy() * mesh.dz(), mesh.dx() * mesh.dz(), mesh.dy() * mesh.dx()};
 
     // два цикла по направлениям x, y, z
     for (Types::index i = 0; i < 3; i++) {
@@ -88,6 +95,7 @@ Types::Matrix3c operator_K_over_cube_mesh::surface_part_naive(Types::index k, Ty
                 for (size_t face_p_idx = 0; face_p_idx < 2; face_p_idx++) {
 
                     Types::scalar multiplier = face_k_idx == face_p_idx ? 1 : -1;
+
                     auto face_k = faces_k[2 * i + face_k_idx];
                     auto face_p = faces_p[2 * j + face_p_idx];
 
@@ -96,15 +104,17 @@ Types::Matrix3c operator_K_over_cube_mesh::surface_part_naive(Types::index k, Ty
                                                                                 Types::scalar x2, Types::scalar y2) {
                         const auto x = face_p.parametrization(x1, y1);
                         const auto y = face_k.parametrization(x2, y2);
-                        return Helmholtz::F(wn, x, y) * face_p.multiplier(x1, y1) * face_k.multiplier(x2, y2);
+                        return Helmholtz::F(wn, x, y);
                     };
-
-                    result(i, j) +=
-                        multiplier *
+                    const auto integration_result =
                         DecartIntegration::adaptive_integrate<DecartIntegration::GaussLegendre::Quadrature<4, 4, 4, 4>>(
                             integrand, {0, 0, 0, 0}, {1, 1, 1, 1}, scalar_stop_criterion<Types::complex_d>(rTol, aTol),
-                            integration_level)
-                            .first;
+                            integration_level);
+
+                    if (std::isnan(std::abs(integration_result.first)))
+                        std::cout << integration_result.first << std::endl;
+
+                    result(i, j) += multiplier * measures[i] * measures[j] * integration_result.first;
                 }
             }
         }
@@ -251,6 +261,7 @@ Types::Matrix3c operator_K_over_cube_mesh::galerkin_block_for_cubes(size_t k, si
     result(0, 0) += volume_res;
     result(1, 1) += volume_res;
     result(2, 2) += volume_res;
+    // if (std::isnan(surface_res.norm())) std::cout <<"sr " << k << ' ' << p << std::endl;
     return result;
 }
 
@@ -300,7 +311,7 @@ operator_K_over_cube_mesh::compute_galerkin_matrix(Types::scalar basis_function_
         first_layer_toeplitz, second_layer_toeplitz, third_layer_toeplitz, 3);
     const Types::scalar basis_fn_module_sqr = basis_function_module * basis_function_module;
 
-#pragma omp parallel for schedule(dynamic) default(none) shared(result, mesh)                                          \
+#pragma omp parallel for schedule(dynamic, 4) default(none) shared(result, mesh)                                          \
     firstprivate(third_layer_toeplitz, second_layer_toeplitz, basis_fn_module_sqr, first_layer_toeplitz) collapse(3)
     for (size_t i3 = 0; i3 < 2 * third_layer_toeplitz - 1; ++i3) {
         for (size_t i2 = 0; i2 < 2 * second_layer_toeplitz - 1; ++i2) {
@@ -319,6 +330,34 @@ operator_K_over_cube_mesh::compute_galerkin_matrix(Types::scalar basis_function_
             }
         }
         // printf("Поток %d делал итерацию %lu\n", omp_get_thread_num(), i3);
+    }
+    return result;
+}
+
+Math::LinAgl::Matrix::TripleToeplitz3x3Block<Types::complex_d>
+operator_K_over_cube_mesh::compute_galerkin_matrix_new(Types::scalar basis_function_module) const noexcept {
+    const size_t first_layer_toeplitz = mesh.nx() - 1;
+    const size_t second_layer_toeplitz = mesh.ny() - 1;
+    const size_t third_layer_toeplitz = mesh.nz() - 1;
+    auto result = Math::LinAgl::Matrix::ZeroTripleToeplitz3x3Block<Types::complex_d>(
+        first_layer_toeplitz, second_layer_toeplitz, third_layer_toeplitz);
+    const Types::scalar basis_fn_module_sqr = basis_function_module * basis_function_module;
+
+#pragma omp parallel for schedule(dynamic, 8) default(none) shared(result, mesh)                                          \
+    firstprivate(third_layer_toeplitz, second_layer_toeplitz, basis_fn_module_sqr, first_layer_toeplitz) collapse(3)
+    for (size_t i3 = 0; i3 < 2 * third_layer_toeplitz - 1; ++i3) {
+        for (size_t i2 = 0; i2 < 2 * second_layer_toeplitz - 1; ++i2) {
+            for (size_t i1 = 0; i1 < 2 * first_layer_toeplitz - 1; ++i1) {
+                auto [row1, col1] = get_toeplitz_rowcol(i1, first_layer_toeplitz);
+                auto [row2, col2] = get_toeplitz_rowcol(i2, second_layer_toeplitz);
+                auto [row3, col3] = get_toeplitz_rowcol(i3, third_layer_toeplitz);
+
+                auto &working_block = result.get_toeplitz_block(i3, i2, i1);
+                const auto idx1 = mesh.cube_idx(row1, row2, row3);
+                const auto idx2 = mesh.cube_idx(col1, col2, col3);
+                working_block = galerkin_block_for_cubes(idx1, idx2) * basis_fn_module_sqr;
+            }
+        }
     }
     return result;
 }

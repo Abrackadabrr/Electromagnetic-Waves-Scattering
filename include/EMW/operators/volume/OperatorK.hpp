@@ -85,6 +85,7 @@ class operator_K_over_cube_mesh {
         rTol = rTol_;
         aTol = aTol_;
     }
+    void set_nearness_threshold(Types::index value) { nearnes_tresholds = value; }
 
     // ------ Расчет аппроксимации оператора методом Галеркина (функции для отедльных матричных блоков) ----- //
     /**
@@ -134,8 +135,7 @@ class operator_K_over_cube_mesh {
                                                      size_t int_level_6d = 2) const noexcept;
 
     [[nodiscard]] Types::Matrix3c
-    surface_part_singularity_extraction(Types::index k, Types::index p,
-                                        size_t singular_integration_level_2d = 10,
+    surface_part_singularity_extraction(Types::index k, Types::index p, size_t singular_integration_level_2d = 10,
                                         size_t bounded_integration_level_4d = 4) const noexcept;
 
     [[nodiscard]] Types::Matrix3c surface_part_naive(Types::index k, Types::index p,
@@ -174,6 +174,9 @@ class operator_K_over_cube_mesh {
      */
     [[nodiscard]] Math::LinAgl::Matrix::TripleToeplitzBlock<Types::complex_d>
     compute_galerkin_matrix(Types::scalar basis_fucntion_module) const noexcept;
+
+    [[nodiscard]] Math::LinAgl::Matrix::TripleToeplitz3x3Block<Types::complex_d>
+    compute_galerkin_matrix_new(Types::scalar basis_fucntion_module) const noexcept;
 
     /**
      * Расчет оператор K методом Галеркина для одинаковой коллекции кубов, которые отличаются начлаьными индексами

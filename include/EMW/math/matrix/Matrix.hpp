@@ -9,6 +9,7 @@
 
 #include "DynamicFactoredMatrix.hpp"
 #include "ToeplitzFullyTemplated.hpp"
+#include "TripleToeplitz3x3Block.hpp"
 
 namespace EMW::Math::LinAgl::Matrix {
 

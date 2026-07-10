@@ -40,6 +40,16 @@ struct Cell {
     }
 };
 
+struct RectangularFaceParallelToAxis {
+    point_t a, e1, e2;
+
+    RectangularFaceParallelToAxis(point_t a, point_t b1, point_t b2): a(a), e1(b1 - a), e2(b2 - a) {}
+
+    [[nodiscard]] point_t parametrization(Types::scalar p, Types::scalar q) const noexcept {
+        return a + p * e1 + q * e2;
+    }
+};
+
 /**
  * Тип аппроксимированной ячейки сетки по четырём индексам
  * Содержит в себе вершины четырехугольника, точку коллокации, площадь

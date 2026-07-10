@@ -20,7 +20,7 @@ class OperatorKAssemblingBench : public benchmark::Fixture {
   public:
     void SetUp(const benchmark::State &state) override {
         // 0. Настраиваемые параметры
-        constexpr Types::index Nx = 9;
+        constexpr Types::index Nx = 11;
         constexpr Types::scalar freq = 0.3; // GHz
         constexpr Types::scalar rTol = 1e-3;
         constexpr Types::scalar aTol = 1e-21;
@@ -28,6 +28,7 @@ class OperatorKAssemblingBench : public benchmark::Fixture {
         constexpr Types::index lev_3d = 1;
         constexpr Types::index lev_4d = 1;
         constexpr Types::index lev_6d = 1;
+        constexpr Types::index nearness_trh = 100;
         // 1. Сбор сетки
         Eigen::setNbThreads(1);
         const Types::index Ny = Nx;
@@ -42,6 +43,7 @@ class OperatorKAssemblingBench : public benchmark::Fixture {
 
         // 3. Галеркинская проекция оператора
         operator_k = new Operators::Volume::operator_K_over_cube_mesh{k, *mesh_ptr};
+        operator_k->set_nearness_threshold(nearness_trh);
         operator_k->set_tolerances(rTol, aTol);
         operator_k->set_adaptive_integration_max_levels({lev_2d, lev_3d, lev_4d, lev_6d});
     }
@@ -72,6 +74,17 @@ BENCHMARK_DEFINE_F(OperatorKAssemblingBench, AssemblingAcceleration)(benchmark::
     }
 }
 
+BENCHMARK_DEFINE_F(OperatorKAssemblingBench, AssemblingAccelerationNew)(benchmark::State &state) {
+    omp_set_num_threads(state.range(0));
+    auto warming_result = operator_k->compute_galerkin_matrix_new(basis_fn_module);
+    benchmark::DoNotOptimize(warming_result);
+    for (auto _ : state) {
+        auto result = operator_k->compute_galerkin_matrix_new(basis_fn_module);
+        benchmark::DoNotOptimize(result);
+        benchmark::ClobberMemory();
+    }
+}
+
 // Полная сборка матрицы оператора К
 BENCHMARK_DEFINE_F(OperatorKAssemblingBench, SimpleAssembling)(benchmark::State &state) {
     omp_set_num_threads(1);
@@ -84,9 +97,14 @@ BENCHMARK_DEFINE_F(OperatorKAssemblingBench, SimpleAssembling)(benchmark::State 
     }
 }
 
-BENCHMARK_REGISTER_F(OperatorKAssemblingBench, SimpleAssembling)->Iterations(5)->Unit(benchmark::kMillisecond)->UseRealTime();
+// BENCHMARK_REGISTER_F(OperatorKAssemblingBench, SimpleAssembling)->Iterations(1)->Unit(benchmark::kMillisecond)->UseRealTime();
 
-BENCHMARK_REGISTER_F(OperatorKAssemblingBench, AssemblingAcceleration)->Arg(1)->Arg(2)->Arg(4)->Arg(8)->Arg(12)
-->Unit(benchmark::kMillisecond)->UseRealTime()->Iterations(3);
+BENCHMARK_REGISTER_F(OperatorKAssemblingBench, AssemblingAcceleration) \
+->Arg(1)->Arg(2)->Arg(3)->Arg(4)->Arg(5)->Arg(6)->Arg(7)->Arg(8)->Arg(9)->Arg(10)->Arg(11)->Arg(12) \
+->Unit(benchmark::kMillisecond)->UseRealTime()->Iterations(1);
+
+BENCHMARK_REGISTER_F(OperatorKAssemblingBench, AssemblingAccelerationNew) \
+->Arg(1)->Arg(2)->Arg(3)->Arg(4)->Arg(5)->Arg(6)->Arg(7)->Arg(8)->Arg(9)->Arg(10)->Arg(11)->Arg(12) \
+->Unit(benchmark::kMillisecond)->UseRealTime()->Iterations(1);
 
 BENCHMARK_MAIN();

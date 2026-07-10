@@ -129,7 +129,7 @@ TEST_F(VOLUME_OPERATOR_OVER_CUBE_MESH_TESTS, EQUALITY_OF_MATRIX_ELEMENTS) {
                 cube_2 = mesh.cube_idx(row_idx, col_idx, h_idx);
                 const auto current_block = operator_K.galerkin_block_for_cubes(cube_1, cube_2);
                 ASSERT_NEAR((current_block - reference_block).norm(), 0,
-                            rel_tol * reference_block.norm()) << col_idx << ' ' << row_idx;
+                            rel_tol * reference_block.norm()) << col_idx << ' ' << row_idx << ' ' << h_idx;
             }
         }
     }

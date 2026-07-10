@@ -13,6 +13,12 @@ Types::scalar integrate_1_div_r(const Mesh::point_t &r, const Mesh::IndexedCell 
     return integrate_1_div_r(r, cell.getVertexAsArray(), cell.normal);
 }
 
+Types::scalar integrate_1_div_r(const Mesh::point_t &r, const Mesh::RectangularFaceParallelToAxis &cell) {
+    const Containers::array<Types::point_t, 4> verts{cell.a, cell.parametrization(0, 1), cell.parametrization(1, 1),
+                                                     cell.parametrization(1, 0)};
+    return integrate_1_div_r(r, verts);
+}
+
 Types::scalar self_newtonian_energy_over_cube(Types::scalar side) {
     // const Types::scalar sqrt2 = std::sqrt(static_cast<Types::scalar>(2));
     // const Types::scalar sqrt3 = std::sqrt(static_cast<Types::scalar>(3));
@@ -116,4 +122,4 @@ Types::scalar newtonian_potential_of_parallelepiped(const Types::point_t &point,
     }
     return -sum;
 }
-}
+} // namespace EMW::Math::Integration::Analytical
