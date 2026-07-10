@@ -211,7 +211,7 @@ Types::complex_d operator_K_over_cube_mesh::matrix_3_coef(Types::index k, Types:
     const auto h = mesh.h();
 
     if ((k_corner - p_corner).norm() < nearnes_tresholds * h)
-        return volume_part_singularity_extraction(k_corner, k_center, p_corner, int_lev_6d + 1, int_lev_3d);
+        return volume_part_singularity_extraction(k_corner, k_center, p_corner, int_lev_6d, int_lev_3d);
 
     return volume_part_naive(k_corner, p_corner, int_lev_6d);
 }

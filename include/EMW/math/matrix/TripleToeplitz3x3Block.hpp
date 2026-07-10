@@ -18,8 +18,7 @@ template <typename T> class TripleToeplitz3x3Block {
     using block_type = Eigen::Matrix<T, 3, 3>;
 
   private:
-    struct alignas(64) block_storage {
-        EIGEN_MAKE_ALIGNED_OPERATOR_NEW
+    struct block_storage {
         block_type value = block_type::Zero();
     };
 
