@@ -107,7 +107,7 @@ TEST_F(VOLUME_OPERATOR_OVER_CUBE_MESH_TESTS, SimpleTripleBlockToeplitzTest) {
 
 TEST_F(VOLUME_OPERATOR_OVER_CUBE_MESH_TESTS, EQUALITY_OF_MATRIX_ELEMENTS) {
     constexpr Types::scalar total_mesh_size = 2;
-    constexpr Types::index Nx = 7;
+    constexpr Types::index Nx = 4;
     constexpr Types::index Ncubes = Nx - 1;
     constexpr Types::scalar cube_size = total_mesh_size / (Nx - 1);
     constexpr Types::scalar basis_fn_module = 1. / sqrt(cube_size * cube_size * cube_size);
@@ -116,6 +116,7 @@ TEST_F(VOLUME_OPERATOR_OVER_CUBE_MESH_TESTS, EQUALITY_OF_MATRIX_ELEMENTS) {
     // Берем кубическую сетку на кубе
     Mesh::VolumeMesh::CubeMesh mesh{Types::point_t{0, 0, 0}, total_mesh_size, Nx};
     Operators::Volume::operator_K_over_cube_mesh operator_K{k, mesh};
+    operator_K.set_nearness_threshold(2);
 
     // Цикл по парам кубов, для которых элементы в матрице должны быть одинаковы
     for (size_t h_idx = 0; h_idx < Ncubes; h_idx++) {

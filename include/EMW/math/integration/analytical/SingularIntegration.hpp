@@ -34,7 +34,7 @@ Types::scalar newtonian_potential_of_parallelepiped(const Types::point_t &point,
  */
 Types::scalar integrate_1_div_r(const Mesh::point_t &point, const Mesh::IndexedCell &cell);
 
-Types::scalar integrate_1_div_r(const Mesh::point_t &point, const Mesh::RectangularFaceParallelToAxis &cell);
+Types::scalar integrate_1_div_r(const Mesh::point_t &point, const Mesh::ParallelogramFace &cell);
 /**
  * Базовая c-style формула для расчета интеграла 1/|r-r'| по многоугольнику (аппроксимирующему гладкую поверхность)
  * Контейнер для вершин должен поддерживать operator[int]

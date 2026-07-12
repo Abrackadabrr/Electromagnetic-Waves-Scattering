@@ -139,7 +139,7 @@ Containers::array<Mesh::IndexedCell, 6> CubeMesh::getFacesOfCube(Types::index k)
     };
 }
 
-Containers::array<Mesh::RectangularFaceParallelToAxis, 6> CubeMesh::newGetFacesOfCube(Types::index k) const {
+Containers::array<Mesh::ParallelogramFace, 6> CubeMesh::verynewGetFacesOfCube(Types::index k) const {
     const Types::index ldc_idx = k + k / (nx_ - 1);
     Containers::array<Types::index, 8> vertex_indices{ldc_idx,
                                                       ldc_idx + 1,
@@ -150,12 +150,31 @@ Containers::array<Mesh::RectangularFaceParallelToAxis, 6> CubeMesh::newGetFacesO
                                                       ldc_idx + (ny_ + 1) * nx_,
                                                       ldc_idx + (ny_ + 1) * nx_ + 1};
     return {
-        RectangularFaceParallelToAxis{nodes_[vertex_indices[0]], nodes_[vertex_indices[4]], nodes_[vertex_indices[2]]},
-        RectangularFaceParallelToAxis{nodes_[vertex_indices[1]], nodes_[vertex_indices[3]], nodes_[vertex_indices[5]]},
-        RectangularFaceParallelToAxis{nodes_[vertex_indices[2]], nodes_[vertex_indices[1]], nodes_[vertex_indices[4]]},
-        RectangularFaceParallelToAxis{nodes_[vertex_indices[2]], nodes_[vertex_indices[6]], nodes_[vertex_indices[3]]},
-        RectangularFaceParallelToAxis{nodes_[vertex_indices[0]], nodes_[vertex_indices[2]], nodes_[vertex_indices[1]]},
-        RectangularFaceParallelToAxis{nodes_[vertex_indices[4]], nodes_[vertex_indices[5]], nodes_[vertex_indices[6]]}
+        ParallelogramFace::by3vert(nodes_[vertex_indices[0]], nodes_[vertex_indices[4]], nodes_[vertex_indices[2]]),
+        ParallelogramFace::by3vert(nodes_[vertex_indices[1]], nodes_[vertex_indices[5]], nodes_[vertex_indices[3]]),
+        ParallelogramFace::by3vert(nodes_[vertex_indices[0]], nodes_[vertex_indices[1]], nodes_[vertex_indices[4]]),
+        ParallelogramFace::by3vert(nodes_[vertex_indices[2]], nodes_[vertex_indices[3]], nodes_[vertex_indices[6]]),
+        ParallelogramFace::by3vert(nodes_[vertex_indices[0]], nodes_[vertex_indices[1]], nodes_[vertex_indices[2]]),
+        ParallelogramFace::by3vert(nodes_[vertex_indices[4]], nodes_[vertex_indices[5]], nodes_[vertex_indices[6]])};
+}
+
+Containers::array<Mesh::ParallelogramFace, 6> CubeMesh::newGetFacesOfCube(Types::index k) const {
+    const Types::index ldc_idx = k + k / (nx_ - 1);
+    Containers::array<Types::index, 8> vertex_indices{ldc_idx,
+                                                      ldc_idx + 1,
+                                                      ldc_idx + nx_,
+                                                      ldc_idx + nx_ + 1,
+                                                      ldc_idx + nx_ * ny_,
+                                                      ldc_idx + nx_ * ny_ + 1,
+                                                      ldc_idx + (ny_ + 1) * nx_,
+                                                      ldc_idx + (ny_ + 1) * nx_ + 1};
+    return {
+        ParallelogramFace::getFaceNormalToX(nodes_[vertex_indices[0]]),
+        ParallelogramFace::getFaceNormalToX(nodes_[vertex_indices[1]]),
+        ParallelogramFace::getFaceNormalToY(nodes_[vertex_indices[0]]),
+        ParallelogramFace::getFaceNormalToY(nodes_[vertex_indices[2]]),
+        ParallelogramFace::getFaceNormalToZ(nodes_[vertex_indices[0]]),
+        ParallelogramFace::getFaceNormalToZ(nodes_[vertex_indices[4]]),
     };
 }
 }; // namespace EMW::Mesh::VolumeMesh

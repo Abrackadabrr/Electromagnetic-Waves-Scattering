@@ -74,17 +74,6 @@ BENCHMARK_DEFINE_F(OperatorKAssemblingBench, AssemblingAcceleration)(benchmark::
     }
 }
 
-BENCHMARK_DEFINE_F(OperatorKAssemblingBench, AssemblingAccelerationNew)(benchmark::State &state) {
-    omp_set_num_threads(state.range(0));
-    auto warming_result = operator_k->compute_galerkin_matrix_new(basis_fn_module);
-    benchmark::DoNotOptimize(warming_result);
-    for (auto _ : state) {
-        auto result = operator_k->compute_galerkin_matrix_new(basis_fn_module);
-        benchmark::DoNotOptimize(result);
-        benchmark::ClobberMemory();
-    }
-}
-
 // Полная сборка матрицы оператора К
 BENCHMARK_DEFINE_F(OperatorKAssemblingBench, SimpleAssembling)(benchmark::State &state) {
     omp_set_num_threads(1);
@@ -103,8 +92,5 @@ BENCHMARK_REGISTER_F(OperatorKAssemblingBench, AssemblingAcceleration) \
 ->Arg(1)->Arg(2)->Arg(3)->Arg(4)->Arg(5)->Arg(6)->Arg(7)->Arg(8)->Arg(9)->Arg(10)->Arg(11)->Arg(12) \
 ->Unit(benchmark::kMillisecond)->UseRealTime()->Iterations(1);
 
-BENCHMARK_REGISTER_F(OperatorKAssemblingBench, AssemblingAccelerationNew) \
-->Arg(1)->Arg(2)->Arg(3)->Arg(4)->Arg(5)->Arg(6)->Arg(7)->Arg(8)->Arg(9)->Arg(10)->Arg(11)->Arg(12) \
-->Unit(benchmark::kMillisecond)->UseRealTime()->Iterations(1);
 
 BENCHMARK_MAIN();

@@ -104,7 +104,8 @@ class CubeMesh {
 
     // --- Calculations --- //
     [[nodiscard]] Containers::array<Mesh::IndexedCell, 6> getFacesOfCube(Types::index k) const;
-    [[nodiscard]] Containers::array<Mesh::RectangularFaceParallelToAxis, 6> newGetFacesOfCube(Types::index k) const;
+    [[nodiscard]] Containers::array<Mesh::ParallelogramFace, 6> newGetFacesOfCube(Types::index k) const;
+    [[nodiscard]] Containers::array<Mesh::ParallelogramFace, 6> verynewGetFacesOfCube(Types::index k) const;
 };
 } // namespace EMW::Mesh::VolumeMesh
 

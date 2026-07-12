@@ -8,10 +8,199 @@
 #include <algorithm>
 #include <array>
 #include <cassert>
+#include <cstddef>
+#include <limits>
+#include <mutex>
+#include <new>
 #include <stdexcept>
+#include <string>
 #include <type_traits>
 
 namespace EMW::Math::Fourier {
+namespace detail {
+inline void ensure_fftw_planner_thread_safe() {
+#ifdef EIGEN_FFTW_DEFAULT
+    static std::once_flag fftw_planner_once;
+    std::call_once(fftw_planner_once, [] {
+        if (fftw_init_threads() == 0) {
+            throw std::runtime_error("FFTW threads initialization failed");
+        }
+        fftw_make_planner_thread_safe();
+    });
+#endif
+}
+
+[[nodiscard]] inline int checked_fftw_int(Types::index value, const char* name) {
+    if (value > static_cast<Types::index>(std::numeric_limits<int>::max())) {
+        throw std::overflow_error(std::string(name) + " is too large for FFTW int API");
+    }
+    return static_cast<int>(value);
+}
+
+#ifdef EIGEN_FFTW_DEFAULT
+[[nodiscard]] inline std::mutex& fftw_planner_mutex() {
+    static std::mutex mutex;
+    return mutex;
+}
+
+class FftwPlan {
+private:
+    fftw_plan plan_ = nullptr;
+
+public:
+    FftwPlan() = default;
+
+    explicit FftwPlan(fftw_plan plan)
+        : plan_(plan) {
+    }
+
+    FftwPlan(const FftwPlan&) = delete;
+    FftwPlan& operator=(const FftwPlan&) = delete;
+
+    FftwPlan(FftwPlan&& other) noexcept
+        : plan_(other.plan_) {
+        other.plan_ = nullptr;
+    }
+
+    FftwPlan& operator=(FftwPlan&& other) noexcept {
+        if (this != &other) {
+            reset();
+            plan_ = other.plan_;
+            other.plan_ = nullptr;
+        }
+        return *this;
+    }
+
+    ~FftwPlan() {
+        reset();
+    }
+
+    void reset() noexcept {
+        if (plan_ != nullptr) {
+            std::lock_guard<std::mutex> lock(fftw_planner_mutex());
+            fftw_destroy_plan(plan_);
+            plan_ = nullptr;
+        }
+    }
+
+    [[nodiscard]] fftw_plan get() const noexcept {
+        return plan_;
+    }
+};
+
+template <typename value_t>
+class FftwAlignedBuffer {
+private:
+    value_t* data_ = nullptr;
+    Types::index size_ = 0;
+    Types::index capacity_ = 0;
+
+public:
+    FftwAlignedBuffer() = default;
+
+    FftwAlignedBuffer(const FftwAlignedBuffer&) = delete;
+    FftwAlignedBuffer& operator=(const FftwAlignedBuffer&) = delete;
+
+    FftwAlignedBuffer(FftwAlignedBuffer&& other) noexcept
+        : data_(other.data_), size_(other.size_), capacity_(other.capacity_) {
+        other.data_ = nullptr;
+        other.size_ = 0;
+        other.capacity_ = 0;
+    }
+
+    FftwAlignedBuffer& operator=(FftwAlignedBuffer&& other) noexcept {
+        if (this != &other) {
+            reset();
+            data_ = other.data_;
+            size_ = other.size_;
+            capacity_ = other.capacity_;
+            other.data_ = nullptr;
+            other.size_ = 0;
+            other.capacity_ = 0;
+        }
+        return *this;
+    }
+
+    ~FftwAlignedBuffer() {
+        reset();
+    }
+
+    void resize(Types::index size) {
+        if (size <= capacity_) {
+            size_ = size;
+            return;
+        }
+
+        if (static_cast<std::size_t>(size) > std::numeric_limits<std::size_t>::max() / sizeof(value_t)) {
+            throw std::length_error("FFTW aligned buffer is too large");
+        }
+
+        reset();
+        data_ = static_cast<value_t*>(fftw_malloc(static_cast<std::size_t>(size) * sizeof(value_t)));
+        if (data_ == nullptr) {
+            throw std::bad_alloc{};
+        }
+        size_ = size;
+        capacity_ = size;
+    }
+
+    void reset() noexcept {
+        if (data_ != nullptr) {
+            fftw_free(data_);
+            data_ = nullptr;
+        }
+        size_ = 0;
+        capacity_ = 0;
+    }
+
+    [[nodiscard]] value_t* data() noexcept {
+        return data_;
+    }
+
+    [[nodiscard]] const value_t* data() const noexcept {
+        return data_;
+    }
+
+    [[nodiscard]] Types::index size() const noexcept {
+        return size_;
+    }
+
+    [[nodiscard]] value_t& operator[](Types::index index) noexcept {
+        return data_[index];
+    }
+
+    [[nodiscard]] const value_t& operator[](Types::index index) const noexcept {
+        return data_[index];
+    }
+};
+
+[[nodiscard]] inline FftwPlan make_fftw_many_3d_plan(fftw_complex* data, int fft_x, int fft_y, int fft_z,
+                                                     int howmany, int distance, int direction,
+                                                     int thread_count) {
+    ensure_fftw_planner_thread_safe();
+
+    int sizes[3] = {fft_z, fft_y, fft_x};
+    fftw_plan plan = nullptr;
+
+    {
+        std::lock_guard<std::mutex> lock(fftw_planner_mutex());
+        fftw_plan_with_nthreads(thread_count);
+        plan = fftw_plan_many_dft(3, sizes, howmany,
+                                  data, nullptr, 1, distance,
+                                  data, nullptr, 1, distance,
+                                  direction, FFTW_MEASURE);
+        fftw_plan_with_nthreads(1);
+    }
+
+    if (plan == nullptr) {
+        throw std::runtime_error("FFTW failed to create a 3D batched plan");
+    }
+
+    return FftwPlan(plan);
+}
+#endif
+}
+
 /**
  * Compact storage for the unique coefficients of a 3-level Toeplitz matrix
  * with dense 3x3 internal blocks: levels_x * levels_y * levels_z * 3 * 3.
@@ -44,6 +233,13 @@ public:
     [[nodiscard]] Types::index levels_z() const noexcept { return levels_z_; }
 
     [[nodiscard]] const Containers::vector<scalar_t>& data() const noexcept { return data_; }
+
+    void clear() {
+        levels_x_ = 0;
+        levels_y_ = 0;
+        levels_z_ = 0;
+        Containers::vector<scalar_t>().swap(data_);
+    }
 
     [[nodiscard]] scalar_t& operator()(Types::index lx, Types::index ly, Types::index lz,
                                        Types::index row, Types::index col) noexcept {
@@ -222,6 +418,8 @@ private:
     }
 
     void fft3_inplace(Containers::vector<complex_type>& data, bool inverse) const {
+        detail::ensure_fftw_planner_thread_safe();
+
         Eigen::FFT<Types::scalar> fft;
 
         Containers::vector<complex_type> line_in;
@@ -328,6 +526,8 @@ private:
                 kernel_spectrum_[out_comp * block_size_ + in_comp] = std::move(spatial);
             }
         }
+
+        levels_.clear();
     }
 
 public:
@@ -611,6 +811,8 @@ private:
     template <std::size_t component_count>
     void fft3_interleaved_inplace(Containers::vector<std::array<complex_type, component_count>>& data,
                                   bool inverse) const {
+        detail::ensure_fftw_planner_thread_safe();
+
         const Types::index fx = fft_x_;
         const Types::index fy = fft_y_;
         const Types::index fz = fft_z_;
@@ -702,6 +904,8 @@ private:
     template <std::size_t component_count>
     void fft3_componentwise_inplace(std::array<Containers::vector<complex_type>, component_count>& data,
                                     bool inverse) const {
+        detail::ensure_fftw_planner_thread_safe();
+
         const Types::index fx = fft_x_;
         const Types::index fy = fft_y_;
         const Types::index fz = fft_z_;
@@ -818,6 +1022,7 @@ private:
         }
 
         fft3_interleaved_inplace(kernel_spectrum_, false);
+        levels_.clear();
     }
 
 public:
@@ -912,6 +1117,141 @@ public:
             }
         }
 
+        return result;
+    }
+
+    void matvec_fftw_threads_into(const vector_type& vec, vector_type& result, int thread_count) const {
+        if (static_cast<Types::index>(vec.size()) != cols()) {
+            throw std::invalid_argument("Vector size does not match TripleToeplitz3x3Fourier::cols()");
+        }
+
+        if (thread_count < 1) {
+            throw std::invalid_argument("FFTW thread count must be positive");
+        }
+
+#ifndef EIGEN_FFTW_DEFAULT
+        throw std::logic_error("matvec_fftw_threads requires EIGEN_FFTW_DEFAULT");
+#else
+        static_assert(sizeof(complex_type) == sizeof(fftw_complex),
+                      "std::complex<double> must be binary-compatible with fftw_complex");
+
+        const Types::index total_fft_size = fft_size();
+        const int fft_x = detail::checked_fftw_int(fft_x_, "fft_x");
+        const int fft_y = detail::checked_fftw_int(fft_y_, "fft_y");
+        const int fft_z = detail::checked_fftw_int(fft_z_, "fft_z");
+        const int fft_distance = detail::checked_fftw_int(total_fft_size, "total_fft_size");
+        const int component_count = detail::checked_fftw_int(block_size_, "block_size");
+
+        struct ThreadedMatvecCache {
+            detail::FftwAlignedBuffer<complex_type> workspace;
+            detail::FftwPlan forward_plan;
+            detail::FftwPlan inverse_plan;
+            Types::index total_fft_size = 0;
+            complex_type* plan_data = nullptr;
+            int fft_x = 0;
+            int fft_y = 0;
+            int fft_z = 0;
+            int thread_count = 0;
+        };
+
+        thread_local ThreadedMatvecCache cache;
+
+        const Types::index workspace_size = block_size_ * total_fft_size;
+        cache.workspace.resize(workspace_size);
+
+        auto* fftw_data = reinterpret_cast<fftw_complex*>(cache.workspace.data());
+        const bool need_new_plans = cache.total_fft_size != total_fft_size ||
+                                    cache.plan_data != cache.workspace.data() ||
+                                    cache.fft_x != fft_x ||
+                                    cache.fft_y != fft_y ||
+                                    cache.fft_z != fft_z ||
+                                    cache.thread_count != thread_count ||
+                                    cache.forward_plan.get() == nullptr ||
+                                    cache.inverse_plan.get() == nullptr;
+
+        if (need_new_plans) {
+            cache.forward_plan = detail::make_fftw_many_3d_plan(fftw_data, fft_x, fft_y, fft_z,
+                                                                component_count, fft_distance,
+                                                                FFTW_FORWARD, thread_count);
+            cache.inverse_plan = detail::make_fftw_many_3d_plan(fftw_data, fft_x, fft_y, fft_z,
+                                                                component_count, fft_distance,
+                                                                FFTW_BACKWARD, thread_count);
+            cache.total_fft_size = total_fft_size;
+            cache.plan_data = cache.workspace.data();
+            cache.fft_x = fft_x;
+            cache.fft_y = fft_y;
+            cache.fft_z = fft_z;
+            cache.thread_count = thread_count;
+        }
+
+        auto& vec_spectrum = cache.workspace;
+
+        #pragma omp parallel num_threads(thread_count)
+        {
+            #pragma omp for schedule(static)
+            for (Types::index i = 0; i < workspace_size; ++i) {
+                vec_spectrum[i] = complex_type{0.0, 0.0};
+            }
+
+            #pragma omp for collapse(2) schedule(static)
+            for (Types::index z = 0; z < nz_; ++z) {
+                for (Types::index y = 0; y < ny_; ++y) {
+                    for (Types::index x = 0; x < nx_; ++x) {
+                        const Types::index fft_index = flatten_fft(x, y, z);
+
+                        for (Types::index in_comp = 0; in_comp < block_size_; ++in_comp) {
+                            vec_spectrum[in_comp * total_fft_size + fft_index] =
+                                to_complex(vec(flatten_cell_component(x, y, z, in_comp)));
+                        }
+                    }
+                }
+            }
+        }
+
+        fftw_execute(cache.forward_plan.get());
+
+        #pragma omp parallel for schedule(static) num_threads(thread_count)
+        for (Types::index freq_index = 0; freq_index < total_fft_size; ++freq_index) {
+            const complex_type source_0 = vec_spectrum[freq_index];
+            const complex_type source_1 = vec_spectrum[total_fft_size + freq_index];
+            const complex_type source_2 = vec_spectrum[2 * total_fft_size + freq_index];
+            const auto& kernel = kernel_spectrum_[freq_index];
+
+            vec_spectrum[freq_index] =
+                kernel[0] * source_0 + kernel[1] * source_1 + kernel[2] * source_2;
+            vec_spectrum[total_fft_size + freq_index] =
+                kernel[3] * source_0 + kernel[4] * source_1 + kernel[5] * source_2;
+            vec_spectrum[2 * total_fft_size + freq_index] =
+                kernel[6] * source_0 + kernel[7] * source_1 + kernel[8] * source_2;
+        }
+
+        fftw_execute(cache.inverse_plan.get());
+
+        const Types::scalar inverse_scale = 1.0 / static_cast<Types::scalar>(total_fft_size);
+        if (static_cast<Types::index>(result.size()) != rows()) {
+            result.resize(rows());
+        }
+
+        #pragma omp parallel for collapse(2) schedule(static) num_threads(thread_count)
+        for (Types::index z = 0; z < nz_; ++z) {
+            for (Types::index y = 0; y < ny_; ++y) {
+                for (Types::index x = 0; x < nx_; ++x) {
+                    const Types::index fft_index = flatten_fft(x + shift_x_, y + shift_y_, z + shift_z_);
+
+                    for (Types::index out_comp = 0; out_comp < block_size_; ++out_comp) {
+                        result(flatten_cell_component(x, y, z, out_comp)) =
+                            from_complex(vec_spectrum[out_comp * total_fft_size + fft_index] * inverse_scale);
+                    }
+                }
+            }
+        }
+
+#endif
+    }
+
+    [[nodiscard]] vector_type matvec_fftw_threads(const vector_type& vec, int thread_count) const {
+        vector_type result;
+        matvec_fftw_threads_into(vec, result, thread_count);
         return result;
     }
 

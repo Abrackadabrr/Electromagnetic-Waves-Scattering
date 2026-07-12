@@ -50,8 +50,7 @@ operator_K_over_cube_mesh::surface_part_singularity_extraction(Types::index k, T
                         DecartIntegration::adaptive_integrate<DecartIntegration::GaussLegendre::Quadrature<5, 5>>(
                             analytical_integrand, {0, 0}, {1, 1}, scalar_stop_criterion<Types::scalar>(rTol, aTol),
                             singular_integration_level);
-                    if (std::isnan(singular_part.first))
-                        std::cout << singular_part.first << std::endl;
+
 
                     result(i, j) +=
                         multiplier * measures[i] * Math::Constants::inverse_4PI<Types::scalar>() * singular_part.first;
@@ -68,8 +67,7 @@ operator_K_over_cube_mesh::surface_part_singularity_extraction(Types::index k, T
                         DecartIntegration::adaptive_integrate<DecartIntegration::GaussLegendre::Quadrature<4, 4, 4, 4>>(
                             residual_integrand, {0, 0, 0, 0}, {1, 1, 1, 1},
                             scalar_stop_criterion<Types::complex_d>(rTol, aTol), bounded_integration_level);
-                    if (std::isnan(std::abs(regular_part.first)))
-                        std::cout << regular_part.first << std::endl;
+
                     result(i, j) += multiplier * measures[i] * measures[j] * regular_part.first;
                 }
             }
@@ -110,9 +108,6 @@ Types::Matrix3c operator_K_over_cube_mesh::surface_part_naive(Types::index k, Ty
                         DecartIntegration::adaptive_integrate<DecartIntegration::GaussLegendre::Quadrature<4, 4, 4, 4>>(
                             integrand, {0, 0, 0, 0}, {1, 1, 1, 1}, scalar_stop_criterion<Types::complex_d>(rTol, aTol),
                             integration_level);
-
-                    if (std::isnan(std::abs(integration_result.first)))
-                        std::cout << integration_result.first << std::endl;
 
                     result(i, j) += multiplier * measures[i] * measures[j] * integration_result.first;
                 }
@@ -261,7 +256,6 @@ Types::Matrix3c operator_K_over_cube_mesh::galerkin_block_for_cubes(size_t k, si
     result(0, 0) += volume_res;
     result(1, 1) += volume_res;
     result(2, 2) += volume_res;
-    // if (std::isnan(surface_res.norm())) std::cout <<"sr " << k << ' ' << p << std::endl;
     return result;
 }
 
@@ -275,8 +269,6 @@ operator_K_over_cube_mesh::compute_galerkin_matrix_dense(Types::scalar basis_fun
             const auto volume_res = matrix_3_coef(k, p);
             const auto surface_res = matrix_2_coef(k, p);
             result.block(3 * k, 3 * p, 3, 3) = -surface_res;
-            if (k == 0 && p == 0)
-                std::cout << surface_res << std::endl;
             // и подправляем общую матрицу
             result(3 * k, 3 * p) += volume_res;
             result(3 * k + 1, 3 * p + 1) += volume_res;

@@ -13,7 +13,7 @@ Types::scalar integrate_1_div_r(const Mesh::point_t &r, const Mesh::IndexedCell 
     return integrate_1_div_r(r, cell.getVertexAsArray(), cell.normal);
 }
 
-Types::scalar integrate_1_div_r(const Mesh::point_t &r, const Mesh::RectangularFaceParallelToAxis &cell) {
+Types::scalar integrate_1_div_r(const Mesh::point_t &r, const Mesh::ParallelogramFace &cell) {
     const Containers::array<Types::point_t, 4> verts{cell.a, cell.parametrization(0, 1), cell.parametrization(1, 1),
                                                      cell.parametrization(1, 0)};
     return integrate_1_div_r(r, verts);
