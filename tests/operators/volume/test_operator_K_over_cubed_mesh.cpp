@@ -170,7 +170,7 @@ TEST_F(VOLUME_OPERATOR_OVER_CUBE_MESH_TESTS, EQUALITY_OF_MATRIX_ELEMENTS) {
 
 TEST_F(VOLUME_OPERATOR_OVER_CUBE_MESH_TESTS, SYMMETRY_MATRIX_COMPARISON) {
     constexpr Types::scalar total_mesh_size = 2;
-    constexpr Types::index Nx = 12;
+    constexpr Types::index Nx = 4;
     constexpr Types::index Ncubes = Nx;
     constexpr Types::scalar cube_size = total_mesh_size / Nx;
     constexpr Types::scalar basis_fn_module = 1. / sqrt(cube_size * cube_size * cube_size);
@@ -180,11 +180,13 @@ TEST_F(VOLUME_OPERATOR_OVER_CUBE_MESH_TESTS, SYMMETRY_MATRIX_COMPARISON) {
     Mesh::VolumeMesh::CubeMesh mesh{Types::point_t{0, 0, 0}, total_mesh_size, Ncubes + 1};
     Types::complex_d k_ = {2.0 * Math::Constants::PI<Types::scalar>(), 0};
     Operators::Volume::operator_K_over_cube_mesh operator_K{k_, mesh};
+    operator_K.set_nearness_threshold(2);
 
+    omp_set_num_threads(14);
     auto toep_mat = operator_K.compute_galerkin_matrix(basis_fn_module);
     auto full_mat = toep_mat.to_dense();
 
-    std::cout << (full_mat - full_mat.transpose()).norm() / full_mat.norm() << std::endl;
+    std::cout << (full_mat - full_mat.transpose()).norm() << ' ' << full_mat.norm() << std::endl;
 }
 
 TEST_F(VOLUME_OPERATOR_OVER_CUBE_MESH_TESTS, TOEPLITZ_DENSE_COMPARISON) {
@@ -251,7 +253,6 @@ TEST_F(VOLUME_OPERATOR_OVER_CUBE_MESH_TESTS, TOEPLITZ_TOEPLITZ_COMPARISON) {
 
 TEST_F(VOLUME_OPERATOR_OVER_CUBE_MESH_TESTS, TOEPLITZ_COMPARISON_WITH_ACA_COMPRESSED) {
     Eigen::setNbThreads(1);
-    openblas_set_num_threads(1);
     constexpr Types::scalar total_mesh_size = 0.1;
     constexpr Types::index Nx = 17;
     constexpr Types::scalar cube_size = total_mesh_size / (Nx - 1);
@@ -275,7 +276,6 @@ TEST_F(VOLUME_OPERATOR_OVER_CUBE_MESH_TESTS, TOEPLITZ_COMPARISON_WITH_ACA_COMPRE
 
 TEST_F(VOLUME_OPERATOR_OVER_CUBE_MESH_TESTS, TOEPLITZ_MATVEC_COMPARISON_WITH_ACA_COMPRESSED) {
     Eigen::setNbThreads(1);
-    openblas_set_num_threads(1);
     constexpr Types::scalar total_mesh_size = 0.1;
     constexpr Types::index Nx = 17;
     constexpr Types::scalar cube_size = total_mesh_size / (Nx - 1);

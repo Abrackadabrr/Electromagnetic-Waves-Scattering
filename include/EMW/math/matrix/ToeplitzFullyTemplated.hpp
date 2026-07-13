@@ -8,8 +8,6 @@
 #include "ToeplitzContainer.hpp"
 #include "types/Types.hpp"
 
-#include <cblas.h>
-
 #include <cassert>
 #include <iostream>
 
@@ -211,90 +209,6 @@ void ToeplitzStructure<scalar_t, block_t>::matvec(Eigen::Ref<vector_t> vec, Eige
             }
         }
     }
-}
-
-template <typename scalar_t, typename block_t>
-void ToeplitzStructure<scalar_t, block_t>::matvec_wise(scalar_t *vec, size_t vec_size, scalar_t *dest,
-                                                       size_t dest_size) const noexcept {
-#define USE_EIGEN 0
-    assert(vec_size == static_cast<size_t>(cols()));
-    assert(dest_size == static_cast<size_t>(rows()));
-
-    auto *additional_workspace = new scalar_t[vec_size];
-
-    const Types::index block_rows = blocks.rows();
-    const Types::index block_cols = blocks.cols();
-
-    for (Types::index d = 0; d < block_cols; ++d) {
-        const auto &current_block = blocks(0, d);
-        const Types::index repeats = block_cols - d;
-
-
-        if constexpr (std::is_same_v<block_t, Types::MatrixX<scalar_t>>) {
-#if USE_EIGEN
-            // 1. Если блок -- это плотная матрица, то я делаю матмулл
-            // reshape вектора
-            auto vector_reshaped = Eigen::Map<dense_matrix_t>{vec + d * rows_in_block_, rows_in_block_, repeats};
-            // reshape места, куда прибавляем
-            auto dest_reshapsed = Eigen::Map<dense_matrix_t>{dest, rows_in_block_, repeats};
-            // матмул
-            dest_reshapsed.noalias() += current_block * vector_reshaped;
-#else
-            // умножалка через блас
-            const scalar_t alpha{1.0, 0.0};
-            const scalar_t beta{1.0, 0.0}; // для C = C + A*B
-            cblas_zgemm(CblasColMajor, CblasNoTrans, CblasNoTrans, rows_in_block_, repeats, cols_in_block_, &alpha,
-                        current_block.data(), rows_in_block_,     // lda = rows(A)
-                        vec + d * rows_in_block_, cols_in_block_, // ldb = rows(B)
-                        &beta, dest, rows_in_block_);             // ldc = rows(C)
-#endif
-        } else if constexpr (std::is_same_v<block_t, DynamicFactoredMatrix<dense_matrix_t>>) {
-            auto vector_reshaped = Eigen::Map<dense_matrix_t>{vec + d * rows_in_block_, rows_in_block_, repeats};
-            auto dest_reshapsed = Eigen::Map<dense_matrix_t>{dest, rows_in_block_, repeats};
-            current_block.matmull(vector_reshaped, dest_reshapsed, additional_workspace);
-        } else {
-            for (Types::index i = 0; i < repeats; ++i) {
-                scalar_t *x_ptr = vec + (d + i) * rows_in_block_;
-                scalar_t *y_ptr = dest + i * rows_in_block_;
-                current_block.matvec_wise(x_ptr, cols_in_block_, y_ptr, rows_in_block_);
-            }
-        }
-    }
-
-    for (Types::index k = 1; k < block_rows; ++k) {
-        const auto &current_block = blocks(k, 0);
-        const Types::index repeats = block_rows - k;
-        // Теперь есть варианты:
-        if constexpr (std::is_same_v<block_t, Types::MatrixX<scalar_t>>) {
-#if USE_EIGEN
-            // 1. Если блок -- это плотная матрица, то я делаю умножалку через блас
-            // reshape вектора
-            auto vector_reshaped = Eigen::Map<dense_matrix_t>{vec, rows_in_block_, repeats};
-            // reshape места, куда прибавляем
-            auto dest_reshapsed = Eigen::Map<dense_matrix_t>{dest + k * cols_in_block_, rows_in_block_, repeats};
-            // матмул
-            dest_reshapsed.noalias() += current_block * vector_reshaped;
-#else
-            const scalar_t alpha{1.0, 0.0};
-            const scalar_t beta{1.0, 0.0}; // для C = C + A*B
-            cblas_zgemm(CblasColMajor, CblasNoTrans, CblasNoTrans, rows_in_block_, repeats, cols_in_block_, &alpha,
-                        current_block.data(), rows_in_block_,              // lda = rows(A)
-                        vec, cols_in_block_,                               // ldb = rows(B)
-                        &beta, dest + k * rows_in_block_, rows_in_block_); // ldc = rows(C)
-#endif
-        } else if constexpr (std::is_same_v<block_t, DynamicFactoredMatrix<dense_matrix_t>>) {
-            auto vector_reshaped = Eigen::Map<dense_matrix_t>{vec, rows_in_block_, repeats};
-            auto dest_reshapsed = Eigen::Map<dense_matrix_t>{dest + k * rows_in_block_, rows_in_block_, repeats};
-            current_block.matmull(vector_reshaped, dest_reshapsed, additional_workspace);
-        } else {
-            for (Types::index j = 0; j < repeats; ++j) {
-                scalar_t *x_ptr = vec + j * cols_in_block_;
-                scalar_t *y_ptr = dest + (j + k) * rows_in_block_;
-                current_block.matvec_wise(x_ptr, cols_in_block_, y_ptr, rows_in_block_);
-            }
-        }
-    }
-    delete[] additional_workspace;
 }
 
 template <typename scalar_t, typename block_t>

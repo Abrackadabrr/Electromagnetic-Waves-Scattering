@@ -159,7 +159,15 @@ Containers::array<Mesh::ParallelogramFace, 6> CubeMesh::verynewGetFacesOfCube(Ty
 }
 
 Containers::array<Mesh::ParallelogramFace, 6> CubeMesh::newGetFacesOfCube(Types::index k) const {
-    const Types::index ldc_idx = k + k / (nx_ - 1);
+    const size_t mx = nx_ - 1;
+    const size_t my = ny_ - 1;
+
+    const size_t cx = k % mx;
+    const size_t cy = (k / mx) % my;
+    const size_t cz = k / (mx * my);
+
+    const size_t ldc_idx = cx + nx_ * (cy + ny_ * cz);
+
     Containers::array<Types::index, 8> vertex_indices{ldc_idx,
                                                       ldc_idx + 1,
                                                       ldc_idx + nx_,
@@ -169,12 +177,12 @@ Containers::array<Mesh::ParallelogramFace, 6> CubeMesh::newGetFacesOfCube(Types:
                                                       ldc_idx + (ny_ + 1) * nx_,
                                                       ldc_idx + (ny_ + 1) * nx_ + 1};
     return {
-        ParallelogramFace::getFaceNormalToX(nodes_[vertex_indices[0]]),
-        ParallelogramFace::getFaceNormalToX(nodes_[vertex_indices[1]]),
-        ParallelogramFace::getFaceNormalToY(nodes_[vertex_indices[0]]),
-        ParallelogramFace::getFaceNormalToY(nodes_[vertex_indices[2]]),
-        ParallelogramFace::getFaceNormalToZ(nodes_[vertex_indices[0]]),
-        ParallelogramFace::getFaceNormalToZ(nodes_[vertex_indices[4]]),
+        ParallelogramFace::getFaceNormalToX(nodes_[vertex_indices[0]], dy_, dz_),
+        ParallelogramFace::getFaceNormalToX(nodes_[vertex_indices[1]], dy_, dz_),
+        ParallelogramFace::getFaceNormalToY(nodes_[vertex_indices[0]], dx_, dz_),
+        ParallelogramFace::getFaceNormalToY(nodes_[vertex_indices[2]], dx_, dz_),
+        ParallelogramFace::getFaceNormalToZ(nodes_[vertex_indices[0]], dx_, dy_),
+        ParallelogramFace::getFaceNormalToZ(nodes_[vertex_indices[4]], dx_, dy_),
     };
 }
 }; // namespace EMW::Mesh::VolumeMesh

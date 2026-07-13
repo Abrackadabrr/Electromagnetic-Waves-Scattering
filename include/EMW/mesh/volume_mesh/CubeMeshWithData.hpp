@@ -63,9 +63,20 @@ class CubeMeshWithData : public CubeMesh {
     requires std::is_invocable_v<Callable, Types::point_t>;
 
     // ---- Getters ---- //
-    [[nodiscard]] const auto &getScalarData(const std::string &name) const { return scalar_data.find(name)->second; };
+    [[nodiscard]] inline const auto &getScalarData(const std::string &name) const {
+        auto it = scalar_data.find(name);
+        if (it != scalar_data.end())
+            return it->second;
+        else throw std::runtime_error("Scalar data " + name +  " does not exist");
+    };
 
-    [[nodiscard]] const auto &getVectorData(const std::string &name) const { return vector_data.find(name)->second; };
+    [[nodiscard]] inline const auto &getVectorData(const std::string &name) const {
+        auto it = vector_data.find(name);
+        if (it != vector_data.end())
+            return it->second;
+        else throw std::runtime_error("Vector data " + name +  " does not exist");
+    };
+
     [[nodiscard]] const auto &getScalarData() const { return scalar_data; }
     [[nodiscard]] const auto &getVectorData() const { return vector_data; };
 

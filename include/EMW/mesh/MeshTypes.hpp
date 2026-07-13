@@ -35,15 +35,13 @@ struct IntegrationParameters {
 struct Cell {
     point_t a, b, c, d;
 
-    explicit operator Containers::array<Types::point_t, 4>() const {
-        return {a, b, c, d};
-    }
+    explicit operator Containers::array<Types::point_t, 4>() const { return {a, b, c, d}; }
 };
 
 struct RectangularFaceParallelToAxis {
     point_t a, e1, e2;
 
-    RectangularFaceParallelToAxis(point_t a, point_t b1, point_t b2): a(a), e1(b1 - a), e2(b2 - a) {}
+    RectangularFaceParallelToAxis(point_t a, point_t b1, point_t b2) : a(a), e1(b1 - a), e2(b2 - a) {}
 
     [[nodiscard]] point_t parametrization(Types::scalar p, Types::scalar q) const noexcept {
         return a + p * e1 + q * e2;
@@ -60,12 +58,17 @@ struct ParallelogramFace {
         return a + p * e1 + q * e2;
     }
 
-    static inline ParallelogramFace getFaceNormalToX(point_t a) { return {a, {0, 1, 0}, {0, 0, 1}};}
-    static inline ParallelogramFace getFaceNormalToY(point_t a) { return {a, {1, 0, 0}, {0, 0, 1}};}
-    static inline ParallelogramFace getFaceNormalToZ(point_t a) { return {a, {1, 0, 0}, {0, 1, 0}};}
-    static inline ParallelogramFace by3vert(point_t a, point_t b, point_t c) { return {a, b-a, c-a};}
+    static inline ParallelogramFace getFaceNormalToX(point_t a, Types::scalar dy, Types::scalar dz) {
+        return {a, {0, dy, 0}, {0, 0, dz}};
+    }
+    static inline ParallelogramFace getFaceNormalToY(point_t a, Types::scalar dx, Types::scalar dz) {
+        return {a, {dx, 0, 0}, {0, 0, dz}};
+    }
+    static inline ParallelogramFace getFaceNormalToZ(point_t a, Types::scalar dx, Types::scalar dy) {
+        return {a, {dx, 0, 0}, {0, dy, 0}};
+    }
+    static inline ParallelogramFace by3vert(point_t a, point_t b, point_t c) { return {a, b - a, c - a}; }
 };
-
 
 /**
  * Тип аппроксимированной ячейки сетки по четырём индексам
@@ -97,8 +100,7 @@ struct IndexedCell {
     IndexedCell() = default;
 
     IndexedCell(const nodes_t &points, const Containers::vector<point_t> &fullPoints,
-                const std::function<point_t(const nodes_t &,
-                                            const Containers::vector<point_t> &)> &getPoint);
+                const std::function<point_t(const nodes_t &, const Containers::vector<point_t> &)> &getPoint);
 
     IndexedCell(const Containers::array<Types::index, 4> &points, const Containers::vector<point_t> &fullPoints)
         : IndexedCell(

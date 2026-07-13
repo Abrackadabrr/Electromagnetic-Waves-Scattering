@@ -2,11 +2,11 @@
 // Created by evgen on 23.08.24.
 //
 
-#include "gtest/gtest.h"
+#include "../../third_party/gtest/googletest/include/gtest/gtest.h"
 
-#include "math/integration/analytical/SingularIntegration.hpp"
+#include "../../include/EMW/math/integration/analytical/SingularIntegration.hpp"
 
-#include "math/integration/decart/Integration.hpp"
+#include "../../include/EMW/math/integration/decart/Integration.hpp"
 
 using namespace EMW;
 using namespace EMW::Types;
@@ -20,6 +20,21 @@ TEST_F(ANALYTICAL_INTEGRATION_TESTS, ONE_DIV_R_OVER_CELL) {
     Mesh::IndexedCell cell{{0, 1, 2, 3}, points};
 
     scalar res = Math::Integration::Analytical::integrate_1_div_r(Mesh::point_t{0, 0, 0}, cell);
+    ASSERT_NEAR(std::abs((res - 8 * std::asinh(1.)) / res), 0, 1e-15);
+}
+
+TEST_F(ANALYTICAL_INTEGRATION_TESTS, ONE_DIV_R_OVER_CELL_2) {
+    // объявляем ячейку, по которой происходит интегрирование
+    const Mesh::point_t a{-1, -1, 0};
+    const Mesh::point_t b{1, -1, 0};
+    const Mesh::point_t c{-1, 1, 0};
+
+    const auto cell = Mesh::ParallelogramFace::by3vert(a, b, c);
+    const auto another_cell = Mesh::ParallelogramFace::getFaceNormalToZ(a, 2., 2.);
+
+    scalar res = Math::Integration::Analytical::integrate_1_div_r(Mesh::point_t{0, 0, 0}, cell);
+    ASSERT_NEAR(std::abs((res - 8 * std::asinh(1.)) / res), 0, 1e-15);
+    res = Math::Integration::Analytical::integrate_1_div_r(Mesh::point_t{0, 0, 0}, another_cell);
     ASSERT_NEAR(std::abs((res - 8 * std::asinh(1.)) / res), 0, 1e-15);
 }
 
@@ -97,7 +112,7 @@ Types::scalar cube_newtonian_energy(Types::scalar l) {
     return res;
 }
 
-TEST_F(ANALYTICAL_INTEGRATION_TESTS, CUBE__NEWTONIAN_ENERGY) {
+TEST_F(ANALYTICAL_INTEGRATION_TESTS, CUBE_NEWTONIAN_ENERGY) {
     constexpr size_t N = 300;
     constexpr double h = 0.05;
     std::cout.precision(std::numeric_limits<double>::digits10);

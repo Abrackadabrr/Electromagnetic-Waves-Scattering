@@ -51,7 +51,6 @@ operator_K_over_cube_mesh::surface_part_singularity_extraction(Types::index k, T
                             analytical_integrand, {0, 0}, {1, 1}, scalar_stop_criterion<Types::scalar>(rTol, aTol),
                             singular_integration_level);
 
-
                     result(i, j) +=
                         multiplier * measures[i] * Math::Constants::inverse_4PI<Types::scalar>() * singular_part.first;
 
@@ -236,14 +235,12 @@ inline rowcol get_toeplitz_rowcol(size_t lin_idx, size_t toeplitz_size) {
 }
 
 Types::Matrix3c operator_K_over_cube_mesh::galerkin_block_for_cubes(size_t k, size_t p) const noexcept {
-#if 0
+#if 1
     // 1. Если кубы далеко, то считаем через far_zone
     // в adaptive_integration_study получил, что на таких расстояниях ошибка около 3e-6
     if (mesh.distance(k, p) > 7 * mesh.h()) {
         // Ну например 7 h ...
         auto result = far_zone_interaction(k, p, 3);
-        const Types::scalar eps = 1e-20;
-        result = (result.array().abs() < eps).select(Types::complex_d{0.0, 0.0}, result.array()).matrix();
         return result;
     }
 #endif
