@@ -1,11 +1,6 @@
-message("TESTS BUILDING STARTS\n")
+message("Building tests for emw library")
 
 file(GLOB_RECURSE TESTS test_*.cpp)
-
-find_package(OpenMP)
-if (OPENMP_FOUND)
-    message("OpenMP Found")
-endif()
 
 foreach (TEST IN LISTS TESTS)
     get_filename_component(FILE_NAME ${TEST} NAME_WE)

@@ -1,6 +1,6 @@
 add_library(${EMW_VISUAL_LIB} src/VTKFunctions.cpp)
 
-set(VTK_DIR "/opt/lib/vtk/lib/cmake/vtk-9.3")
+# set(VTK_DIR "/opt/lib/vtk/lib/cmake/vtk-9.3")
 
 find_package(VTK REQUIRED)
 
