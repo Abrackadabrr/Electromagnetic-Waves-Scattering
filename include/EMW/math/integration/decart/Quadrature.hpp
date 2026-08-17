@@ -202,10 +202,13 @@ adaptive_quadrature_sum(const Callable &f,
     if (max_level == 1)
         return {result, 1};
     size_t level = 2;
-    decltype(auto) result_adaptive = quadrature_sum_with_decomposition<Quadrature>(f, startArgs, deltas, level);
+    size_t fineness = 2;
+    decltype(auto) result_adaptive = quadrature_sum_with_decomposition<Quadrature>(f, startArgs, deltas, fineness);
     while (!std::invoke(std::forward<StopCriterion>(stopCriterion), result, result_adaptive) && (level < max_level)) {
+        level += 1;
+        fineness *= 2;
         result = result_adaptive;
-        result_adaptive = quadrature_sum_with_decomposition<Quadrature>(f, startArgs, deltas, ++level);
+        result_adaptive = quadrature_sum_with_decomposition<Quadrature>(f, startArgs, deltas, fineness);
     }
     return {result_adaptive, level};
 }
@@ -226,7 +229,8 @@ adaptive_integrate(const Callable &f, const typename detail::ExtructedIntegralTy
     while (!std::invoke(std::forward<StopCriterion>(stopCriterion), result, result_adaptive) && (level < max_level))
         {
             // стратегия обновления подразбиения
-            fineness = ++level;
+            level += 1;
+            fineness *= 2;
             // шаг адаптивного метода
             result = result_adaptive;
             result_adaptive = integrate_with_decomposition<Quadrature>(f, startArgs, deltas, fineness);

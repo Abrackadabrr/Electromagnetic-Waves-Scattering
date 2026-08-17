@@ -81,7 +81,7 @@ constexpr decltype(auto) triangle_quadrature_sum_with_decomposition(integrand_t 
                                                                     const vertex_t &c) {
     static_assert(quadrature::dim + 1 == 3, "the quadrature is not for triangle");
 
-    std::invoke_result_t<integrand_t, std::remove_cvref_t<vertex_t>> result{};
+    std::invoke_result_t<integrand_t, std::remove_cvref_t<vertex_t>> result = 0.;
 
     for (auto triangle : QuadratureUtils::TriangleRange(a, b, c, fineness)) {
         decltype(auto) points = detail::get_points<quadrature>(std::make_index_sequence<quadrature::nodes.size()>{},

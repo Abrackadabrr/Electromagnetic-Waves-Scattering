@@ -4,7 +4,7 @@ message("Building a library: " ${EMW_LIBRARY_NAME})
 
 file(GLOB_RECURSE SOURCES *.cpp)
 
-set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} -flto -march=native ") #-ftemplate-depth=10000")
+set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} -flto") #- -march=native ftemplate-depth=10000")
 
 add_library(${EMW_LIBRARY_NAME} STATIC ${SOURCES})
 

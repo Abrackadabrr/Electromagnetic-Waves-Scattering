@@ -137,7 +137,7 @@ requires std::is_invocable_v<Callable, Types::point_t>
     data.reserve(cellsCount);
     for (std::size_t i = 0; i < cellsCount; ++i)
         data.emplace_back(
-            std::forward<Callable>(point_function)(left_down_corners_[i] + Types::point_t{dx_ / 2, dz_ / 2, dy_ / 2}));
+            std::forward<Callable>(point_function)(left_down_corners_[i] + Types::point_t{dx_ / 2, dy_ / 2, dz_ / 2}));
     setScalarData(name, std::move(data));
 }
 

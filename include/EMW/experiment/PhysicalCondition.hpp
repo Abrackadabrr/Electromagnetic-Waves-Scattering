@@ -39,6 +39,27 @@ struct HertzElectricDipole {
 };
 
 /**
+ * Monochromatic straight current segment represented as an integral of Hertz electric dipoles.
+ * The direction vector defines both the orientation and the length of the segment.
+ */
+struct LineSource {
+    // Oriented segment: its norm is the segment length.
+    Types::Vector3d direction_;
+    // Segment center.
+    Types::point_t center_;
+    // Complex current amplitude.
+    Types::complex_d current_amplitude_;
+    // Wave number.
+    Types::complex_d k_;
+
+    LineSource(const Types::Vector3d &direction, const Types::point_t &center, Types::complex_d current_amplitude,
+               Types::complex_d k_fig);
+
+    // Calculate the field of the current segment.
+    Types::Vector3c operator()(const Types::point_t &r, Types::complex_d epsilon = {1.0, 0.}) const;
+};
+
+/**
  * Расчитывает волновое число по частоте в ГИГАГерцах
  */
 inline constexpr Types::scalar get_k_on_frquency(const Types::scalar frequency) {

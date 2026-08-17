@@ -74,8 +74,7 @@ Types::scalar numerical_newton_potential(Types::point_t r, Types::scalar cl) {
         return cut_of_cube_integral(x, y, z, z_dash);
     };
     auto [result, level] = DecartIntegration::adaptive_integrate<DecartIntegration::GaussLegendre::Quadrature<7>>(
-        integrand, {-cl / 2.}, {cl}, [](scalar x, scalar y) { return std::abs(x - y) < 1e-10 * std::abs(x) + 1e-16; },
-        2048);
+        integrand, {-cl / 2.}, {cl}, [](scalar x, scalar y) { return std::abs(x - y) < 1e-10 * std::abs(x) + 1e-16; }, 11);
     // std::cout << level << std::endl;
     return result;
 }

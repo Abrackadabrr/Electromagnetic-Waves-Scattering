@@ -131,8 +131,10 @@ Types::scalar calculateRSP(const Types::Vector3d &tau, Types::complex_d k, const
     Types::Vector3c result = Types::Vector3c::Zero();
 #pragma omp parallel for reduction(+ : result) num_threads(14)
     for (size_t i = 0; i < cube_mesh.getCells().size(); i++) {
-        result += sigmaOverCube(k, tau, cube_mesh.leftDownCorner(i), cube_mesh.dx(), cube_mesh.dy(), cube_mesh.dz(),
+        if (std::abs(eps_data[i] - 1) > 1e-6) {
+            result += sigmaOverCube(k, tau, cube_mesh.leftDownCorner(i), cube_mesh.dx(), cube_mesh.dy(), cube_mesh.dz(),
                                 j_data[i], eps_data[i]);
+        }
     }
     return Math::Constants::inverse_4PI<Types::scalar>() * result.squaredNorm();
 }
@@ -144,7 +146,7 @@ Types::scalar calculateRSP_kahan(const Types::Vector3d &tau, Types::complex_d k,
     Types::Vector3c result = Types::Vector3c::Zero();
     Types::Vector3c residual = Types::Vector3c::Zero();
     for (size_t i = 0; i < cube_mesh.getCells().size(); i++) {
-        if (std::abs(eps_data[i]) - 1 > 1e-6) {
+        if (std::abs(eps_data[i] - 1) > 1e-10) {
             Types::Vector3c term = sigmaOverCube(k, tau, cube_mesh.leftDownCorner(i), cube_mesh.dx(), cube_mesh.dy(),
                                                  cube_mesh.dz(), j_data[i], eps_data[i]) -
                                    residual;

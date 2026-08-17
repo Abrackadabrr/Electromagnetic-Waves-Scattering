@@ -68,7 +68,6 @@ class TripleToeplitz3x3SkeletonBenchmark : public benchmark::Fixture {
 public:
     void SetUp(const benchmark::State &state) override {
         Eigen::setNbThreads(1);
-        openblas_set_num_threads(1);
 
         const Types::index nodes_per_axis = static_cast<Types::index>(state.range(0));
         const Types::index block_side = static_cast<Types::index>(state.range(1));
@@ -143,15 +142,17 @@ BENCHMARK_DEFINE_F(TripleToeplitz3x3FourierBenchmark, FourierMatVec)(benchmark::
 }
 
 BENCHMARK_REGISTER_F(TripleToeplitz3x3SkeletonBenchmark, SkeletonFormatMatVec)
-->Args({53, 4})
-->Args({57, 4})
-->Args({61, 4})
+->Args({25, 4})
+->Args({29, 4})
+->Args({33, 4})
+//->Args({53, 4})->Args({57, 4})->Args({61, 4})
         ->Unit(benchmark::kMillisecond);
 
 BENCHMARK_REGISTER_F(TripleToeplitz3x3FourierBenchmark, FourierMatVec)
-->Args({53, 4})
-->Args({57, 4})
-->Args({61, 4})
+->Args({25, 4})
+->Args({29, 4})
+->Args({33, 4})
+// ->Args({53, 4})->Args({57, 4})->Args({61, 4})
         ->Unit(benchmark::kMillisecond);
 } // namespace
 

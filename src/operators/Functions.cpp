@@ -57,9 +57,9 @@ Types::Vector3c sigmaKernel_naive(Types::complex_d k, const Types::Vector3d &tau
                             const Types::Vector3c &j_e, const Types::Vector3c &j_m, Types::complex_d epsilon) {
     const auto ik = Math::Constants::i * k;
     const Types::complex_d exponent = std::exp(-ik * tau.dot(point));
-    const Types::Vector3c vec_e = (j_e - tau * Math::quasiDot(j_e, tau)) * std::sqrt(1. / epsilon) * Math::Constants::mu_0_c;
+    const Types::Vector3c vec_e = (j_e - tau * Math::quasiDot(j_e, tau));
     const Types::Vector3c vec_m = Math::cross(tau, j_m);
-    return exponent * ik * (vec_e - vec_m);
+    return exponent * ik * ik * (vec_e - vec_m);
 }
 
 Types::Vector3c far_zone_integral_kernel(Types::complex_d k, const Types::point_t &r, const Types::Vector3c &j) {

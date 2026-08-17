@@ -11,8 +11,11 @@
 
 #include "math/matrix/decompositions/Decompositions.hpp"
 
+#include <algorithm>
 #include <chrono>
+#include <cstddef>
 #include <omp.h>
+#include <vector>
 
 namespace EMW::Operators::Volume {
 namespace Gl = DecartIntegration::GaussLegendre;
@@ -235,10 +238,10 @@ inline rowcol get_toeplitz_rowcol(size_t lin_idx, size_t toeplitz_size) {
 }
 
 Types::Matrix3c operator_K_over_cube_mesh::galerkin_block_for_cubes(size_t k, size_t p) const noexcept {
-#if 1
+#if 0
     // 1. Если кубы далеко, то считаем через far_zone
     // в adaptive_integration_study получил, что на таких расстояниях ошибка около 3e-6
-    if (mesh.distance(k, p) > 7 * mesh.h()) {
+    if (mesh.distance(k, p) > 15 * mesh.h()) {
         // Ну например 7 h ...
         auto result = far_zone_interaction(k, p, 3);
         return result;
@@ -300,25 +303,50 @@ operator_K_over_cube_mesh::compute_galerkin_matrix(Types::scalar basis_function_
         first_layer_toeplitz, second_layer_toeplitz, third_layer_toeplitz, 3);
     const Types::scalar basis_fn_module_sqr = basis_function_module * basis_function_module;
 
-#pragma omp parallel for schedule(dynamic, 4) default(none) shared(result, mesh)                                          \
-    firstprivate(third_layer_toeplitz, second_layer_toeplitz, basis_fn_module_sqr, first_layer_toeplitz) collapse(3)
+    struct interaction_index {
+        size_t i1;
+        size_t i2;
+        size_t i3;
+        size_t squared_offset;
+    };
+
+    const auto squared_distance_from_diagonal = [](size_t index, size_t toeplitz_size) {
+        const auto offset = static_cast<std::ptrdiff_t>(index) - static_cast<std::ptrdiff_t>(toeplitz_size - 1);
+        return static_cast<size_t>(offset * offset);
+    };
+
+    std::vector<interaction_index> interactions;
+    interactions.reserve((2 * first_layer_toeplitz - 1) * (2 * second_layer_toeplitz - 1) *
+                         (2 * third_layer_toeplitz - 1));
     for (size_t i3 = 0; i3 < 2 * third_layer_toeplitz - 1; ++i3) {
         for (size_t i2 = 0; i2 < 2 * second_layer_toeplitz - 1; ++i2) {
             for (size_t i1 = 0; i1 < 2 * first_layer_toeplitz - 1; ++i1) {
-                // TODO: toeplitz iterator
-                auto [row1, col1] = get_toeplitz_rowcol(i1, first_layer_toeplitz);
-                auto [row2, col2] = get_toeplitz_rowcol(i2, second_layer_toeplitz);
-                auto [row3, col3] = get_toeplitz_rowcol(i3, third_layer_toeplitz);
-
-                auto &&working_block = result.get_block(row3, col3).get_block(row2, col2).get_block(row1, col1);
-
-                // Ищем кубы по трёхмерному индексу
-                const auto idx1 = mesh.cube_idx(row1, row2, row3);
-                const auto idx2 = mesh.cube_idx(col1, col2, col3);
-                working_block = galerkin_block_for_cubes(idx1, idx2) * basis_fn_module_sqr;
+                interactions.push_back({
+                    i1,
+                    i2,
+                    i3,
+                    squared_distance_from_diagonal(i1, first_layer_toeplitz) +
+                        squared_distance_from_diagonal(i2, second_layer_toeplitz) +
+                        squared_distance_from_diagonal(i3, third_layer_toeplitz),
+                });
             }
         }
-        // printf("Поток %d делал итерацию %lu\n", omp_get_thread_num(), i3);
+    }
+    std::ranges::sort(interactions, {}, &interaction_index::squared_offset);
+
+#pragma omp parallel for schedule(dynamic, 1) default(none) shared(result, mesh, interactions)                            \
+    firstprivate(third_layer_toeplitz, second_layer_toeplitz, basis_fn_module_sqr, first_layer_toeplitz)
+    for (size_t interaction = 0; interaction < interactions.size(); ++interaction) {
+        const auto &index = interactions[interaction];
+        auto [row1, col1] = get_toeplitz_rowcol(index.i1, first_layer_toeplitz);
+        auto [row2, col2] = get_toeplitz_rowcol(index.i2, second_layer_toeplitz);
+        auto [row3, col3] = get_toeplitz_rowcol(index.i3, third_layer_toeplitz);
+
+        auto &&working_block = result.get_block(row3, col3).get_block(row2, col2).get_block(row1, col1);
+
+        const auto idx1 = mesh.cube_idx(row1, row2, row3);
+        const auto idx2 = mesh.cube_idx(col1, col2, col3);
+        working_block = galerkin_block_for_cubes(idx1, idx2) * basis_fn_module_sqr;
     }
     return result;
 }
@@ -671,6 +699,133 @@ operator_K_over_cube_mesh::compute_galerkin_matrix_custom_blocksize_compressed(
 
 // --------------- Operator Value Computation -------------- //
 
+[[nodiscard]] Types::Vector3c
+compute_volumer_part(const Types::point_t &point, const Containers::vector<Types::Vector3c> &field_values,
+                     const Mesh::VolumeMesh::CubeMesh &mesh, Types::complex_d wave_number,
+                     Types::complex_d wave_number_sqr, Types::scalar rTol, Types::scalar aTol,
+                     size_t integration_level_3d) noexcept {
+    Types::Vector3c result = Types::Vector3c::Zero();
+    const Types::Vector3d half_sizes{mesh.dx() / 2, mesh.dy() / 2, mesh.dz() / 2};
+
+    for (size_t cube_index = 0; cube_index < field_values.size(); ++cube_index) {
+        const Types::point_t &cube_corner = mesh.leftDownCorner(cube_index);
+        const Types::point_t cube_center = cube_corner + half_sizes;
+
+        const auto bounded_integrand = [point, wave_number](Types::scalar x, Types::scalar y, Types::scalar z) {
+            return Helmholtz::F_bounded_part(wave_number, point, {x, y, z});
+        };
+        const auto bounded_part =
+            DecartIntegration::adaptive_integrate<DecartIntegration::GaussLegendre::Quadrature<3, 3, 3>>(
+                bounded_integrand, {cube_corner.x(), cube_corner.y(), cube_corner.z()},
+                {mesh.dx(), mesh.dy(), mesh.dz()},
+                [rTol, aTol](Types::complex_d lhs, Types::complex_d rhs) {
+                    return std::abs(lhs - rhs) < rTol * std::abs(rhs) + aTol;
+                },
+                integration_level_3d);
+
+        const Types::scalar singular_part = Math::Integration::Analytical::newtonian_potential_of_parallelepiped(
+            point - cube_center, half_sizes.x(), half_sizes.y(), half_sizes.z());
+        const Types::complex_d green_function_integral =
+            bounded_part.first + Math::Constants::inverse_4PI<Types::scalar>() * singular_part;
+
+        result += wave_number_sqr * green_function_integral * field_values[cube_index];
+    }
+    return result;
+}
+
+[[nodiscard]] Types::Vector3c compute_surface_part(const Types::point_t &point,
+                                                   const Containers::vector<Types::Vector3c> &field_values,
+                                                   const Mesh::VolumeMesh::CubeMesh &mesh, Types::complex_d wave_number,
+                                                   Types::scalar rTol, Types::scalar aTol,
+                                                   size_t integration_level_2d) noexcept {
+    Types::Vector3c result = Types::Vector3c::Zero();
+    const Types::Vector3d face_measures{mesh.dy() * mesh.dz(), mesh.dx() * mesh.dz(), mesh.dx() * mesh.dy()};
+
+    const auto add_face_contribution = [&](const Mesh::ParallelogramFace &face, Types::index axis,
+                                           Types::complex_d field_jump) {
+        if (field_jump == Types::complex_d{0.0, 0.0}) {
+            return;
+        }
+
+        const auto integrand = [point, wave_number, &face](Types::scalar p, Types::scalar q) {
+            return Helmholtz::V(wave_number, point, face.parametrization(p, q));
+        };
+        const auto surface_integral =
+            DecartIntegration::adaptive_integrate<DecartIntegration::GaussLegendre::Quadrature<4, 4>>(
+                integrand, {0, 0}, {1, 1},
+                [rTol, aTol](const Types::Vector3c &lhs, const Types::Vector3c &rhs) {
+                    return (lhs - rhs).norm() < rTol * rhs.norm() + aTol;
+                },
+                integration_level_2d);
+        result += surface_integral.first * (face_measures[axis] * field_jump);
+    };
+
+    const size_t cubes_x = mesh.nCubesX();
+    const size_t cubes_y = mesh.nCubesY();
+    const size_t cubes_z = mesh.nCubesZ();
+
+    for (size_t z = 0; z < cubes_z; ++z) {
+        for (size_t y = 0; y < cubes_y; ++y) {
+            for (size_t face_x = 0; face_x <= cubes_x; ++face_x) {
+                const size_t left_x = face_x == 0 ? 0 : face_x - 1;
+                const size_t left_cube = mesh.cube_idx(left_x, y, z);
+                const auto faces = mesh.newGetFacesOfCube(left_cube);
+                Types::complex_d jump;
+                if (face_x == 0) {
+                    jump = -field_values[left_cube].x();
+                } else if (face_x == cubes_x) {
+                    jump = field_values[left_cube].x();
+                } else {
+                    const size_t right_cube = mesh.cube_idx(face_x, y, z);
+                    jump = field_values[left_cube].x() - field_values[right_cube].x();
+                }
+                add_face_contribution(faces[face_x == 0 ? 0 : 1], 0, jump);
+            }
+        }
+    }
+
+    for (size_t z = 0; z < cubes_z; ++z) {
+        for (size_t face_y = 0; face_y <= cubes_y; ++face_y) {
+            for (size_t x = 0; x < cubes_x; ++x) {
+                const size_t lower_y = face_y == 0 ? 0 : face_y - 1;
+                const size_t lower_cube = mesh.cube_idx(x, lower_y, z);
+                const auto faces = mesh.newGetFacesOfCube(lower_cube);
+                Types::complex_d jump;
+                if (face_y == 0) {
+                    jump = -field_values[lower_cube].y();
+                } else if (face_y == cubes_y) {
+                    jump = field_values[lower_cube].y();
+                } else {
+                    const size_t upper_cube = mesh.cube_idx(x, face_y, z);
+                    jump = field_values[lower_cube].y() - field_values[upper_cube].y();
+                }
+                add_face_contribution(faces[face_y == 0 ? 2 : 3], 1, jump);
+            }
+        }
+    }
+
+    for (size_t face_z = 0; face_z <= cubes_z; ++face_z) {
+        for (size_t y = 0; y < cubes_y; ++y) {
+            for (size_t x = 0; x < cubes_x; ++x) {
+                const size_t lower_z = face_z == 0 ? 0 : face_z - 1;
+                const size_t lower_cube = mesh.cube_idx(x, y, lower_z);
+                const auto faces = mesh.newGetFacesOfCube(lower_cube);
+                Types::complex_d jump;
+                if (face_z == 0) {
+                    jump = -field_values[lower_cube].z();
+                } else if (face_z == cubes_z) {
+                    jump = field_values[lower_cube].z();
+                } else {
+                    const size_t upper_cube = mesh.cube_idx(x, y, face_z);
+                    jump = field_values[lower_cube].z() - field_values[upper_cube].z();
+                }
+                add_face_contribution(faces[face_z == 0 ? 4 : 5], 2, jump);
+            }
+        }
+    }
+    return result;
+}
+
 [[nodiscard]] Types::Vector3c operator_K_over_cube_mesh::volume_part(const Types::Vector3c& point, const cell_t& cube) const noexcept {
 
 }
@@ -692,25 +847,29 @@ operator_K_over_cube_mesh::compute_galerkin_matrix_custom_blocksize_compressed(
                 integration_level);
         result += value;
     }
-    return result;
+    return result * Math::Constants::inverse_4PI<Types::scalar>();
 }
 
 [[nodiscard]] Types::Vector3c operator_K_over_cube_mesh::compute_inner_point(const Types::point_t& point, const Containers::vector<Types::Vector3c> &field_values) const noexcept {
-    Types::Vector3c result = Types::Vector3c::Zero();
-    return result;
+    return compute_volumer_part(point, field_values, mesh, wave_number, wave_number_sqr, rTol, aTol, int_lev_3d) +
+           compute_surface_part(point, field_values, mesh, wave_number, rTol, aTol, int_lev_2d);
 }
 
-
-[[nodiscard]] Types::Vector3c operator_K_over_cube_mesh::compute_arbitrary_point(const Types::point_t& point, const Containers::vector<Types::Vector3c> &field_values) const noexcept {
+[[nodiscard]] Types::Vector3c operator_K_over_cube_mesh::compute_arbitrary_point(
+    const Types::point_t &point, const Containers::vector<Types::Vector3c> &field_values) const noexcept {
     // проверка на то, что точка находится внутри сетки или близко к ней
-    Types::scalar expanding_size = 4.;  // насколько расширить куб для расчета близости точки к сетке
-    Types::point_t min_corner_point_bb = mesh.leftDownCorner(0) - expanding_size * Types::point_t{mesh.dx(), mesh.dy(), mesh.dz()};
-    Types::point_t max_corner_point_bb = mesh.leftDownCorner(0) + (expanding_size + 1) * Types::point_t{mesh.dx(), mesh.dy(), mesh.dz()};
+    Types::scalar expanding_size = 4.; // насколько расширить куб для расчета близости точки к сетке
+    const Types::point_t cell_sizes{mesh.dx(), mesh.dy(), mesh.dz()};
+    const Types::point_t mesh_min_corner = mesh.leftDownCorner(0);
+    const Types::point_t mesh_max_corner =
+        mesh_min_corner +
+        Types::point_t{mesh.nCubesX() * mesh.dx(), mesh.nCubesY() * mesh.dy(), mesh.nCubesZ() * mesh.dz()};
+    const Types::point_t min_corner_point_bb = mesh_min_corner - expanding_size * cell_sizes;
+    const Types::point_t max_corner_point_bb = mesh_max_corner + expanding_size * cell_sizes;
 
     if (point.cwiseMax(min_corner_point_bb) == point && point.cwiseMin(max_corner_point_bb) == point) {
         return compute_inner_point(point, field_values);
     }
     return compute_far_point(point, field_values);
 }
-
 }
