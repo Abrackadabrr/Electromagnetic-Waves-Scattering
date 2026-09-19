@@ -7,3 +7,6 @@
 [submodule "third_party/csv"]
 	path = third_party/csv
 	url = https://github.com/ben-strasser/fast-cpp-csv-parser.git
+[submodule ".agents/skills"]
+	path = .agents/skills
+	url = git@github.com:Abrackadabrr/electromagnetic-agent-config.git
