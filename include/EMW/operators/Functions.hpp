@@ -15,7 +15,7 @@ namespace EMW::Helmholtz
     // ограниченный кусок от фундаментального решения, вычли 1 / (4 pi r)
     Types::complex_d F_bounded_part(Types::complex_d k, const Types::Vector3d& x, const Types::Vector3d& y);
 
-    // МИНУС градиент по x фундаментального решения уравнения Гельмгольца
+    // МИНУС градиент по x фундаментального решения уравнения Гельмгольца (то есть градиент по y)
     Types::Vector3c V(Types::complex_d k, const Types::Vector3d& x, const Types::Vector3d& y);
 
     // Подинтегральное выражение для диаграммы направленности

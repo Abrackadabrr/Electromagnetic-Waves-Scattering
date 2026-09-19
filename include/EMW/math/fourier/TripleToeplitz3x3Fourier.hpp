@@ -611,7 +611,10 @@ private:
             return size == 1;
         };
 
-        Types::index size = minimum_size;
+        // Eigen::FFT does not support transforms of length one. Padding a degenerate
+        // Toeplitz axis to two entries preserves the convolution and keeps one-cell
+        // meshes (for example, a single-layer plate) valid.
+        Types::index size = std::max(minimum_size, Types::index{2});
         while (!is_fast_size(size)) {
             ++size;
         }

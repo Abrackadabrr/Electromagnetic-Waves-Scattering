@@ -238,10 +238,10 @@ inline rowcol get_toeplitz_rowcol(size_t lin_idx, size_t toeplitz_size) {
 }
 
 Types::Matrix3c operator_K_over_cube_mesh::galerkin_block_for_cubes(size_t k, size_t p) const noexcept {
-#if 0
+#if 1
     // 1. Если кубы далеко, то считаем через far_zone
     // в adaptive_integration_study получил, что на таких расстояниях ошибка около 3e-6
-    if (mesh.distance(k, p) > 15 * mesh.h()) {
+    if (mesh.distance(k, p) > 28 * mesh.h()) {
         // Ну например 7 h ...
         auto result = far_zone_interaction(k, p, 3);
         return result;

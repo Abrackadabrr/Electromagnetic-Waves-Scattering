@@ -16,7 +16,7 @@ planeWaveCase::planeWaveCase(Types::Vector3d polarization, Types::complex_d k_fi
         : E0(std::move(polarization)), k(k_fig), k_vec(std::move(k_unit_vec)){};
 
 [[nodiscard]] Types::Vector3c planeWaveCase::value(const Types::Vector3d &point) const {
-    return E0 * std::exp(-Math::Constants::i * k * Math::quasiDot(k_vec, point));
+    return E0 * std::exp(Math::Constants::i * k * Math::quasiDot(k_vec, point));
 }
 
 /**
