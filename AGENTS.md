@@ -239,7 +239,7 @@ singularity extraction may use
 
     G = 1/(4*pi*R) + [exp(+ikR)-1]/(4*pi*R).
 
-Use analytic singular terms, Duffy-type transformations, contour/face
+Use analytic singular terms, contour/face
 representations, adaptive integration, or another mathematically justified
 method according to the actual operator and discretization.
 
@@ -262,14 +262,17 @@ Useful validation patterns include:
 - comparison with analytical Mie solutions where applicable;
 - reciprocity/symmetry checks only when mathematically justified.
 
-A benchmark is not a correctness test.
+A benchmark is not a correctness test. Also keep in mind that matricies in numerical methods are not 
+symmetric due to variety of IE formulations and discretization schemes, do not 
+imply this implicitly. 
 
 Do not state that an implementation is validated unless the relevant checks were
 actually run.
 
 ## Performance work
 
-Only optimize after a reference implementation or validated path exists.
+Only optimize after a reference implementation or validated path exists, iff this 
+was explicitly stated as a task from user.
 
 For performance changes:
 
@@ -279,6 +282,8 @@ For performance changes:
 - do not hard-code thread counts unless explicitly requested;
 - distinguish algorithmic complexity improvements from constant-factor tuning;
 - avoid changing numerical accuracy silently to improve benchmark results.
+- after every completed step in full code optimization to-do list run tests that 
+  check if code remains mathematically correct (up to a machine epsilon, of course)
 
 ## C++ expectations
 
@@ -295,7 +300,13 @@ Prefer:
 - reproducible benchmarks.
 
 Do not opportunistically rename existing public APIs while implementing an
-unrelated mathematical change.
+unrelated mathematical change. Do write "highly optimised" version of code 
+form the first prompt. You should create considerable implementation of 
+operators/function/numerical schemes, test them properly and only after that  
+you should get "possible optimization" report to user. This also relate to 
+parallel implementations: first implementations should be for single process. 
+The rule about optimization can be avoided if user explicitly said to 
+optimise existing code of class/function/test case or create parallel version of it.
 
 ## Git handling
 
