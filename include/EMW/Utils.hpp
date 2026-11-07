@@ -8,6 +8,8 @@
 #include "math/matrix/Matrix.hpp"
 #include "types/Types.hpp"
 
+#include <stdexcept>
+
 namespace EMW::Utils {
 template <typename T> class reverse {
     T &iterable_;
@@ -176,6 +178,145 @@ size_t get_elements_for_parametrization(const Math::LinAgl::Matrix::TripleToepli
             for (const auto &first_layer_block : second_layer_block.get_blocks().get_values())
                 toeplitz_factored_matrix += first_layer_block.memory_usage();
     return toeplitz_factored_matrix;
+}
+
+// Relative Frobenius error of a two-level block-Toeplitz approximation.  The
+// dense overload is useful for validation against an independently assembled
+// system matrix; it visits physical blocks without first materialising another
+// dense copy of the approximation.
+template <typename T>
+Types::scalar relative_frobenius_error(
+    const Types::MatrixX<T> &reference,
+    const Math::LinAgl::Matrix::ToeplitzToeplitzDynFactoredBlock<T> &approximated) {
+    if (reference.rows() != approximated.rows() || reference.cols() != approximated.cols())
+        throw std::invalid_argument("dense and two-level Toeplitz matrices have different dimensions");
+
+    Types::scalar ref_frobenius_sq = 0;
+    Types::scalar diff_frobenius_sq = 0;
+
+#pragma omp parallel for collapse(2) reduction(+ : ref_frobenius_sq) reduction(+ : diff_frobenius_sq)
+    for (Types::index i2 = 0; i2 < approximated.rows_in_toeplitrz(); ++i2)
+        for (Types::index j2 = 0; j2 < approximated.cols_in_toeplitrz(); ++j2) {
+            const auto &appr_first_layer = approximated.get_block(i2, j2);
+            for (Types::index i1 = 0; i1 < appr_first_layer.rows_in_toeplitrz(); ++i1)
+                for (Types::index j1 = 0; j1 < appr_first_layer.cols_in_toeplitrz(); ++j1) {
+                    const Types::MatrixX<T> appr_block = appr_first_layer.get_block(i1, j1).to_dense();
+                    const Types::index row = i2 * approximated.rows_in_block() +
+                                             i1 * appr_first_layer.rows_in_block();
+                    const Types::index col = j2 * approximated.cols_in_block() +
+                                             j1 * appr_first_layer.cols_in_block();
+                    const auto ref_block = reference.block(row, col, appr_block.rows(), appr_block.cols());
+                    ref_frobenius_sq += ref_block.squaredNorm();
+                    diff_frobenius_sq += (ref_block - appr_block).squaredNorm();
+                }
+        }
+
+    const Types::scalar ref_frobenius = std::sqrt(ref_frobenius_sq);
+    const Types::scalar diff_frobenius = std::sqrt(diff_frobenius_sq);
+    return ref_frobenius == 0 ? diff_frobenius : diff_frobenius / ref_frobenius;
+}
+
+template <typename T>
+Types::scalar relative_frobenius_error(
+    const Math::LinAgl::Matrix::ToeplitzToeplitzBlock<T> &reference,
+    const Math::LinAgl::Matrix::ToeplitzToeplitzDynFactoredBlock<T> &approximated) {
+    if (reference.rows() != approximated.rows() || reference.cols() != approximated.cols())
+        throw std::invalid_argument("two-level Toeplitz matrices have different dimensions");
+
+    Types::scalar ref_frobenius_sq = 0;
+    Types::scalar diff_frobenius_sq = 0;
+
+    // Work only with the unique stored Toeplitz blocks. Each contribution is
+    // weighted by the number of its logical occurrences in the full matrix.
+    const auto &reference_outer = reference.get_blocks().get_values();
+    const auto &approximated_outer = approximated.get_blocks().get_values();
+    if (reference_outer.size() != approximated_outer.size())
+        throw std::invalid_argument("two-level Toeplitz matrices have incompatible outer storage");
+    for (Types::index outer_slot = 0; outer_slot < reference_outer.size(); ++outer_slot) {
+        const auto &reference_inner = reference_outer[outer_slot];
+        const auto &approximated_inner = approximated_outer[outer_slot];
+        const auto &reference_leaves = reference_inner.get_blocks().get_values();
+        const auto &approximated_leaves = approximated_inner.get_blocks().get_values();
+        if (reference_inner.rows_in_toeplitrz() != approximated_inner.rows_in_toeplitrz() ||
+            reference_inner.cols_in_toeplitrz() != approximated_inner.cols_in_toeplitrz() ||
+            reference_leaves.size() != approximated_leaves.size())
+            throw std::invalid_argument("two-level Toeplitz matrices have incompatible inner storage");
+        for (Types::index inner_slot = 0; inner_slot < reference_leaves.size(); ++inner_slot)
+            if (reference_leaves[inner_slot].rows() != approximated_leaves[inner_slot].rows() ||
+                reference_leaves[inner_slot].cols() != approximated_leaves[inner_slot].cols())
+                throw std::invalid_argument("two-level Toeplitz matrices have incompatible leaf dimensions");
+    }
+    const Types::index outer_rows = reference.rows_in_toeplitrz();
+    const Types::index outer_cols = reference.cols_in_toeplitrz();
+
+#pragma omp parallel for reduction(+ : ref_frobenius_sq) reduction(+ : diff_frobenius_sq)
+    for (Types::integer outer_slot_signed = 0;
+         outer_slot_signed < static_cast<Types::integer>(reference_outer.size());
+         ++outer_slot_signed) {
+        const Types::index outer_slot = static_cast<Types::index>(outer_slot_signed);
+        const Types::index outer_i0 = outer_slot < outer_cols ? 0 : outer_slot - outer_cols + 1;
+        const Types::index outer_j0 = outer_slot < outer_cols ? outer_slot : 0;
+        const Types::index outer_repetitions =
+            std::min(outer_rows - outer_i0, outer_cols - outer_j0);
+        const auto &reference_inner = reference_outer[outer_slot];
+        const auto &approximated_inner = approximated_outer[outer_slot];
+        const auto &reference_leaves = reference_inner.get_blocks().get_values();
+        const auto &approximated_leaves = approximated_inner.get_blocks().get_values();
+        const Types::index inner_rows = reference_inner.rows_in_toeplitrz();
+        const Types::index inner_cols = reference_inner.cols_in_toeplitrz();
+        for (Types::index inner_slot = 0; inner_slot < reference_leaves.size(); ++inner_slot) {
+            const Types::index inner_i0 = inner_slot < inner_cols ? 0 : inner_slot - inner_cols + 1;
+            const Types::index inner_j0 = inner_slot < inner_cols ? inner_slot : 0;
+            const Types::index inner_repetitions =
+                std::min(inner_rows - inner_i0, inner_cols - inner_j0);
+            const Types::scalar multiplicity = static_cast<Types::scalar>(outer_repetitions) *
+                                               static_cast<Types::scalar>(inner_repetitions);
+            const auto &ref_block = reference_leaves[inner_slot];
+            const Types::MatrixX<T> appr_block = approximated_leaves[inner_slot].to_dense();
+            ref_frobenius_sq += multiplicity * ref_block.squaredNorm();
+            diff_frobenius_sq += multiplicity * (ref_block - appr_block).squaredNorm();
+        }
+    }
+
+    const Types::scalar ref_frobenius = std::sqrt(ref_frobenius_sq);
+    const Types::scalar diff_frobenius = std::sqrt(diff_frobenius_sq);
+    return ref_frobenius == 0 ? diff_frobenius : diff_frobenius / ref_frobenius;
+}
+
+// Compare a dense approximation with an exact two-level Toeplitz reference
+// without expanding the reference. The dense matrix is visited block by block
+// and every element participates directly in the Frobenius sums.
+template <typename T>
+Types::scalar relative_frobenius_error(
+    const Math::LinAgl::Matrix::ToeplitzToeplitzBlock<T> &reference,
+    const Types::MatrixX<T> &approximated) {
+    if (reference.rows() != approximated.rows() || reference.cols() != approximated.cols())
+        throw std::invalid_argument("two-level Toeplitz and dense matrices have different dimensions");
+
+    Types::scalar ref_frobenius_sq = 0;
+    Types::scalar diff_frobenius_sq = 0;
+#pragma omp parallel for collapse(2) reduction(+ : ref_frobenius_sq) reduction(+ : diff_frobenius_sq)
+    for (Types::index outer_row = 0; outer_row < reference.rows_in_toeplitrz(); ++outer_row)
+        for (Types::index outer_col = 0; outer_col < reference.cols_in_toeplitrz(); ++outer_col) {
+            const auto &inner = reference.get_block(outer_row, outer_col);
+            for (Types::index inner_row = 0; inner_row < inner.rows_in_toeplitrz(); ++inner_row)
+                for (Types::index inner_col = 0; inner_col < inner.cols_in_toeplitrz(); ++inner_col) {
+                    const auto &ref_block = inner.get_block(inner_row, inner_col);
+                    const Types::index row = outer_row * reference.rows_in_block() +
+                                             inner_row * inner.rows_in_block();
+                    const Types::index col = outer_col * reference.cols_in_block() +
+                                             inner_col * inner.cols_in_block();
+                    const auto dense_block = approximated.block(
+                        static_cast<Eigen::Index>(row), static_cast<Eigen::Index>(col),
+                        ref_block.rows(), ref_block.cols());
+                    ref_frobenius_sq += ref_block.squaredNorm();
+                    diff_frobenius_sq += (ref_block - dense_block).squaredNorm();
+                }
+        }
+
+    const Types::scalar ref_frobenius = std::sqrt(ref_frobenius_sq);
+    const Types::scalar diff_frobenius = std::sqrt(diff_frobenius_sq);
+    return ref_frobenius == 0 ? diff_frobenius : diff_frobenius / ref_frobenius;
 }
 
 template <typename T>

@@ -1,0 +1,31 @@
+# Helmgoltz matrix usage example configuration file
+
+name = "Helmgoltz example"
+
+[msk]
+log = { name =  "hlm", file = "stdout", level = "info" }
+n_jobs = 2
+
+[geometry]
+type = "square"
+side = 50
+
+[oracle]
+type = "point"
+log = { name =  "Oracle", file = "./logs/oracle.txt", level = "info" }
+min_rows = 500
+min_cols = 500
+rho = 1.0
+sphere_norm = 0
+policy = "dual"
+force_lowrank = false
+
+[approximation]
+log = { name =  "Approx", file = "./logs/approximation.txt", level = "info" }
+rel_tol = 1e-6
+abs_tol = 0.0
+
+[check]
+compression = true
+error = true
+matvec = true

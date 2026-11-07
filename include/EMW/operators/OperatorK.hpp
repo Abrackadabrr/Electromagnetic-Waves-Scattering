@@ -106,14 +106,17 @@ Types::Matrix3c K0TensorOverSingularCell(const Mesh::point_t &point, const cell_
         return (r1 - r2).norm() < 1e-6 * r2.norm();
     };
 
-    return DecartIntegration::adaptive_integrate<Quadrature>(AB, {0}, {1}, vector_stop_crit, 10).first *
-               cell.integrationParameters.mul[0].transpose() +
-           DecartIntegration::adaptive_integrate<Quadrature>(BC, {0}, {1}, vector_stop_crit, 10).first *
-               cell.integrationParameters.mul[1].transpose() +
-           DecartIntegration::adaptive_integrate<Quadrature>(CD, {0}, {1}, vector_stop_crit, 10).first *
-               cell.integrationParameters.mul[2].transpose() +
-           DecartIntegration::adaptive_integrate<Quadrature>(DA, {0}, {1}, vector_stop_crit, 10).first *
-               cell.integrationParameters.mul[3].transpose();
+    // Materialize the integral vectors before forming Eigen's lazy outer-product
+    // expression. Accessing .first on a temporary pair otherwise leaves the
+    // expression holding references to destroyed vectors in optimized builds.
+    const Types::Vector3c ab = DecartIntegration::adaptive_integrate<Quadrature>(AB, {0}, {1}, vector_stop_crit, 10).first;
+    const Types::Vector3c bc = DecartIntegration::adaptive_integrate<Quadrature>(BC, {0}, {1}, vector_stop_crit, 10).first;
+    const Types::Vector3c cd = DecartIntegration::adaptive_integrate<Quadrature>(CD, {0}, {1}, vector_stop_crit, 10).first;
+    const Types::Vector3c da = DecartIntegration::adaptive_integrate<Quadrature>(DA, {0}, {1}, vector_stop_crit, 10).first;
+    return ab * cell.integrationParameters.mul[0].transpose() +
+           bc * cell.integrationParameters.mul[1].transpose() +
+           cd * cell.integrationParameters.mul[2].transpose() +
+           da * cell.integrationParameters.mul[3].transpose();
 }
 } // namespace detail
 

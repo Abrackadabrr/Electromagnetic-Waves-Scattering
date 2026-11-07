@@ -1,0 +1,44 @@
+# Helmgoltz matrix usage example configuration file
+
+name = "Prandtl example"
+
+[msk]
+log = { name =  "pr", file = "stdout", level = "info" }
+n_jobs = 1
+
+[geometry]
+side = 100
+type = "chebyshev" # "uniform" # "chebyshev"
+
+[oracle]
+type = "point"
+log = { name =  "Oracle", file = "./logs/oracle.txt", level = "info" }
+min_rows = 128 
+min_cols = 128
+rho = 1.0
+sphere_norm = 0
+policy = "single"
+force_lowrank = false
+
+[approximation]
+log = { name =  "Approx", file = "./logs/approximation.txt", level = "info" }
+rel_tol = 1e-7
+abs_tol = 0.0
+
+[check]
+compression = true
+error = false
+matvec = true
+convolution = false
+
+[solve]
+solution = "./examples/prandtl/data/exact_sol_100_chebyshev.txt"
+msk_solution = "./examples/prandtl/data/msk_sol_100_chebyshev.txt"
+eff_solution = "./examples/prandtl/data/sol_100_chebyshev.txt"
+rhs = "./examples/prandtl/data/rhs_100_chebyshev.txt"
+abs_tol = 0.0
+rel_tol = 1e-4
+restart = 0
+iterations_limit = 0
+orthogonalization = "GS" # or "MGS"
+reorthogonalization = "as_needed" # or "always" or "never"

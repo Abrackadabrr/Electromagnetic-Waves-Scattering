@@ -31,7 +31,9 @@ The relevant skills include:
 - `surface-integral-equations`;
 - `volume-integral-equations`;
 - `operator-discretization`;
-- `uniform-grid-vie`.
+- `uniform-grid-vie`;
+- and other ones connected with dense and low rank linear algebra.
+
 
 Use them when the task matches their scope. The repository source tree remains
 authoritative for the current implementation and API.

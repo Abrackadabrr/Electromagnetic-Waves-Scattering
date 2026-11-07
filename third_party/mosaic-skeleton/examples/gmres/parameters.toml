@@ -1,0 +1,38 @@
+# MSk + GMRES usage example configuration file
+
+name = "GMRES example"
+
+[msk]
+log = { name = "sol", file = "stdout", level = "info" }
+
+[geometry]
+type = "line"
+side = 1000
+
+[oracle]
+type = "point"
+log = { name =  "Oracle", file = "./logs/oracle.txt", level = "info" }
+min_rows = 64
+min_cols = 64
+rho = 1.0
+sphere_norm = 0
+policy = "dual"
+force_lowrank = false
+
+[approximation]
+abs_tol = 0.0
+rel_tol = 1e-5
+log = { name =  "Approx", file = "./logs/approximation.txt", level = "info" }
+
+[check]
+compression = true
+error = true
+matvec = false
+
+[solve]
+abs_tol = 0.0
+rel_tol = 1e-4
+restart = 0
+iterations_limit = 0
+orthogonalization = "GS" # or "MGS"
+reorthogonalization = "as_needed" # or "always" or "never"

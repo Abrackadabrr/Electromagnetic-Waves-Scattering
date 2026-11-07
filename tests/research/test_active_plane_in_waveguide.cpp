@@ -31,7 +31,7 @@ TEST(AutomaticalAssembling, SMALL_MATRIX_TEST) {
     constexpr Types::index N2 = 2;
     constexpr Types::index N1_x_N2 = N1 * N2;
 
-    const Geometry::PeriodicStructure<N1, N2> geometry{0.1, 0.1, mesh_base};
+    const Geometry::PeriodicStructure geometry{N1, N2, 0.1, 0.1, mesh_base};
 
     // собираем матрицу для расчета волновода
     const Types::scalar a = 0.07;
@@ -74,7 +74,7 @@ TEST_F(AssemblingTests, REAL_MATRIX_TEST) {
     constexpr Types::index N2 = 2;
     constexpr Types::index N1_x_N2 = N1 * N2;
 
-    const Geometry::PeriodicStructure<N1, N2> geometry{0.1, 0.1, mesh_base};
+    const Geometry::PeriodicStructure geometry{N1, N2, 0.1, 0.1, mesh_base};
 
     // собираем матрицу для расчета волновода
     const Types::scalar a = 0.07;

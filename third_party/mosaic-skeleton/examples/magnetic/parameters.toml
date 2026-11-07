@@ -1,0 +1,45 @@
+# Magnetic matrix usage example configuration file
+
+name = "Magnetic example"
+
+[msk]
+log = { name =  "mgn", file = "stdout", level = "info" }
+n_jobs = 8
+
+[matrix]
+type = "field" # field / grad / field_grad
+
+[geometry] # provide your geometry files!
+rows_file = "../data/rows_2_150.bin"
+columns_file = "../data/columns_100.bin"
+
+[oracle]
+min_rows = 3000
+min_cols = 9600
+rho = 2.0
+sphere_norm = 0
+policy = "dual"
+force_lowrank = true
+log = { name =  "Oracle", file = "./logs/oracle.txt", level = "info" }
+
+[approximation]
+abs_tol = 0.0
+rel_tol = 1e-8
+log = { name =  "Approx", file = "./logs/approximation.txt", level = "info" }
+
+rel_svd = 4e-5
+
+[check]
+compression = true
+error = false
+matvec = false
+
+[solve]
+rel_tol = 1e-4
+abs_tol = 0.0
+iter_limit = 0
+# rhs = { file = "../data/b2.bin"} # provide your solution file!
+solution = { file = "../data/x_exp_100.bin"} # provide your solution file! #_noised_0.001
+solution_ref = { file = "../data/x_true_lsq.bin"}
+regular = [0.0, 1e-5, 3.16e-5, 1e-4, 3.16e-4, 1e-3, 3.16e-3, 1e-2, 3.16e-2, 1e-1, 3.16e-1]
+noise_levels = [0.0, 1e-6, 1e-5, 1e-4, 1e-3]

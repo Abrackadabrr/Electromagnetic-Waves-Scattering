@@ -83,8 +83,9 @@ template <typename matrix_t, typename vector_t, typename value_t> struct ACA {
         vector_t row;
         vector_t col;
         for (int i = 0; i < iterations; ++i) {
+            const Types::index evaluated_column = current_column;
             // Проходка вдоль столбца
-            col = std::forward<MatrixColumnFunсtion>(compute_col)(current_column);
+            col = std::forward<MatrixColumnFunсtion>(compute_col)(evaluated_column);
             const Types::VectorXd col_abs = col.cwiseAbs();
             // Нашли строку максимального элемента в столбце
             current_row = std::ranges::max_element(col_abs) - col_abs.begin();
@@ -96,14 +97,14 @@ template <typename matrix_t, typename vector_t, typename value_t> struct ACA {
             const Types::index new_column = std::ranges::max_element(row_abs) - row_abs.begin();
 
             // Проверка на то, что крест остановился раньше
-            if (new_column == current_column) {
-                return {current_row, current_column, row(current_column), std::move(row), std::move(col)};
+            if (new_column == evaluated_column || i + 1 == iterations) {
+                return {current_row, evaluated_column, row(evaluated_column), std::move(row), std::move(col)};
             }
             // А если не остановился, то продолжаем итерацию с новой колонки
             current_column = new_column;
         }
 
-        return {current_row, current_column, row(current_column), std::move(row), std::move(col)};
+        throw std::logic_error("ACA initial pivot search did not evaluate a column");
     }
 
     // --------- Функции для поиска хорошего креста в остаточной матрице А - U_r V_r^T
@@ -125,7 +126,9 @@ template <typename matrix_t, typename vector_t, typename value_t> struct ACA {
      */
     template <typename MatrixRowFunction, typename MatrixColumnFunсtion, typename MatrixU, typename MatrixV>
     static maxvol_solution iterate_residual_matrix(MatrixRowFunction &&compute_row, MatrixColumnFunсtion &&compute_col,
-                                                   const MatrixU &U, const MatrixV &V, Types::index start_column) {
+                                                   const MatrixU &U, const MatrixV &V, Types::index start_column,
+                                                   const Containers::vector<Types::index> &available_rows,
+                                                   const Containers::vector<Types::index> &available_cols) {
         constexpr Types::index iterations = 2; // это подкручиваемый параметр
         Types::index current_column = start_column;
         Types::index current_row = 0;
@@ -133,26 +136,29 @@ template <typename matrix_t, typename vector_t, typename value_t> struct ACA {
         vector_t row;
         vector_t col;
         for (int i = 0; i < iterations; ++i) {
+            const Types::index evaluated_column = current_column;
             // Проходка вдоль столбца
-            col = std::forward<MatrixColumnFunсtion>(compute_col)(current_column) - get_col_UV(U, V, current_column);
+            col = std::forward<MatrixColumnFunсtion>(compute_col)(evaluated_column) - get_col_UV(U, V, evaluated_column);
             const Types::VectorXd col_abs = col.cwiseAbs();
-            // Нашли строку максимального элемента в столбце
-            current_row = std::ranges::max_element(col_abs) - col_abs.begin();
+            // Already selected rows/columns have zero residual in exact arithmetic.
+            // Reusing them amplifies roundoff by dividing by an almost-zero pivot.
+            current_row = *std::max_element(available_rows.begin(), available_rows.end(),
+                [&](Types::index lhs, Types::index rhs) { return col_abs[lhs] < col_abs[rhs]; });
 
             // Проходка вдоль строки
             row = std::forward<MatrixRowFunction>(compute_row)(current_row) - get_row_UV(U, V, current_row);
             const Types::VectorXd row_abs = row.cwiseAbs();
-            // Нашли столбец максимального элемента в строке
-            const Types::index new_column = std::ranges::max_element(row_abs) - row_abs.begin();
+            const Types::index new_column = *std::max_element(available_cols.begin(), available_cols.end(),
+                [&](Types::index lhs, Types::index rhs) { return row_abs[lhs] < row_abs[rhs]; });
 
             // Проверка на то, что крест остановился раньше
-            if (new_column == current_column) {
-                return {current_row, current_column, row(current_column), std::move(row), std::move(col)};
+            if (new_column == evaluated_column || i + 1 == iterations) {
+                return {current_row, evaluated_column, row(evaluated_column), std::move(row), std::move(col)};
             }
             // А если не остановился, то продолжаем итерацию с новой колонки
             current_column = new_column;
         }
-        return {current_row, current_column, row(current_column), std::move(row), std::move(col)};
+        throw std::logic_error("ACA residual pivot search did not evaluate a column");
     }
 
     template <typename MatrixU, typename MatrixV>
@@ -208,11 +214,30 @@ template <typename matrix_t, typename vector_t, typename value_t> struct ACA {
 
         // 2) Выбор наилучшего приближения для максимального элемента
         auto [i, j, ij_element, row, col] = *initial_samples.rbegin();
+        // Randomly sampled columns may be zero even when the matrix is not.
+        // Search the remaining columns before declaring a zero matrix.
+        if (ij_element == value_t{0}) {
+            for (Types::index candidate = 0; candidate < m; ++candidate) {
+                vector_t candidate_col = compute_col(candidate);
+                const Types::VectorXd col_abs = candidate_col.cwiseAbs();
+                const Types::index candidate_row = std::ranges::max_element(col_abs) - col_abs.begin();
+                if (candidate_col[candidate_row] != value_t{0}) {
+                    j = candidate;
+                    i = candidate_row;
+                    ij_element = candidate_col[i];
+                    col = std::move(candidate_col);
+                    row = compute_row(i);
+                    break;
+                }
+            }
+            if (ij_element == value_t{0})
+                return {Containers::vector<matrix_t>{matrix_t::Zero(n, 0), matrix_t::Zero(0, m)}};
+        }
         // 3) Работа уже с этим приближением
         J_z.push_back(j);
         I_z.push_back(i);
-        I.erase(std::remove(I.begin(), I.end(), i));
-        J.erase(std::remove(J.begin(), J.end(), j));
+        I.erase(std::remove(I.begin(), I.end(), i), I.end());
+        J.erase(std::remove(J.begin(), J.end(), j), J.end());
         // Добавление столбцов и строк в матрицы U и V (TODO: решить чето с памятью)
         U.col(0) = col / std::abs(ij_element);
         V.col(0) = row * std::abs(ij_element) / ij_element;
@@ -220,10 +245,11 @@ template <typename matrix_t, typename vector_t, typename value_t> struct ACA {
         // Основной цикл работы
         Types::index rank = 1;
         Types::scalar sq_norm = U.col(0).squaredNorm() * V.col(0).squaredNorm();
-        while (!stop_criterion(std::sqrt(sq_norm), error_control_parameter, n, m, rank, ij_element)) {
+        while (rank < std::min(n, m) && !I.empty() && !J.empty() &&
+               !stop_criterion(std::sqrt(sq_norm), error_control_parameter, n, m, rank, ij_element)) {
             // Поиск элемента "максимального объема" (maxvol для 1d)
             const auto maxvol_sol = iterate_residual_matrix(compute_row, compute_col, U,
-                                                            V, J.front());
+                                                            V, J.front(), I, J);
             i = maxvol_sol.i;
             j = maxvol_sol.j;
             ij_element = maxvol_sol.value;
@@ -231,8 +257,8 @@ template <typename matrix_t, typename vector_t, typename value_t> struct ACA {
                 break; // TODO: перестроить цикл так, чтобы убрать этот лишний if
             J_z.push_back(j);
             I_z.push_back(i);
-            I.erase(std::remove(I.begin(), I.end(), i));
-            J.erase(std::remove(J.begin(), J.end(), j));
+            I.erase(std::remove(I.begin(), I.end(), i), I.end());
+            J.erase(std::remove(J.begin(), J.end(), j), J.end());
             // Вычисляем новые столбцы для матриц U и V
             const vector_t u = maxvol_sol.col / std::abs(ij_element);
             const vector_t v = maxvol_sol.row * std::abs(ij_element) / ij_element;

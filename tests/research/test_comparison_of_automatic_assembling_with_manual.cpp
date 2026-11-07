@@ -20,7 +20,7 @@ TEST_F(AssemblingTests, AutomaticAssembled_vs_ManuallyAssembled) {
     constexpr Types::index N2 = 1;
     constexpr Types::index N1_x_N2 = N1 * N2;
 
-    const Geometry::PeriodicStructure<N1, N2> geometry{0.1, 0.1, mesh_base};
+    const Geometry::PeriodicStructure geometry{N1, N2, 0.1, 0.1, mesh_base};
 
     const auto& mesh_1 = geometry.get(0);
     const auto& mesh_2 = geometry.get(1);

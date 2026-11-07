@@ -80,19 +80,19 @@ class DOUBLE_TOEPLITZ_OVER_HOMOGENOUS_STRUCTURE : public ::testing::Test {
     }
 };
 
-template <Types::index N1, Types::index N2> using Scene = Geometry::PeriodicStructure<N1, N2>;
+using Scene = Geometry::PeriodicStructure;
 
 TEST_F(DOUBLE_TOEPLITZ_OVER_HOMOGENOUS_STRUCTURE, ASSEMBLING) {
     // Для сборки матрицы необходимо знать геометрию решетки, которую мы собрались считать
     constexpr Types::index N1 = 6;
     constexpr Types::index N2 = 7;
-    const Geometry::PeriodicStructure<N1, N2> real_geometry{0.1, 0.1, mesh_base};
+    const Geometry::PeriodicStructure real_geometry{N1, N2, 0.1, 0.1, mesh_base};
 
     // Теперь соберем ту структуру, по которой мы будем производить расчет
     constexpr auto n1 = 2 * N1 - 1;
     constexpr auto n2 = 2 * N2 - 1;
     // тут геометрия содержит сетки с индексами [0, n1 - 1 == 2 N1 - 2] x [0, n2 - 1 == 2 N2 - 2]
-    const Geometry::PeriodicStructure<n1, n2> expanded_geometry{0.1, 0.1, mesh_base};
+    const Geometry::PeriodicStructure expanded_geometry{n1, n2, 0.1, 0.1, mesh_base};
 
     // Тут обязательно есть сетка с origin == {0, 0, 0}, вот относительно неё и будем считать
     // Теперь нам нужно собрать все необходимые блоки в вектор и std::move-нуть его в нужное место
@@ -272,13 +272,13 @@ TEST_F(DOUBLE_TOEPLITZ_OVER_HOMOGENOUS_STRUCTURE, GMRES_TESTING) {
     // Для сборки матрицы необходимо знать геометрию решетки, которую мы собрались считать
     constexpr Types::index N1 = 2;
     constexpr Types::index N2 = 2;
-    const Geometry::PeriodicStructure<N1, N2> real_geometry{0.1, 0.1, mesh_base};
+    const Geometry::PeriodicStructure real_geometry{N1, N2, 0.1, 0.1, mesh_base};
 
     // Теперь соберем ту структуру, по которой мы будем производить расчет
     constexpr auto n1 = 2 * N1 - 1;
     constexpr auto n2 = 2 * N2 - 1;
     // тут геометрия содержит сетки с индексами [0, n1 - 1 == 2 N1 - 2] x [0, n2 - 1 == 2 N2 - 2]
-    const Geometry::PeriodicStructure<n1, n2> expanded_geometry{0.1, 0.1, mesh_base};
+    const Geometry::PeriodicStructure expanded_geometry{n1, n2, 0.1, 0.1, mesh_base};
 
     // Тут обязательно есть сетка с origin == {0, 0, 0}, вот относительно неё и будем считать
     // Теперь нам нужно собрать все необходимые блоки в вектор и std::move-нуть его в нужное место

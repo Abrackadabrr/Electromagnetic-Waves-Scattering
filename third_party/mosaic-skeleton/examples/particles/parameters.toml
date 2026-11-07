@@ -1,0 +1,42 @@
+# Helmgoltz matrix usage example configuration file
+
+name = "Smoluchowski ODE example"
+
+[msk]
+log = { name =  "sml", file = "stdout", level = "info" }
+n_jobs = 8
+
+[problem]
+type = "pow"
+size = 65536 # 4096 # 8192 # 16384 # 32768 # 65536 # 131072 # 524288 # 1048576
+min_size = 65536
+max_size = 65536
+alpha = 1.0
+
+initial = 0.0
+source = 0.0
+
+[oracle]
+log = { name =  "Oracle", file = "./logs/oracle.txt", level = "info" }
+min_rows = 512
+min_cols = 512
+rho = 1.0
+sphere_norm = 0
+policy = "dual"
+force_lowrank = false
+
+[approximation]
+log = { name =  "Approx", file = "./logs/approximation.txt", level = "info" }
+rel_tol = 1e-6
+abs_tol = 0.0
+
+[check]
+compression = true
+error = false
+matvec = true
+convolution = true
+
+[solve]
+time = 1.0
+n_steps = 100
+file = "sol.txt"

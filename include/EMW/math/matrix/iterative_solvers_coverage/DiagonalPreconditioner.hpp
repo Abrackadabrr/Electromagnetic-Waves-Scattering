@@ -42,8 +42,13 @@ template <typename scalar_t, typename matrix_t> class BlockDiagonalPreconditione
   public:
     /** ну тут проблема с делением на ноль но я забил */
     BlockDiagonalPreconditioner(const matrix_t &matrix)
-        : invdiag_block(matrix.get_block(0, 0).get_block(0, 0).template get<0>()
-          .inverse()), block_rows(invdiag_block.rows()),
+        : invdiag_block([&matrix] {
+              if constexpr (requires { matrix.diagonal_block(); })
+                  return Types::MatrixX<scalar_t>(matrix.diagonal_block().inverse());
+              else
+                  return Types::MatrixX<scalar_t>(
+                      matrix.get_block(0, 0).get_block(0, 0).template get<0>().inverse());
+          }()), block_rows(invdiag_block.rows()),
           n_blocks(matrix.rows() / block_rows) {
         std::cout << "BlockDiagonalPreconditioner is constructed" << std::endl;
         std::cout << "with " << n_blocks << " equal diagonal blocks" << std::endl;

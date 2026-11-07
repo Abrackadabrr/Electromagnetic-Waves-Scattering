@@ -1,0 +1,25 @@
+@PACKAGE_INIT@
+
+
+include(CMakeFindDependencyMacro)
+
+list(APPEND CMAKE_MODULE_PATH ${CMAKE_CURRENT_LIST_DIR})
+
+set(MSK_LIB_DEPS "@MSK_LIB_DEPS@")
+set(MSK_LIB_DEPS_COMPONENTS "@MSK_LIB_DEPS_COMPONENTS@")
+
+foreach(dep comps IN ZIP_LISTS MSK_LIB_DEPS MSK_LIB_DEPS_COMPONENTS)
+    if(comps)
+        separate_arguments(separated UNIX_COMMAND ${comps})
+        find_dependency(${dep} COMPONENTS ${separated})
+    else()
+        find_dependency(${dep})
+    endif()
+endforeach()
+
+include("${CMAKE_CURRENT_LIST_DIR}/zaimskTargets.cmake")
+
+foreach(component ${zaimsk_FIND_COMPONENTS})
+  # For requested component, execute its "config" script
+  include(${CMAKE_CURRENT_LIST_DIR}/${component}Config.cmake)
+endforeach()

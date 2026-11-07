@@ -1,0 +1,8 @@
+#ifndef MSK_CONFIG_H
+#define MSK_CONFIG_H
+
+#cmakedefine MSK_USE_MPI
+#cmakedefine MSK_USE_FFT
+#cmakedefine MSK_USE_SPDLOG
+
+#endif

@@ -1,0 +1,14 @@
+# Block-SVD usage example configuration file
+
+name = "Block-SVD example"
+
+[matrix]
+n_rows = 10000
+n_cols = 1000
+n_blocks = 10
+rank = 10
+
+#[log]
+#name = "SVD"
+#file = "stdout"
+#level = "info"

@@ -144,8 +144,7 @@ inline Types::MatrixXc submatrix(const Mesh::SurfaceMesh &mest_to_integrate,
 /**
  * Вычисляем матрицу для системы уравнений для периодической структуры втупую, без хранения и аппроксимации
  */
-template <Types::index N1, Types::index N2>
-EMW::Types::MatrixXc getMatrix(const Geometry::PeriodicStructure<N1, N2> &geometry, Types::scalar a,
+inline EMW::Types::MatrixXc getMatrix(const Geometry::PeriodicStructure &geometry, Types::scalar a,
                                Types::complex_d k) {
 
     // 1) расчет всех диагональных блоков (они одинаковые)
@@ -153,8 +152,8 @@ EMW::Types::MatrixXc getMatrix(const Geometry::PeriodicStructure<N1, N2> &geomet
 
     // Создаем итоговый результат
     // Размер итоговой матрицы
-    const Types::index size_of_block = 2 * (geometry.get_mesh_matrix()[0][0].getCells().size() +
-        geometry.get_mesh_matrix()[0][0].getSubmesh(Mesh::IndexedCell::Tag::WAVEGUIDE_CROSS_SECTION).getCells().size());
+    const Types::index size_of_block = 2 * (geometry.get(0).getCells().size() +
+        geometry.get(0).getSubmesh(Mesh::IndexedCell::Tag::WAVEGUIDE_CROSS_SECTION).getCells().size());
     const Types::index size = size_of_block * geometry.size();
     Types::MatrixXc A(size, size);
 
@@ -170,8 +169,8 @@ EMW::Types::MatrixXc getMatrix(const Geometry::PeriodicStructure<N1, N2> &geomet
                 const Types::index first_col = j * size_of_block;
                 A.block(first_row, first_col, size_of_block, size_of_block) = A_ij;
             }
-        A.block(i * size_of_block, i * size_of_block, size_of_block, size_of_block) = getMatrix(geometry.get_mesh_matrix()[i][i],
-        geometry.get_mesh_matrix()[i][i].getSubmesh(Mesh::IndexedCell::Tag::WAVEGUIDE_CROSS_SECTION), a, k);
+        A.block(i * size_of_block, i * size_of_block, size_of_block, size_of_block) = getMatrix(geometry.get(i),
+        geometry.get(i).getSubmesh(Mesh::IndexedCell::Tag::WAVEGUIDE_CROSS_SECTION), a, k);
     }
     return A;
 }

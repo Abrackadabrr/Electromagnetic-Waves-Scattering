@@ -42,7 +42,7 @@ int main() {
     const Types::Vector3d dir1 = Types::Vector3d{1, -1, 0}.normalized();
     const Types::Vector3d dir2 = Types::Vector3d{1, 1, 0}.normalized();
 
-    Geometry::PeriodicStructure<N1, N2> geometry{dir1, dir2, step, step, mesh_base};
+    Geometry::PeriodicStructure geometry{N1, N2, dir1, dir2, step, step, mesh_base};
 
     Containers::vector<Types::Vector3d> origins;
 

@@ -1,0 +1,22 @@
+# Cross usage example configuration file
+
+name = "Cross example"
+
+[log]
+name = "Cross"
+file = "stdout"
+level = "info"
+
+[matrix]
+size = 2000
+type = "hilbert"
+
+[approximation]
+abs_tol = 0.0
+rel_tol = 1e-3
+# max_rank = 5
+
+[recompression]
+abs_tol = 0.0
+rel_tol = 1e-3
+max_rank = 5

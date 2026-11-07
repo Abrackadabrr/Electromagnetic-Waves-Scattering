@@ -1,0 +1,35 @@
+# Dense matrix example configuration file
+
+name = "Dense example"
+
+[msk]
+log = { name =  "dns", file = "stdout", level = "info" }
+
+[matrix] # provide your matrix file!
+type = "rect" # or "tri_up" or "tri_low" or "sym_up" or "sym_low"
+storage = "columns"
+file = "../data/A.bin"
+
+[geometry] # provide your geometry files!
+rows_file = "../data/row_points.bin"
+columns_file = "../data/column_points.bin"
+
+[oracle]
+type = "point"
+log = { name =  "Oracle", file = "./logs/oracle.txt", level = "info" }
+min_rows = 64
+min_cols = 64
+rho = 1.0
+sphere_norm = 0
+policy = "dual"
+force_lowrank = false
+
+[approximation]
+abs_tol = 0.0
+rel_tol = 1e-3
+log = { name =  "Approx", file = "./logs/approximation.txt", level = "info" }
+
+[check]
+compression = true
+error = true
+matvec = false
