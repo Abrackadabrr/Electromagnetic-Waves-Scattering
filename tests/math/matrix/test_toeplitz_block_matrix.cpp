@@ -7,6 +7,8 @@
 #include "toeplitz_matrix_tests.hpp"
 #include "gtest/gtest.h"
 
+#include <cblas.h>
+
 TEST_F(TOEPLITZ_MATRIX_TESTS, TOEPLITZ_BLOCK_MATVEC_BENCHMARK) {
     Types::index tl_rows = 5000;
     Types::index tl_cols = 5000;
@@ -43,7 +45,7 @@ TEST_F(TOEPLITZ_MATRIX_TESTS, TOEPLITZ_BLOCK_MULL_BY_VALUE) {
 
     const auto res_1 = matrix * vec;
     const complex_d value{10., 0};
-    matrix *= value;
+    // matrix *= value;
     const auto res_2 = matrix * vec;
 
     ASSERT_NEAR((value * res_1 - res_2).norm() / res_1.norm(), 0, 1e-14);
@@ -104,21 +106,24 @@ TEST_F(TOEPLITZ_MATRIX_TESTS, TOEPLITZ_BLOCK_MATRIX_OPRATION) {
 }
 
 TEST_F(TOEPLITZ_MATRIX_TESTS, WISE_MULTIPLICATION_TEST) {
+    Eigen::setNbThreads(1);
+    openblas_set_num_threads(1);
     // Создание матрицы через функцию
     Types::index tl_rows = 20;
     Types::index tl_cols = 20;
-    Types::index block_size = 3000;
+    Types::index block_size = 2000;
     const Math::LinAgl::Matrix::ToeplitzBlock<complex_d> matrix(
         tl_rows, tl_cols, [block_size](Types::index i, Types::index j) -> Types::MatrixXc {
             return MatrixXc::Random(block_size, block_size);
         });
     // тестовый вектор
     const Types::VectorXc vec = Types::VectorXc::Random(matrix.cols());
+    Types::VectorXc res_2 = Types::VectorXc::Zero(matrix.cols());
 
     // 2) Умное умножение
     auto start = std::chrono::steady_clock::now();
 
-    const auto res_2 = matrix.matvec_wise(vec);
+    matrix.matvec_blocked(vec, res_2);
 
     auto end = std::chrono::steady_clock::now();
     const auto elapsed_2 = std::chrono::duration_cast<std::chrono::milliseconds>(end - start);
@@ -135,6 +140,7 @@ TEST_F(TOEPLITZ_MATRIX_TESTS, WISE_MULTIPLICATION_TEST) {
     // 3) Анализ результатов
     const Types::scalar err = (res_1 - res_2).norm();
     std::cout << "Absolute error : " << err << std::endl;
+    std::cout << "Relative error : " << err / res_2.norm() << std::endl;
     std::cout << "Elapsed time in simple alg : " << elapsed_1.count() << " milliseconds" << std::endl;
 #endif
     std::cout << "Elapsed time in wise alg : " << elapsed_2.count() << " milliseconds" << std::endl;

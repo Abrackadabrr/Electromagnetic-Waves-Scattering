@@ -137,7 +137,7 @@ quadrature_sum(const Callable &f, const typename detail::ExtructedIntegralTypes<
 
     // инициализация дефолтным значением (нулем по смыслу)
     typename detail::ExtructedIntegralTypes<Callable>::ResultType result{};
-#pragma omp simd
+// #pragma omp simd
     for (size_t index = 0; index < Quadrature::nodes.size(); ++index) {
         decltype(auto) point =
             detail::createPoint(startArgs, deltas, Quadrature::nodes[index].point, std::make_index_sequence<dimSize>());

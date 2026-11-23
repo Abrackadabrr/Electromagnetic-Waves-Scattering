@@ -5,7 +5,7 @@
 #ifndef TOEPLITZ_MATRIX_TESTS_HPP
 #define TOEPLITZ_MATRIX_TESTS_HPP
 
-#include "meshes/plate/PlateGrid.hpp"
+#include "include/EMW/types/Types.hpp"
 #include "gtest/gtest.h"
 
 using namespace EMW;

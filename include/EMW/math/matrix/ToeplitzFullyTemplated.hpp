@@ -8,8 +8,8 @@
 #include "ToeplitzContainer.hpp"
 #include "types/Types.hpp"
 
-#include <cassert>
 #include <algorithm>
+#include <cassert>
 #include <exception>
 #include <functional>
 #include <iostream>
@@ -31,26 +31,11 @@ template <typename scalar_t, typename block_t> class ToeplitzStructure {
     using scalar_type = scalar_t;
 
   private:
-    struct MatvecWorkspace {
-        std::vector<vector_t> rhs_panels;
-        std::vector<vector_t> product_panels;
-        vector_t input_alias_copy;
-        vector_t factor_first;
-        vector_t factor_second;
-    };
-
     ToeplitzContainer<block_t> blocks;
     // Характеристика одного блока
     // Эти поля нужны для удобства
     Types::index rows_in_block_ = 0;
     Types::index cols_in_block_ = 0;
-    // matvec_wise_block() is allocation-free after construction. The scratch
-    // storage is mutable because multiplication does not change matrix values.
-    // Concurrent calls on the same matrix instance require separate matrices
-    // (or an external synchronization point).
-    mutable MatvecWorkspace matvec_workspace_;
-
-    void initialize_matvec_workspace();
 
   public:
     ToeplitzStructure() = default;
@@ -70,34 +55,18 @@ template <typename scalar_t, typename block_t> class ToeplitzStructure {
 
     ToeplitzStructure(Types::index block_rows, Types::index block_cols, Containers::vector<block_t> &&blocks_);
 
-    /*
-     * Построить нулевую матрицу с заданном формате.
-     *
-     * Это почти как дефолтный конструктор, только не совсем
-     *
-     */
-    ToeplitzStructure(Types::index block_rows, Types::index block_cols, Types::index rows_in_block,
-                      Types::index cols_in_block);
-
-    /** Работа с индексами
-     */
+    /** Работа с индексами */
     [[nodiscard]] inline decltype(auto) get_linear_index(size_t row, size_t col) const noexcept {
         return blocks.get_linear_index(row, col);
     }
 
-    /** Умножение матрицы на вектор */
+    /** Умножение матрицы на вектор c возвращением копии */
     [[nodiscard]] vector_t matvec(const vector_t &vec) const noexcept;
-    /**
-     * dest += matvec(vec);
-     */
-    void matvec(Eigen::Ref<vector_t> vec, Eigen::Ref<vector_t> dest) const noexcept;
-
-    void matvec(scalar_t *vec, size_t vec_size, Eigen::Ref<vector_t> dest) const noexcept;
-
-    void matvec(scalar_t *vec, size_t vec_size, scalar_t *dest, size_t dest_size) const noexcept;
-    // Apply one matrix-matrix operation per unique Toeplitz block.
-    void matvec_wise_block(scalar_t *vec, size_t vec_size, scalar_t *dest, size_t dest_size) const noexcept;
-    void matvec_wise(scalar_t *vec, size_t vec_size, scalar_t *dest, size_t dest_size) const noexcept;
+    /** dest += matvec(vec); */
+    void matvec(const vector_t &vec, vector_t &dest) const noexcept;
+    /** dest += matvec(vec); но по-умному */
+    void matvec_blocked(const vector_t &vec, vector_t &dest) const noexcept;
+    void matvec_blocked_kernel(scalar_t *vec, size_t vec_size, scalar_t *dest, size_t dest_size) const noexcept;
 
     /** Умножение матрицы на число с возвращением копии */
     [[nodiscard]] ToeplitzStructure mull(scalar_t value) const noexcept;
@@ -138,13 +107,12 @@ template <typename scalar_t, typename block_t> class ToeplitzStructure {
     const ToeplitzContainer<block_t> &get_blocks() const noexcept { return blocks; }
 
     // ---- Static methods --- //
-    inline static Types::index get_size_of_container(Types::index rows, Types::index cols) noexcept
-        __attribute__((always_inline)) {
+    inline static Types::index get_size_of_container(Types::index rows, Types::index cols) noexcept {
         return rows + cols - 1;
     };
 
     // Приведение к плотной матрице
-    Types::MatrixX<scalar_t> to_dense() const noexcept;
+    dense_matrix_t to_dense() const noexcept;
 };
 
 template <typename scalar_t, typename block_t>
@@ -183,86 +151,22 @@ ToeplitzStructure<scalar_t, block_t>::ToeplitzStructure(
     Types::index block_rows, Types::index block_cols,
     const std::function<block_t(Types::index i, Types::index j)> &get_block)
     : blocks(block_rows, block_cols, get_block), rows_in_block_(blocks(0, 0).rows()),
-      cols_in_block_(blocks(0, 0).cols()) {
-    initialize_matvec_workspace();
-}
+      cols_in_block_(blocks(0, 0).cols()) {}
 
 template <typename scalar_t, typename block_t>
 ToeplitzStructure<scalar_t, block_t>::ToeplitzStructure(Types::index block_rows, Types::index block_cols,
                                                         Containers::vector<block_t> &&blocks_)
     : blocks(block_rows, block_cols, std::move(blocks_)), rows_in_block_(blocks(0, 0).rows()),
-      cols_in_block_(blocks(0, 0).cols()) {
-    initialize_matvec_workspace();
-}
+      cols_in_block_(blocks(0, 0).cols()) {}
 
+// обычный вариант блочного матвека, в котором выделяются блоки в матрице и в векторе, а дальше происходит умножение
+// по обычным блочным формулами
 template <typename scalar_t, typename block_t>
-void ToeplitzStructure<scalar_t, block_t>::initialize_matvec_workspace() {
-    const auto checked_product = [](size_t lhs, size_t rhs) -> size_t {
-        if (rhs != 0 && lhs > std::numeric_limits<size_t>::max() / rhs)
-            std::terminate();
-        return lhs * rhs;
-    };
-
-    std::vector<size_t> rhs_sizes;
-    std::vector<size_t> product_sizes;
-    size_t factor_workspace_size = 0;
-    const auto collect = [&](auto &&self, const auto &matrix, size_t rhs_columns, size_t depth) -> void {
-        if constexpr (requires {
-                          matrix.rows_in_toeplitrz();
-                          matrix.cols_in_toeplitrz();
-                          matrix.rows_in_block();
-                          matrix.cols_in_block();
-                          matrix.get_blocks();
-                      }) {
-            if (rhs_sizes.size() <= depth) {
-                rhs_sizes.resize(depth + 1, 0);
-                product_sizes.resize(depth + 1, 0);
-            }
-            const size_t block_rows = static_cast<size_t>(matrix.rows_in_toeplitrz());
-            const size_t block_cols = static_cast<size_t>(matrix.cols_in_toeplitrz());
-            const size_t repetitions_max = std::min(block_rows, block_cols);
-            if (rhs_columns > 1) {
-                const size_t panel_columns = checked_product(repetitions_max, rhs_columns);
-                rhs_sizes[depth] = std::max(rhs_sizes[depth], checked_product(
-                    static_cast<size_t>(matrix.cols_in_block()), panel_columns));
-                product_sizes[depth] = std::max(product_sizes[depth], checked_product(
-                    static_cast<size_t>(matrix.rows_in_block()), panel_columns));
-            }
-
-            const size_t count = static_cast<size_t>(matrix.get_blocks().get_actual_size());
-            for (size_t diagonal = 0; diagonal < count; ++diagonal) {
-                const size_t i0 = diagonal < block_cols ? 0 : diagonal - block_cols + 1;
-                const size_t j0 = diagonal < block_cols ? diagonal : 0;
-                const size_t repetitions = std::min(block_rows - i0, block_cols - j0);
-                self(self, matrix.get_blocks()(static_cast<Types::index>(diagonal)),
-                     checked_product(repetitions, rhs_columns), depth + 1);
-            }
-        } else if constexpr (requires { matrix.matmul_wise_workspace_size(rhs_columns); }) {
-            factor_workspace_size = std::max(
-                factor_workspace_size, matrix.matmul_wise_workspace_size(rhs_columns));
-        }
-    };
-    collect(collect, *this, 1, 0);
-
-    matvec_workspace_.rhs_panels.resize(rhs_sizes.size());
-    matvec_workspace_.product_panels.resize(product_sizes.size());
-    for (size_t depth = 0; depth < rhs_sizes.size(); ++depth) {
-        matvec_workspace_.rhs_panels[depth].resize(static_cast<Eigen::Index>(rhs_sizes[depth]));
-        matvec_workspace_.product_panels[depth].resize(static_cast<Eigen::Index>(product_sizes[depth]));
-    }
-    matvec_workspace_.input_alias_copy.resize(cols());
-    matvec_workspace_.factor_first.resize(static_cast<Eigen::Index>(factor_workspace_size));
-    matvec_workspace_.factor_second.resize(static_cast<Eigen::Index>(factor_workspace_size));
-}
-
-template <typename scalar_t, typename block_t>
-typename ToeplitzStructure<scalar_t, block_t>::vector_t
-ToeplitzStructure<scalar_t, block_t>::matvec(const vector_t &vec) const noexcept {
+auto ToeplitzStructure<scalar_t, block_t>::matvec(const vector_t &vec) const noexcept -> vector_t {
     assert(vec.size() == cols());
     // создаем нулевой вектор результата, в который будем записывать ответ
     vector_t result = vector_t::Zero(rows());
     // Далее итерируемся по всем блокам (потому что обычное умножение, а не потому что бесструктурная матрица!)
-#pragma omp parallel for num_threads(14) shared(result, blocks, vec) schedule(static)
     for (Types::index i = 0; i < blocks.rows(); ++i) {
         for (Types::index j = 0; j < blocks.cols(); ++j) {
             // Достаем ссылку на текущий блок (тут как раз проявляется тёплицевость)
@@ -273,14 +177,17 @@ ToeplitzStructure<scalar_t, block_t>::matvec(const vector_t &vec) const noexcept
             // тут просто получилось несоответствие типов для вызова матвека
             vector_t local_res = current_block * sub_vector;
             // Складываем результат
-            { result.block(i * rows_in_block_, 0, rows_in_block_, 1) += local_res; }
+            {
+                result.block(i * rows_in_block_, 0, rows_in_block_, 1) += local_res;
+            }
         }
     }
     return result;
 }
 
+// как и выше, но с уже выделенным вектором, куда складывается результат
 template <typename scalar_t, typename block_t>
-void ToeplitzStructure<scalar_t, block_t>::matvec(Eigen::Ref<vector_t> vec, Eigen::Ref<vector_t> dest) const noexcept {
+void ToeplitzStructure<scalar_t, block_t>::matvec(const vector_t &vec, vector_t &dest) const noexcept {
     assert(vec.size() == cols());
     for (Types::index i = 0; i < blocks.rows(); ++i) {
         for (Types::index j = 0; j < blocks.cols(); ++j) {
@@ -297,115 +204,68 @@ void ToeplitzStructure<scalar_t, block_t>::matvec(Eigen::Ref<vector_t> vec, Eige
     }
 }
 
-/** dest += this * vec, with one matrix-matrix application per unique block.
- * Consecutive vector segments already form a column-major panel, so the first
- * level uses zero-copy Maps. Nested Toeplitz levels gather multiple RHS into
- * reusable panels and continue recursively; dense leaves use GEMM. Blocks
- * exposing matmul_wise retain their own matrix-matrix implementation.
- * Input/output overlap is supported by snapshotting the input before writing.
- * All scratch buffers are sized by the constructor, outside the timed matvec.
- * The existing noexcept API is preserved: invalid buffer sizes and size
- * overflow terminate.
- */
 template <typename scalar_t, typename block_t>
-void ToeplitzStructure<scalar_t, block_t>::matvec_wise_block(scalar_t *vec, size_t vec_size,
-                                                           scalar_t *dest, size_t dest_size) const noexcept {
-    using index_t = Eigen::Index;
-    using const_matrix_ref = Eigen::Ref<const dense_matrix_t>;
-    using matrix_ref = Eigen::Ref<dense_matrix_t>;
-    const auto eigen_index = [](size_t size) -> index_t {
-        if (size > static_cast<size_t>(std::numeric_limits<index_t>::max()))
-            std::terminate();
-        return static_cast<index_t>(size);
-    };
-    const auto product = [](index_t a, index_t b) -> index_t {
-        if (a < 0 || b < 0 || (b != 0 && a > std::numeric_limits<index_t>::max() / b))
-            std::terminate();
-        return a * b;
-    };
-
-    if (vec_size != cols() || dest_size != rows() || (vec_size != 0 && vec == nullptr) ||
-        (dest_size != 0 && dest == nullptr))
-        std::terminate();
-    const index_t input_size = eigen_index(vec_size), output_size = eigen_index(dest_size);
-    if (input_size == 0 || output_size == 0)
-        return;
-
-    const scalar_t *input = vec;
-    const std::less<const scalar_t *> less;
-    if (less(vec, dest + output_size) && less(dest, vec + input_size)) {
-        Eigen::Map<vector_t>(matvec_workspace_.input_alias_copy.data(), input_size) =
-            Eigen::Map<const vector_t>(vec, input_size);
-        input = matvec_workspace_.input_alias_copy.data();
-    }
-    const auto multiply_add = [&](auto &&self, const auto &matrix, const_matrix_ref rhs,
-                                  matrix_ref output, size_t depth) -> void {
-        if (rhs.rows() != eigen_index(matrix.cols()) || output.rows() != eigen_index(matrix.rows()) ||
-            rhs.cols() != output.cols())
-            std::terminate();
-        if constexpr (requires { matrix.rows_in_toeplitrz(); matrix.cols_in_toeplitrz(); matrix.get_blocks(); }) {
-            const index_t nr = eigen_index(matrix.rows_in_toeplitrz());
-            const index_t nc = eigen_index(matrix.cols_in_toeplitrz());
-            const index_t m = eigen_index(matrix.rows_in_block());
-            const index_t n = eigen_index(matrix.cols_in_block());
-            const index_t q = rhs.cols();
-            const index_t count = eigen_index(matrix.get_blocks().get_actual_size());
-            for (index_t d = 0; d < count; ++d) {
-                const index_t i0 = d < nc ? 0 : d - nc + 1;
-                const index_t j0 = d < nc ? d : 0;
-                const index_t repeats = std::min(nr - i0, nc - j0);
-                const auto &block = matrix.get_blocks()(static_cast<Types::index>(d));
-                if (q == 1) {
-                    Eigen::Map<const dense_matrix_t> x(rhs.data() + j0 * n, n, repeats);
-                    Eigen::Map<dense_matrix_t> y(output.data() + i0 * m, m, repeats);
-                    self(self, block, x, y, depth + 1);
-                } else {
-                    const index_t width = repeats * q; // bounded by the checked maximum above
-                    assert(depth < matvec_workspace_.rhs_panels.size());
-                    assert(depth < matvec_workspace_.product_panels.size());
-                    assert(matvec_workspace_.rhs_panels[depth].size() >= product(n, width));
-                    assert(matvec_workspace_.product_panels[depth].size() >= product(m, width));
-                    Eigen::Map<dense_matrix_t> x(matvec_workspace_.rhs_panels[depth].data(), n, width);
-                    Eigen::Map<dense_matrix_t> y(matvec_workspace_.product_panels[depth].data(), m, width);
-                    for (index_t column = 0; column < q; ++column) {
-                        Eigen::Map<const dense_matrix_t> source(rhs.data() + column * rhs.outerStride() + j0 * n,
-                                                                n, repeats);
-                        x.middleCols(column * repeats, repeats) = source;
-                    }
-                    y.setZero();
-                    self(self, block, x, y, depth + 1);
-                    for (index_t column = 0; column < q; ++column) {
-                        Eigen::Map<dense_matrix_t> target(output.data() + column * output.outerStride() + i0 * m,
-                                                         m, repeats);
-                        target += y.middleCols(column * repeats, repeats);
-                    }
-                }
-            }
-        } else if constexpr (requires {
-                                 matrix.matmul_wise_noalloc(
-                                     rhs, output, static_cast<scalar_t *>(nullptr),
-                                     static_cast<scalar_t *>(nullptr), size_t{});
-                             }) {
-            matrix.matmul_wise_noalloc(
-                rhs, output, matvec_workspace_.factor_first.data(),
-                matvec_workspace_.factor_second.data(),
-                static_cast<size_t>(matvec_workspace_.factor_first.size()));
-        } else if constexpr (requires { matrix.matmul_wise(rhs, output); }) {
-            matrix.matmul_wise(rhs, output);
-        } else {
-            output.noalias() += matrix * rhs;
-        }
-    };
-
-    Eigen::Map<const dense_matrix_t> rhs(input, input_size, 1);
-    Eigen::Map<dense_matrix_t> output(dest, output_size, 1);
-    multiply_add(multiply_add, *this, rhs, output, 0);
+void ToeplitzStructure<scalar_t, block_t>::matvec_blocked(const vector_t &vec, vector_t &dest) const noexcept {
+    matvec_blocked_kernel(const_cast<scalar_t *>(vec.data()), vec.size(), dest.data(), dest.size());
 }
 
 template <typename scalar_t, typename block_t>
-void ToeplitzStructure<scalar_t, block_t>::matvec_wise(
-    scalar_t *vec, size_t vec_size, scalar_t *dest, size_t dest_size) const noexcept {
-    matvec_wise_block(vec, vec_size, dest, dest_size);
+void ToeplitzStructure<scalar_t, block_t>::matvec_blocked_kernel(scalar_t *vec, size_t vec_size, scalar_t *dest,
+                                                                 size_t dest_size) const noexcept {
+    Types::integer cols_in_each_toeplitz_block = blocks(0).cols();
+    Types::integer rows_in_each_toeplitz_block = blocks(0).rows();
+    assert(vec_size == blocks.cols() * cols_in_each_toeplitz_block); // проверка на то, что я могу умножить это дело
+
+    const scalar_t *rhs_head_pointer = vec;
+    const Types::integer cols_in_toeplitz_structure =
+        blocks.cols(); // количество блоков в строке (или блочных столбцов)
+    const Types::integer rows_in_toeplitz_structure = blocks.rows();
+    // опеределяем окна столбцов для решейпа
+    const Types::integer rhs_window_len = rows_in_toeplitz_structure;
+    std::pair<Types::integer, Types::integer> rhs_window{-rhs_window_len + 1, 0};
+    // это окно, которое показывает ОТРЕЗОК столбцов, которые нужно взять для умножения на укальный теплицев блок
+    const Types::integer lhs_window_size = cols_in_toeplitz_structure;
+    std::pair<Types::integer, Types::integer> lhs_window{rows_in_toeplitz_structure - 1,
+                                                         rows_in_toeplitz_structure + lhs_window_size - 2};
+
+    // проходимся по всем блокам в toeplitz_container и делаем уникальные матмуллы
+    size_t n_unique_blocks_in_toeplitz_structure = blocks.get_actual_size();
+    for (size_t block_idx = 0; block_idx < n_unique_blocks_in_toeplitz_structure; block_idx++) {
+        // данные для матмула с уникальным блоков
+        const Types::integer rhs_col_start = std::max(0L, rhs_window.first);
+        const Types::integer rhs_col_end = std::min(rhs_window.second, cols_in_toeplitz_structure - 1);
+        // блок по теплицевой структуре
+        const auto &block = blocks(block_idx); // взяли блок по теплицевой структуре,
+                                               // тут ВАЖНО, что мы знаем как устроен внутри ToeplitzContainer
+        if constexpr (std::is_same_v<block_t, Types::MatrixX<scalar_t>>) {
+            // делается плотный матмул
+            const Eigen::Index n_cols_in_rhs_block = rhs_col_end - rhs_col_start + 1;
+            assert(n_cols_in_rhs_block <= std::min(rows_in_toeplitz_structure, cols_in_toeplitz_structure));
+            // решейп правой части
+            Eigen::Map<const Eigen::MatrixXcd> reshaped_vector_block(rhs_head_pointer +
+                                                                         rhs_col_start * cols_in_each_toeplitz_block,
+                                                                     cols_in_each_toeplitz_block, n_cols_in_rhs_block);
+            // решейп левой части
+            const Types::integer lhs_col_start = std::max(0L, lhs_window.first);
+            const Types::integer lhs_col_end = std::min(lhs_window.second, rows_in_toeplitz_structure - 1);
+
+            assert(lhs_col_end - lhs_col_start ==
+                   rhs_col_end - rhs_col_start); // окна содержат одинаковое число столбцов
+
+            Eigen::Map<Eigen::MatrixXcd> reshaped_dest(dest + lhs_col_start * rows_in_each_toeplitz_block,
+                                                       rows_in_each_toeplitz_block, n_cols_in_rhs_block);
+            reshaped_dest.noalias() += block * reshaped_vector_block;
+        } else {
+            // иначе вызывается внутренний матмул блока
+            throw std::runtime_error("not implemented yet");
+        }
+        // двигаем окна на один столбец/строку
+        rhs_window.first++;
+        rhs_window.second++;
+        lhs_window.first--;
+        lhs_window.second--;
+    }
+    // ну и все, умножение закончилось
 }
 
 template <typename scalar_t, typename block_t>
@@ -442,25 +302,6 @@ Types::MatrixX<scalar_t> ToeplitzStructure<scalar_t, block_t>::to_dense() const 
     }
     return result;
 }
-
-// --- Defined binary operators --- //
-#if 0
-template <typename scalar_t, typename block_t>
-ToeplitzStructure<scalar_t, block_t> operator*(const ToeplitzStructure<scalar_t, block_t> &matrix, scalar_t value) {
-    return matrix.mull(value);
-}
-
-template<typename scalar_t, typename block_t>
-ToeplitzStructure<scalar_t, block_t> operator*(scalar_t value, const ToeplitzStructure<scalar_t, block_t> &matrix) {
-    return matrix.mull(value);
-}
-
-template<typename scalar_t, typename block_t>
-ToeplitzStructure<scalar_t, block_t> & operator*=(ToeplitzStructure<scalar_t, block_t>& matrix, scalar_t value) {
-    matrix.mull_inplace(value);
-    return matrix;
-}
-#endif
 
 template <typename scalar_t, typename block_t>
 Types::VectorX<scalar_t> operator*(const ToeplitzStructure<scalar_t, block_t> &matrix,
@@ -568,4 +409,4 @@ template <typename scalar_t, typename block_t>
 
 #endif
 
-#endif //TOEPLITZFULLYTEMPLATED_HPP
+#endif // TOEPLITZFULLYTEMPLATED_HPP

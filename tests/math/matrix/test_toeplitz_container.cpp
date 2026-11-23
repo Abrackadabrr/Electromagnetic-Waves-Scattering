@@ -5,6 +5,8 @@
 #include "toeplitz_matrix_tests.hpp"
 #include "math/matrix/ToeplitzContainer.hpp"
 
+using namespace EMW;
+
 TEST_F(TOEPLITZ_MATRIX_TESTS, TOEPLITZ_CONTAINER_1) {
     constexpr Types::index N = 50;
     constexpr Types::index M = 60;
