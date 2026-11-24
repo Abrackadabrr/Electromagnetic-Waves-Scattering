@@ -17,6 +17,15 @@
 #include <vector>
 
 namespace EMW::Math::LinAgl::Matrix {
+
+template <typename scalar_t, typename block_t> class ToeplitzStructure;
+
+template <typename T> struct ToeplitzDepth : std::integral_constant<std::size_t, 0> {};
+
+template <typename scalar_t, typename block_t>
+struct ToeplitzDepth<ToeplitzStructure<scalar_t, block_t>>
+    : std::integral_constant<std::size_t, 1 + ToeplitzDepth<block_t>::value> {};
+
 /**
  * Матрица со структурой тёплиц-общий_вид
  */
@@ -30,12 +39,20 @@ template <typename scalar_t, typename block_t> class ToeplitzStructure {
     using block_type = block_t;
     using scalar_type = scalar_t;
 
+    // глубина теплицевой структуры в данной матрице
+    constexpr static std::size_t toeplitz_depth = 1 + ToeplitzDepth<block_t>::value;
+
   private:
     ToeplitzContainer<block_t> blocks;
     // Характеристика одного блока
     // Эти поля нужны для удобства
     Types::index rows_in_block_ = 0;
     Types::index cols_in_block_ = 0;
+
+    // -------- MATRIX OPERATIONS KERNELS ------------ //
+    void matvec_blocked_kernel(const scalar_t *vec, size_t vec_size, scalar_t *dest, size_t dest_size) const noexcept;
+    void matmul_naive(const scalar_t *rhs, size_t rhs_size, scalar_t *dest, size_t dest_size,
+                      size_t n_rhs_cols) const noexcept;
 
   public:
     ToeplitzStructure() = default;
@@ -55,32 +72,26 @@ template <typename scalar_t, typename block_t> class ToeplitzStructure {
 
     ToeplitzStructure(Types::index block_rows, Types::index block_cols, Containers::vector<block_t> &&blocks_);
 
-    /** Работа с индексами */
-    [[nodiscard]] inline decltype(auto) get_linear_index(size_t row, size_t col) const noexcept {
-        return blocks.get_linear_index(row, col);
-    }
+    // слегка костыльные методы для инициализации, должны быть рекурсивно заданные
+    // по-хорошему, в конец нужно передать аргументы фабрики для самого внутреннего типа block_t или готовое значение
+    static ToeplitzStructure Zero(Types::index block_rows, Types::index block_cols, Types::index rows_in_block,
+                           Types::index cols_in_block);
+    static ToeplitzStructure Zero(Types::index block_rows_l2, Types::index block_cols_l2, Types::index block_rows_l1,
+                           Types::index block_cols_l1, Types::index rows_in_block, Types::index cols_in_block);
 
     // ----------- MATVECS --------------- //
-
-    /** Умножение матрицы на вектор c возвращением копии */
-    [[nodiscard]] vector_t matvec(const vector_t &vec) const noexcept;
     /** dest += matvec(vec); */
     void matvec(const vector_t &vec, vector_t &dest) const noexcept;
     /** dest += matvec(vec); но по-умному */
     void matvec_blocked(const vector_t &vec, vector_t &dest) const noexcept;
-    void matvec_blocked_kernel(scalar_t *vec, size_t vec_size, scalar_t *dest, size_t dest_size) const noexcept;
 
     // ----------- MATMULLS ------------------- //
-
     /** dest += T * A, где A -- матричный блок */
-    void matmull(const dense_matrix_t& rhs, dense_matrix_t& dest) const noexcept;
-    void matmull_naive_kernel(const scalar_t *rhs, size_t rhs_size, scalar_t *dest,
-                         size_t dest_size, size_t n_rhs_cols) const noexcept;
-    void matmull_blocked(const dense_matrix_t& rhs, dense_matrix_t& dest) const noexcept;
-    void matmull_blocked_kernel() const noexcept;
+    void matmul(const dense_matrix_t &rhs, dense_matrix_t &dest) const noexcept;
+    void matmul(const scalar_t *rhs, size_t rhs_size, scalar_t *dest, size_t dest_size,
+                size_t n_rhs_cols) const noexcept;
 
     // ---------- SOME SHIT --------------- //
-
     /** Умножение матрицы на число с возвращением копии */
     [[nodiscard]] ToeplitzStructure mull(scalar_t value) const noexcept;
     /** Умножение себя на число */
@@ -111,9 +122,9 @@ template <typename scalar_t, typename block_t> class ToeplitzStructure {
 
     [[nodiscard]] Types::index rows_in_toeplitrz() const { return blocks.rows(); };
     [[nodiscard]] Types::index cols_in_toeplitrz() const { return blocks.cols(); };
-
-    // --- Доступ к элементам на чтение --- //
-
+    [[nodiscard]] inline decltype(auto) get_linear_index(size_t row, size_t col) const noexcept {
+        return blocks.get_linear_index(row, col);
+    }
     /** Доступ к настоящим элементам в матрице, а не к блокам! */
     [[nodiscard]] const scalar_t &operator()(Types::index i, Types::index j) const noexcept;
     /** Доступ к блокам в матрице */
@@ -121,12 +132,35 @@ template <typename scalar_t, typename block_t> class ToeplitzStructure {
 
     // ---- Static methods --- //
     inline static Types::index get_size_of_container(Types::index rows, Types::index cols) noexcept {
-        return rows + cols - 1;
+        return std::max(0L, static_cast<Types::integer>(rows) + static_cast<Types::integer>(cols) - 1);
     };
 
     // Приведение к плотной матрице
     dense_matrix_t to_dense() const noexcept;
+
+    // T = L + D + U, это возвращает L + U
+    ToeplitzStructure extract_lower_triangle_plus_diagonal();
 };
+
+template <typename scalar_t, typename block_t>
+ToeplitzStructure<scalar_t, block_t>
+ToeplitzStructure<scalar_t, block_t>::Zero(Types::index block_rows, Types::index block_cols, Types::index rows_in_block,
+                                           Types::index cols_in_block) {
+    static_assert(toeplitz_depth == 1, "method only for single layer toeplitz structure");
+    Containers::vector<block_t> zero_blocks(get_size_of_container(block_rows, block_cols),
+                                            block_t::Zero(rows_in_block, cols_in_block));
+    return {block_rows, block_cols, std::move(zero_blocks)};
+}
+template <typename scalar_t, typename block_t>
+ToeplitzStructure<scalar_t, block_t>
+ToeplitzStructure<scalar_t, block_t>::Zero(Types::index block_rows_l2, Types::index block_cols_l2,
+                                           Types::index block_rows_l1, Types::index block_cols_l1,
+                                           Types::index rows_in_block, Types::index cols_in_block) {
+    static_assert(toeplitz_depth == 2, "method only for doubly toeplitz structure");
+    Containers::vector<block_t> zero_blocks(get_size_of_container(block_rows_l2, block_cols_l2),
+                                            block_t::Zero(block_rows_l1, block_cols_l1, rows_in_block, cols_in_block));
+    return {block_rows_l2, block_cols_l2, std::move(zero_blocks)};
+}
 
 template <typename scalar_t, typename block_t>
 typename ToeplitzStructure<scalar_t, block_t>::vector_t ToeplitzStructure<scalar_t, block_t>::diagonal() const {
@@ -172,46 +206,24 @@ ToeplitzStructure<scalar_t, block_t>::ToeplitzStructure(Types::index block_rows,
     : blocks(block_rows, block_cols, std::move(blocks_)), rows_in_block_(blocks(0, 0).rows()),
       cols_in_block_(blocks(0, 0).cols()) {}
 
-// обычный вариант блочного матвека, в котором выделяются блоки в матрице и в векторе, а дальше происходит умножение
-// по обычным блочным формулами
-template <typename scalar_t, typename block_t>
-auto ToeplitzStructure<scalar_t, block_t>::matvec(const vector_t &vec) const noexcept -> vector_t {
-    assert(vec.size() == cols());
-    // создаем нулевой вектор результата, в который будем записывать ответ
-    vector_t result = vector_t::Zero(rows());
-    // Далее итерируемся по всем блокам (потому что обычное умножение, а не потому что бесструктурная матрица!)
-    for (Types::index i = 0; i < blocks.rows(); ++i) {
-        for (Types::index j = 0; j < blocks.cols(); ++j) {
-            // Достаем ссылку на текущий блок (тут как раз проявляется тёплицевость)
-            const block_t &current_block = blocks(i, j);
-            // Теперь умножаем на соответствующий подвектор
-            const vector_t &sub_vector = vec.block(j * cols_in_block_, 0, cols_in_block_, 1);
-            // тут пришлось скопировать, потому что block -- это не вектор, а block-expression внутри Eigen
-            // тут просто получилось несоответствие типов для вызова матвека
-            vector_t local_res = current_block * sub_vector;
-            // Складываем результат
-            {
-                result.block(i * rows_in_block_, 0, rows_in_block_, 1) += local_res;
-            }
-        }
-    }
-    return result;
-}
-
 // как и выше, но с уже выделенным вектором, куда складывается результат
 template <typename scalar_t, typename block_t>
 void ToeplitzStructure<scalar_t, block_t>::matvec(const vector_t &vec, vector_t &dest) const noexcept {
     assert(vec.size() == cols());
+    vector_t additional_space = vector_t::Zero(vec.size() / blocks.cols());
     for (Types::index i = 0; i < blocks.rows(); ++i) {
         for (Types::index j = 0; j < blocks.cols(); ++j) {
             // Достаем ссылку на текущий блок (тут как раз проявляется тёплицевость)
             auto &&current_block = blocks(i, j);
             // Теперь умножаем на соответствующий подвектор
-            auto sub_vector = vec.block(j * cols_in_block_, 0, cols_in_block_, 1);
+            vector_t sub_vector = vec.block(j * cols_in_block_, 0, cols_in_block_, 1);
             if constexpr (std::is_same_v<block_t, Types::MatrixX<scalar_t>>) {
+                // вызывается матвек для плотного блока
                 dest.block(i * rows_in_block_, 0, rows_in_block_, 1).noalias() += current_block * sub_vector;
             } else {
-                current_block.matvec(sub_vector, dest.block(i * rows_in_block_, 0, rows_in_block_, 1));
+                // иначе вызывается соотвествующая функция для внутреннего блока
+                additional_space = dest.block(i * rows_in_block_, 0, rows_in_block_, 1);
+                current_block.matvec(sub_vector, additional_space);
             }
         }
     }
@@ -223,7 +235,7 @@ void ToeplitzStructure<scalar_t, block_t>::matvec_blocked(const vector_t &vec, v
 }
 
 template <typename scalar_t, typename block_t>
-void ToeplitzStructure<scalar_t, block_t>::matvec_blocked_kernel(scalar_t *vec, size_t vec_size, scalar_t *dest,
+void ToeplitzStructure<scalar_t, block_t>::matvec_blocked_kernel(const scalar_t *vec, size_t vec_size, scalar_t *dest,
                                                                  size_t dest_size) const noexcept {
     Types::integer cols_in_each_toeplitz_block = blocks(0).cols();
     Types::integer rows_in_each_toeplitz_block = blocks(0).rows();
@@ -250,27 +262,28 @@ void ToeplitzStructure<scalar_t, block_t>::matvec_blocked_kernel(scalar_t *vec, 
         // блок по теплицевой структуре
         const auto &block = blocks(block_idx); // взяли блок по теплицевой структуре,
                                                // тут ВАЖНО, что мы знаем как устроен внутри ToeplitzContainer
-        if constexpr (std::is_same_v<block_t, Types::MatrixX<scalar_t>>) {
-            // делается плотный матмул
-            const Eigen::Index n_cols_in_rhs_block = rhs_col_end - rhs_col_start + 1;
-            assert(n_cols_in_rhs_block <= std::min(rows_in_toeplitz_structure, cols_in_toeplitz_structure));
-            // решейп правой части
-            Eigen::Map<const Eigen::MatrixXcd> reshaped_vector_block(rhs_head_pointer +
-                                                                         rhs_col_start * cols_in_each_toeplitz_block,
-                                                                     cols_in_each_toeplitz_block, n_cols_in_rhs_block);
-            // решейп левой части
-            const Types::integer lhs_col_start = std::max(0L, lhs_window.first);
-            const Types::integer lhs_col_end = std::min(lhs_window.second, rows_in_toeplitz_structure - 1);
+        // решейп вектора в матрицу
+        const Eigen::Index n_cols_in_rhs_block = rhs_col_end - rhs_col_start + 1;
+        assert(n_cols_in_rhs_block <= std::min(rows_in_toeplitz_structure, cols_in_toeplitz_structure));
+        // решейп правой части
+        Eigen::Map<const Eigen::MatrixXcd> reshaped_vector_block(rhs_head_pointer +
+                                                                     rhs_col_start * cols_in_each_toeplitz_block,
+                                                                 cols_in_each_toeplitz_block, n_cols_in_rhs_block);
+        // решейп левой части
+        const Types::integer lhs_col_start = std::max(0L, lhs_window.first);
+        const Types::integer lhs_col_end = std::min(lhs_window.second, rows_in_toeplitz_structure - 1);
+        assert(lhs_col_end - lhs_col_start == rhs_col_end - rhs_col_start); // одинаковое число столбцов в окнах
+        Eigen::Map<Eigen::MatrixXcd> reshaped_dest(dest + lhs_col_start * rows_in_each_toeplitz_block,
+                                                   rows_in_each_toeplitz_block, n_cols_in_rhs_block);
 
-            assert(lhs_col_end - lhs_col_start ==
-                   rhs_col_end - rhs_col_start); // окна содержат одинаковое число столбцов
-
-            Eigen::Map<Eigen::MatrixXcd> reshaped_dest(dest + lhs_col_start * rows_in_each_toeplitz_block,
-                                                       rows_in_each_toeplitz_block, n_cols_in_rhs_block);
+        // в зависимости от типа внутреннего блока нужно вызывать разное
+        if constexpr (std::is_same_v<block_t, dense_matrix_t>) {
+            // плотня матрица -> плотный матмул (пока что через Eigen)
             reshaped_dest.noalias() += block * reshaped_vector_block;
         } else {
             // иначе вызывается внутренний матмул блока
-            throw std::runtime_error("not implemented yet");
+            block.matmul(reshaped_vector_block.data(), reshaped_vector_block.size(), reshaped_dest.data(),
+                         reshaped_dest.size(), reshaped_vector_block.cols());
         }
         // двигаем окна на один столбец/строку
         rhs_window.first++;
@@ -282,16 +295,21 @@ void ToeplitzStructure<scalar_t, block_t>::matvec_blocked_kernel(scalar_t *vec, 
 }
 
 template <typename scalar_t, typename block_t>
-void ToeplitzStructure<scalar_t, block_t>::matmull(const ToeplitzStructure::dense_matrix_t &rhs,
-                                                   ToeplitzStructure::dense_matrix_t &dest) const noexcept {
-    matmull_naive_kernel(rhs.data(), rhs.size(), dest.data(), dest.size(), rhs.cols());
+void ToeplitzStructure<scalar_t, block_t>::matmul(const ToeplitzStructure::dense_matrix_t &rhs,
+                                                  ToeplitzStructure::dense_matrix_t &dest) const noexcept {
+    matmul_naive(rhs.data(), rhs.size(), dest.data(), dest.size(), rhs.cols());
 }
 
+template <typename scalar_t, typename block_t>
+void ToeplitzStructure<scalar_t, block_t>::matmul(const scalar_t *rhs, size_t rhs_size, scalar_t *dest,
+                                                  size_t dest_size, size_t n_rhs_cols) const noexcept {
+    matmul_naive(rhs, rhs_size, dest, dest_size, n_rhs_cols);
+}
 
 template <typename scalar_t, typename block_t>
-void ToeplitzStructure<scalar_t, block_t>::matmull_naive_kernel(const scalar_t *rhs, size_t rhs_size, scalar_t *dest,
-                                                                size_t dest_size, size_t n_rhs_cols) const noexcept {
-
+void ToeplitzStructure<scalar_t, block_t>::matmul_naive(const scalar_t *rhs, size_t rhs_size, scalar_t *dest,
+                                                        size_t dest_size, size_t n_rhs_cols) const noexcept {
+    /** Берем из правой  */
     const size_t rhs_col_size = blocks.cols() * blocks(0).cols();
     const size_t dest_col_size = blocks.rows() * blocks(0).rows();
 
@@ -342,106 +360,9 @@ template <typename scalar_t, typename block_t>
 Types::VectorX<scalar_t> operator*(const ToeplitzStructure<scalar_t, block_t> &matrix,
                                    const Types::VectorX<scalar_t> &vector) noexcept {
     Types::VectorXc result = Types::VectorXc::Zero(matrix.cols());
-    // TODO: убрать const_cast.
-    // matrix.matvec_wise(const_cast<scalar_t*>(vector.data()), vector.size(), result.data(), result.size());
-    result = matrix.matvec(vector);
+    matrix.matvec_blocked(vector, result);
     return result;
 }
 } // namespace EMW::Math::LinAgl::Matrix
-
-#if 0
-// Code from codex
-
-template <typename scalar_t, typename block_t>
-    void ToeplitzStructure<scalar_t, block_t>::matvec_wise_block(scalar_t* vec, size_t vec_size,
-                                                                 scalar_t* dest, size_t dest_size) const noexcept
-    {
-        matmul_wise(vec, vec_size, 1, dest, dest_size, 1);
-    }
-
-    template <typename scalar_t, typename block_t>
-    void ToeplitzStructure<scalar_t, block_t>::matmul_wise(scalar_t* rhs, size_t rhs_rows, size_t rhs_cols,
-                                                           scalar_t* dest, size_t dest_rows,
-                                                           size_t dest_cols) const noexcept
-    {
-        assert(rhs != nullptr);
-        assert(dest != nullptr);
-        assert(rhs_rows == static_cast<size_t>(cols()));
-        assert(dest_rows == static_cast<size_t>(rows()));
-        assert(rhs_cols == dest_cols);
-
-        Eigen::Map<const dense_matrix_t> rhs_matrix(rhs, static_cast<Eigen::Index>(rhs_rows),
-                                                    static_cast<Eigen::Index>(rhs_cols));
-        Eigen::Map<dense_matrix_t> dest_matrix(dest, static_cast<Eigen::Index>(dest_rows),
-                                               static_cast<Eigen::Index>(dest_cols));
-        matmul_wise(rhs_matrix, dest_matrix);
-    }
-
-    template <typename scalar_t, typename block_t>
-    void ToeplitzStructure<scalar_t, block_t>::matmul_wise(Eigen::Ref<const dense_matrix_t> rhs,
-                                                           Eigen::Ref<dense_matrix_t> dest) const noexcept
-    {
-        assert(rhs.rows() == cols());
-        assert(dest.rows() == rows());
-        assert(rhs.cols() == dest.cols());
-
-        const Types::index block_rows = blocks.rows();
-        const Types::index block_cols = blocks.cols();
-        const Types::index rhs_cols = static_cast<Types::index>(rhs.cols());
-
-        // 1) Уникальные блоки первой строки.
-        for (Types::index d = 0; d < block_cols; ++d)
-        {
-            const auto& current_block = blocks(0, d);
-            const Types::index repeats = std::min(block_rows, block_cols - d);
-
-            for (Types::index i = 0; i < repeats; ++i)
-            {
-                auto x_block = rhs.block(static_cast<Eigen::Index>((i + d) * cols_in_block_), 0,
-                                         static_cast<Eigen::Index>(cols_in_block_),
-                                         static_cast<Eigen::Index>(rhs_cols));
-                auto y_block = dest.block(static_cast<Eigen::Index>(i * rows_in_block_), 0,
-                                          static_cast<Eigen::Index>(rows_in_block_),
-                                          static_cast<Eigen::Index>(rhs_cols));
-
-                if constexpr (std::is_same_v<block_t, Types::MatrixX<scalar_t>>)
-                {
-                    y_block.noalias() += current_block * x_block;
-                }
-                else
-                {
-                    current_block.matmul_wise(x_block, y_block);
-                }
-            }
-        }
-
-        // 2) Уникальные блоки первого столбца (кроме [0,0]).
-        for (Types::index k = 1; k < block_rows; ++k)
-        {
-            const auto& current_block = blocks(k, 0);
-            const Types::index repeats = std::min(block_cols, block_rows - k);
-
-            for (Types::index j = 0; j < repeats; ++j)
-            {
-                auto x_block = rhs.block(static_cast<Eigen::Index>(j * cols_in_block_), 0,
-                                         static_cast<Eigen::Index>(cols_in_block_),
-                                         static_cast<Eigen::Index>(rhs_cols));
-                auto y_block = dest.block(static_cast<Eigen::Index>((j + k) * rows_in_block_), 0,
-                                          static_cast<Eigen::Index>(rows_in_block_),
-                                          static_cast<Eigen::Index>(rhs_cols));
-
-                if constexpr (std::is_same_v<block_t, Types::MatrixX<scalar_t>>)
-                {
-                    y_block.noalias() += current_block * x_block;
-                }
-                else
-                {
-                    current_block.matmul_wise(x_block, y_block);
-                }
-            }
-        }
-    }
-
-#endif
 
 #endif // TOEPLITZFULLYTEMPLATED_HPP

@@ -13,7 +13,6 @@
 
 namespace EMW::Math::LinAgl::Matrix {
 
-
 template <typename T> using ToeplitzBlock = ToeplitzStructure<T, Types::MatrixX<T>>;
 template <typename T> using ToeplitzToeplitzBlock = ToeplitzStructure<T, ToeplitzBlock<T>>;
 template <typename T> using TripleToeplitzBlock = ToeplitzStructure<T, ToeplitzToeplitzBlock<T>>;

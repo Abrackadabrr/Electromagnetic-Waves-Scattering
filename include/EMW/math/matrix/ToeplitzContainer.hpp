@@ -32,19 +32,7 @@ template <typename data_type> class ToeplitzContainer {
     // rows_ > 0 && cols_ > 0 => values.size() == rows_ + cols_ - 1
 
     static Types::index storage_size(Types::index rows, Types::index cols) {
-        if (rows == 0 && cols == 0)
-            return 0;
-
-        if (rows <= 0 || cols <= 0) {
-            throw std::invalid_argument("ToeplitzContainer: either both dimensions are zero, "
-                                        "or both are positive");
-        }
-
-        if (rows - 1 > std::numeric_limits<Types::index>::max() - cols) {
-            throw std::length_error("ToeplitzContainer: storage size overflow");
-        }
-
-        return rows - 1 + cols;
+        return std::max(0L, static_cast<Types::integer>(rows) - 1 + static_cast<Types::integer>(cols));
     }
 
   public:
@@ -81,7 +69,7 @@ template <typename data_type> class ToeplitzContainer {
 
     [[nodiscard]] Types::index get_actual_size() const noexcept { return values.size(); }
 
-    [[nodiscard]] Types::index diagonal_length() const noexcept { return std::min(rows_, cols_);};
+    [[nodiscard]] Types::index diagonal_length() const noexcept { return std::min(rows_, cols_); };
 
     /** Доступ к элементу контейнера по заданным координатам */
     const data_type &operator[](Types::index row, Types::index col) const;
@@ -102,11 +90,10 @@ template <typename data_type> class ToeplitzContainer {
     data_type &operator()(Types::index index);
 
     /** Iterator-type assess */
-    auto begin() { return values.begin(); };
-    auto end() { return values.end(); };
-    auto cbegin() { return values.cbegin(); };
-    auto cend() { return values.cend(); };
-
+    decltype(auto) begin() noexcept { return values.begin(); };
+    decltype(auto) end() noexcept { return values.end(); };
+    decltype(auto) begin() const noexcept { return values.begin(); };
+    decltype(auto) end() const noexcept { return values.end(); };
     /** Доступ на чтение к внутренней структуре */
     const Containers::vector<data_type> &get_values() const noexcept { return values; }
 };

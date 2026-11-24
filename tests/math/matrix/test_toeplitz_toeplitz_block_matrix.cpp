@@ -464,3 +464,22 @@ TEST_F(TOEPLITZ_MATRIX_TESTS, TWICE_TOEPLITZ_MATRIX_TO_DENSE) {
     // Проверка совпадения матриц
     ASSERT_NEAR((full_matrix - test_matrix.to_dense()).norm(), 0, 0) << "to_dense method does not work";
 }
+
+TEST_F(TOEPLITZ_MATRIX_TESTS, TEST_ZEOR_INIT) {
+    const Types::index internal_block_rows = 20;
+    const Types::index internal_block_cols = 20;
+
+    const Types::index first_layer_rows = 5;
+    const Types::index first_layer_cols = 5;
+
+    const Types::index second_layer_rows = 7;
+    const Types::index second_layer_cols = 7;
+
+    const auto toep_dense_mat = Math::LinAgl::Matrix::ToeplitzToeplitzBlock<complex_d>::Zero(
+        second_layer_rows, second_layer_cols, first_layer_rows, first_layer_cols, internal_block_rows,
+        internal_block_cols);
+
+    for (auto &&topelitz_block : toep_dense_mat.get_blocks())
+        for (auto &&block : topelitz_block.get_blocks())
+            ASSERT_EQ(block.norm(), 0);
+}

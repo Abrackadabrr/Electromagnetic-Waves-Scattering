@@ -118,6 +118,7 @@ TEST_F(TOEPLITZ_MATRIX_TESTS, WISE_MULTIPLICATION_TEST) {
         });
     // тестовый вектор
     const Types::VectorXc vec = Types::VectorXc::Random(matrix.cols());
+    Types::VectorXc res_1 = Types::VectorXc::Zero(matrix.cols());
     Types::VectorXc res_2 = Types::VectorXc::Zero(matrix.cols());
 
     // 2) Умное умножение
@@ -132,7 +133,7 @@ TEST_F(TOEPLITZ_MATRIX_TESTS, WISE_MULTIPLICATION_TEST) {
 #if 1
     start = std::chrono::steady_clock::now();
 
-    const auto res_1 = matrix.matvec(vec);
+    matrix.matvec(vec, res_1);
 
     end = std::chrono::steady_clock::now();
     const auto elapsed_1 = std::chrono::duration_cast<std::chrono::milliseconds>(end - start);
@@ -144,4 +145,15 @@ TEST_F(TOEPLITZ_MATRIX_TESTS, WISE_MULTIPLICATION_TEST) {
     std::cout << "Elapsed time in simple alg : " << elapsed_1.count() << " milliseconds" << std::endl;
 #endif
     std::cout << "Elapsed time in wise alg : " << elapsed_2.count() << " milliseconds" << std::endl;
+}
+
+TEST_F(TOEPLITZ_MATRIX_TESTS, TEST_ZEOR_INIT) {
+    Types::index tl_rows = 20;
+    Types::index tl_cols = 20;
+    Types::index block_size = 100;
+
+    const auto toep_dense_mat = ToeplitzBlock::Zero(tl_rows, tl_cols, block_size, block_size);
+
+    for (auto&& block : toep_dense_mat.get_blocks())
+        ASSERT_EQ(block.norm(), 0);
 }
