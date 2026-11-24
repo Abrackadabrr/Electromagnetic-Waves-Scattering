@@ -55,7 +55,5 @@ if (EMW_WITH_BENCHMARKS)
     add_subdirectory(benchmarks)
 endif ()
 
-add_subdirectory(profiling)
-
 # Prints EMW-related libraries that is build by cmake and that should be linked to the tests and programs
 message("EMW related libraries compiled: ${EMW_LIBRARIES}")

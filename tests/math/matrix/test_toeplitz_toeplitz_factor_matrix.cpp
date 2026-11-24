@@ -11,7 +11,6 @@
 
 #include <Utils.hpp>
 #include <math/matrix/decompositions/Decompositions.hpp>
-#include <math/matrix/decompositions/rsvd.hpp>
 
 Types::scalar simple_toeplitz_matrix_1(Types::index i, Types::index j) {
     return std::sin(static_cast<scalar>(i) - static_cast<scalar>(j));

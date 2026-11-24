@@ -44,12 +44,11 @@ decltype(auto) make_double_toeplitz_block(size_t block_size, size_t fl, size_t s
 
 template <typename matrix_t>
 void check_wise_equals_classic(matrix_t &&matrix, const Types::VectorX<complex_t> &x, double tol) {
-    const Types::VectorX<complex_t> expected = matrix.matvec(x);
-
+    Types::VectorX<complex_t> expected = Types::VectorX<complex_t>::Zero(x.size());
+    matrix.matvec(x, expected);
     Types::VectorX<complex_t> x_mutable = x;
     Types::VectorX<complex_t> got = Types::VectorX<complex_t>::Zero(matrix.rows());
-    matrix.matvec_wise(x_mutable.data(), static_cast<size_t>(x_mutable.size()),
-                       got.data(), static_cast<size_t>(got.size()));
+    matrix.matvec_blocked(x, got);
 
     const double rel_err = (expected - got).norm() / std::max(1.0, expected.norm());
     EXPECT_NEAR(rel_err, 0.0, tol);
@@ -67,7 +66,7 @@ TEST(MatvecWiseBlock, DenseToeplitzMatchesClassicMatvec) {
 TEST(MatvecWiseBlock, DenseDoubleToeplitzMatchesClassicMatvec) {
     constexpr Types::index fl = 6;
     constexpr Types::index sl = 6;
-    constexpr Types::index block_size = 5;
+    constexpr Types::index block_size = 10;
 
     auto matrix = make_double_toeplitz_block(block_size, fl, sl);
     Types::VectorX<complex_t> x = Types::VectorX<complex_t>::Random(matrix.cols());
