@@ -8,6 +8,30 @@ set(EMW_LIBRARIES PARENT_SCOPE)
 
 list(APPEND EMW_LIBRARIES ${EMW_LIBRARY_NAME})
 
+# Find packages to use in core lib build
+find_package(OpenMP)
+if (OPENMP_FOUND)
+    message("OpenMP is found")
+else()
+    message(FATAL_ERROR "src/CMakeLists.txt: You use EMW core lib, but CMake cannot find OpenMP library")
+endif ()
+
+find_package(LAPACK REQUIRED)
+if (LAPACK_FOUND)
+    message("Lapack is found")
+else()
+    message(FATAL_ERROR "src/CMakeLists.txt: You use EMW core lib, but CMake cannot find LAPACK library")
+endif ()
+
+# Find specific BLAS lib
+set(BLA_VENDOR "OpenBLAS")
+find_package(BLAS REQUIRED)
+if (BLAS_FOUND)
+    message("OpenBlas is found")
+else()
+    message(FATAL_ERROR "src/CMakeLists.txt: You use EMW core lib, but CMake cannot find BLAS library")
+endif ()
+
 add_subdirectory(third_party)
 add_subdirectory(src)
 
@@ -30,6 +54,8 @@ endif ()
 if (EMW_WITH_BENCHMARKS)
     add_subdirectory(benchmarks)
 endif ()
+
+add_subdirectory(profiling)
 
 # Prints EMW-related libraries that is build by cmake and that should be linked to the tests and programs
 message("EMW related libraries compiled: ${EMW_LIBRARIES}")

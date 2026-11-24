@@ -60,6 +60,8 @@ template <typename scalar_t, typename block_t> class ToeplitzStructure {
         return blocks.get_linear_index(row, col);
     }
 
+    // ----------- MATVECS --------------- //
+
     /** Умножение матрицы на вектор c возвращением копии */
     [[nodiscard]] vector_t matvec(const vector_t &vec) const noexcept;
     /** dest += matvec(vec); */
@@ -67,6 +69,17 @@ template <typename scalar_t, typename block_t> class ToeplitzStructure {
     /** dest += matvec(vec); но по-умному */
     void matvec_blocked(const vector_t &vec, vector_t &dest) const noexcept;
     void matvec_blocked_kernel(scalar_t *vec, size_t vec_size, scalar_t *dest, size_t dest_size) const noexcept;
+
+    // ----------- MATMULLS ------------------- //
+
+    /** dest += T * A, где A -- матричный блок */
+    void matmull(const dense_matrix_t& rhs, dense_matrix_t& dest) const noexcept;
+    void matmull_naive_kernel(const scalar_t *rhs, size_t rhs_size, scalar_t *dest,
+                         size_t dest_size, size_t n_rhs_cols) const noexcept;
+    void matmull_blocked(const dense_matrix_t& rhs, dense_matrix_t& dest) const noexcept;
+    void matmull_blocked_kernel() const noexcept;
+
+    // ---------- SOME SHIT --------------- //
 
     /** Умножение матрицы на число с возвращением копии */
     [[nodiscard]] ToeplitzStructure mull(scalar_t value) const noexcept;
@@ -266,6 +279,28 @@ void ToeplitzStructure<scalar_t, block_t>::matvec_blocked_kernel(scalar_t *vec, 
         lhs_window.second--;
     }
     // ну и все, умножение закончилось
+}
+
+template <typename scalar_t, typename block_t>
+void ToeplitzStructure<scalar_t, block_t>::matmull(const ToeplitzStructure::dense_matrix_t &rhs,
+                                                   ToeplitzStructure::dense_matrix_t &dest) const noexcept {
+    matmull_naive_kernel(rhs.data(), rhs.size(), dest.data(), dest.size(), rhs.cols());
+}
+
+
+template <typename scalar_t, typename block_t>
+void ToeplitzStructure<scalar_t, block_t>::matmull_naive_kernel(const scalar_t *rhs, size_t rhs_size, scalar_t *dest,
+                                                                size_t dest_size, size_t n_rhs_cols) const noexcept {
+
+    const size_t rhs_col_size = blocks.cols() * blocks(0).cols();
+    const size_t dest_col_size = blocks.rows() * blocks(0).rows();
+
+    assert(rhs_size == rhs_col_size * n_rhs_cols);
+    assert(dest_size == dest_col_size * n_rhs_cols);
+
+    for (size_t col = 0; col < n_rhs_cols; ++col) {
+        matvec_blocked_kernel(rhs + col * rhs_col_size, rhs_col_size, dest + col * dest_col_size, dest_col_size);
+    }
 }
 
 template <typename scalar_t, typename block_t>

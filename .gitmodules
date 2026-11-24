@@ -13,6 +13,6 @@
 [submodule ".agents-config/nla"]
 	path = .agents-config/nla
 	url = git@github.com:Abrackadabrr/nla-anget-config.git
-[submodule "mosaic-skeleton"]
-	path = mosaic-skeleton
+[submodule "third_party/mosaic-skeleton"]
+	path = third_party/mosaic-skeleton
 	url = https://gitlab.com/bulatral/mosaic-skeleton.git
