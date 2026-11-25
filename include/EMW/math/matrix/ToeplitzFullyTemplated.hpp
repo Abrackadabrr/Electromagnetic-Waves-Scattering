@@ -137,9 +137,6 @@ template <typename scalar_t, typename block_t> class ToeplitzStructure {
 
     // Приведение к плотной матрице
     dense_matrix_t to_dense() const noexcept;
-
-    // T = L + D + U, это возвращает L + U
-    ToeplitzStructure extract_lower_triangle_plus_diagonal();
 };
 
 template <typename scalar_t, typename block_t>
