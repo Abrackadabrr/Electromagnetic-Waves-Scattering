@@ -78,7 +78,7 @@ template <typename scalar_t, typename block_t> class ToeplitzStructure {
                            Types::index cols_in_block);
     static ToeplitzStructure Zero(Types::index block_rows_l2, Types::index block_cols_l2, Types::index block_rows_l1,
                            Types::index block_cols_l1, Types::index rows_in_block, Types::index cols_in_block);
-
+    
     // ----------- MATVECS --------------- //
     /** dest += matvec(vec); */
     void matvec(const vector_t &vec, vector_t &dest) const noexcept;

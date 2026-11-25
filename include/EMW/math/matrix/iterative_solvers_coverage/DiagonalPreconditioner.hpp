@@ -33,6 +33,8 @@ template <typename scalar_t, typename matrix_t> class BlockDiagonalPreconditione
     using matrix_traits = MatrixTraits<matrix_t>;
     using vector_t = Types::VectorX<scalar_t>;
 
+    static_assert(matrix_t::toeplitz_depth == 2);
+
     // Храним только обратные элементы к диагональным
     Types::MatrixX<scalar_t> invdiag_block;
     Types::index block_rows;
@@ -46,10 +48,9 @@ template <typename scalar_t, typename matrix_t> class BlockDiagonalPreconditione
               if constexpr (requires { matrix.diagonal_block(); })
                   return Types::MatrixX<scalar_t>(matrix.diagonal_block().inverse());
               else
-                  return Types::MatrixX<scalar_t>(
-                      matrix.get_block(0, 0).get_block(0, 0).template get<0>().inverse());
-          }()), block_rows(invdiag_block.rows()),
-          n_blocks(matrix.rows() / block_rows) {
+                  return Types::MatrixX<scalar_t>(matrix.get_block(0, 0).get_block(0, 0).inverse());
+          }()),
+          block_rows(invdiag_block.rows()), n_blocks(matrix.rows() / block_rows) {
         std::cout << "BlockDiagonalPreconditioner is constructed" << std::endl;
         std::cout << "with " << n_blocks << " equal diagonal blocks" << std::endl;
     }
@@ -58,14 +59,14 @@ template <typename scalar_t, typename matrix_t> class BlockDiagonalPreconditione
     // D -- это наш предобуславливатель
     vector_t solve(const vector_t &rhs) const {
         vector_t result = vector_t::Zero(block_rows * n_blocks);
-#pragma omp parallel for num_threads(14)
+        // #pragma omp parallel for num_threads(14)
         for (Types::index i = 0; i < n_blocks; i++) {
-          result.block(i * block_rows, 0, block_rows, 1) = invdiag_block * rhs.block(i * block_rows, 0, block_rows, 1);
-      }
-      return result;
-  }
+            result.block(i * block_rows, 0, block_rows, 1) =
+                invdiag_block * rhs.block(i * block_rows, 0, block_rows, 1);
+        }
+        return result;
+    }
 };
-
 
 } // namespace EMW::Math::LinAgl::Matrix::Preconditioning
 
